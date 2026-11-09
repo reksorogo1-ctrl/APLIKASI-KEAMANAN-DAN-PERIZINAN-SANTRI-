@@ -1,0 +1,6 @@
+{
+  "name": "SIM-KAMTIB Pondok Pesantren Salaf Al-Maliki",
+  "description": "Sistem Informasi Manajemen Keamanan dan Ketertiban Santri Pondok Pesantren Salaf Al-Maliki. Administrasi data santri, dewan keamanan, perizinan berjenjang, monitoring keluar-masuk gerbang, pelanggaran, dan sanksi edukatif.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

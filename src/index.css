@@ -1,0 +1,207 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-serif: 'Amiri', serif;
+    --font-display: 'Cinzel', serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #030712;
+    color: #f8fafc;
+    overflow-x: hidden;
+  }
+}
+
+/* 3D Security Command Grid Background */
+.bg-security-grid {
+  background-image: 
+    linear-gradient(to right, rgba(59, 130, 246, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* 3D Metallic Glass Card System */
+.metallic-glass-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(3, 7, 18, 0.90) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.5),
+    0 10px 25px -3px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.metallic-glass-card:hover {
+  border-color: rgba(96, 165, 250, 0.35);
+  box-shadow: 
+    0 12px 28px -4px rgba(0, 0, 0, 0.75),
+    0 8px 16px -2px rgba(59, 130, 246, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 3D Tactile Interactive Motion */
+.tactile-interactive {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  will-change: transform;
+}
+
+.tactile-interactive:hover {
+  transform: translateY(-3px) scale(1.004);
+}
+
+.tactile-interactive:active {
+  transform: translateY(1px) scale(0.996);
+}
+
+/* 3D Floating Tilt Effect */
+.card-3d-floating {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+/* Rainbow Edge Lighting Properties */
+@property --rainbow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes rainbow-conic-spin {
+  0% {
+    --rainbow-angle: 0deg;
+  }
+  100% {
+    --rainbow-angle: 360deg;
+  }
+}
+
+/* Permanent / Active Rainbow Border Effect */
+.rainbow-active-border {
+  position: relative !important;
+  isolation: isolate;
+  border-color: transparent !important;
+}
+
+.rainbow-active-border::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--rainbow-angle, 0deg),
+    #06b6d4, /* Cyan */
+    #3b82f6, /* Electric Blue */
+    #8b5cf6, /* Violet */
+    #ec4899, /* Magenta */
+    #ef4444, /* Interpol Red */
+    #f59e0b, /* Gold */
+    #10b981, /* Emerald */
+    #06b6d4
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 2px;
+  animation: rainbow-conic-spin 3s linear infinite;
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 
+    0 0 16px rgba(6, 182, 212, 0.45),
+    0 0 28px rgba(139, 92, 246, 0.25);
+}
+
+/* Hover-Activated Rainbow Border (Edge Glow on Hover/Touch) */
+.hover-rainbow-edge {
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.hover-rainbow-edge::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--rainbow-angle, 0deg),
+    #06b6d4,
+    #3b82f6,
+    #8b5cf6,
+    #ec4899,
+    #ef4444,
+    #f59e0b,
+    #06b6d4
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+  animation: rainbow-conic-spin 3.2s linear infinite;
+}
+
+.hover-rainbow-edge:hover::before,
+.hover-rainbow-edge:focus-within::before {
+  opacity: 1;
+  box-shadow: 0 0 18px rgba(6, 182, 212, 0.4);
+}
+
+/* Table Row Rainbow Edge Glow & Highlight */
+.table-row-rainbow {
+  position: relative;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.table-row-rainbow:hover {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+  box-shadow: 
+    inset 3px 0 0 #06b6d4,
+    inset -3px 0 0 #ec4899,
+    0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Metallic Header Gradient for Tables */
+.table-header-metallic {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+/* Radar Sweep Animation for Tactical Security HUD */
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.radar-sweep-beam {
+  animation: radar-sweep 4s linear infinite;
+  transform-origin: center;
+}
+
+/* Soft Neon Glow Badges */
+.glow-gold {
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+}
+
+.glow-blue {
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+.glow-red {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+}
+
+
