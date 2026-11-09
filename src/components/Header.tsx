@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { UserAccount, UserRole } from '../types';
 import { storageService } from '../services/storageService';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   currentUser: UserAccount;
@@ -143,6 +144,9 @@ export const Header: React.FC<HeaderProps> = ({
           <Clock className="w-3 h-3 text-amber-400" />
           <span className="tabular-nums font-bold text-amber-300">{currentTime}</span>
         </div>
+
+        {/* PWA Install Button */}
+        <PWAInstallButton variant="header" />
 
         {/* Notifications Button */}
         <button

@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0b172a" />
+      <stop offset="70%" stop-color="#030712" />
+      <stop offset="100%" stop-color="#000000" />
+    </radialGradient>
+
+    <!-- Shield Metallic Gradient -->
+    <linearGradient id="shieldMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="50%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+
+    <!-- Gold Border Gradient -->
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="30%" stop-color="#f59e0b" />
+      <stop offset="70%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+
+    <!-- Emerald Accent Gradient -->
+    <linearGradient id="emeraldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="50%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+
+    <!-- Cyan Laser Glow -->
+    <linearGradient id="cyanBeam" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.8" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGlow)" />
+  <rect width="504" height="504" x="4" y="4" rx="92" fill="none" stroke="url(#goldGradient)" stroke-width="2" stroke-opacity="0.4" />
+
+  <!-- Tactical Radar Rings in Background -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#06b6d4" stroke-width="1" stroke-opacity="0.12" stroke-dasharray="6 6" />
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#06b6d4" stroke-width="1" stroke-opacity="0.18" />
+  <circle cx="256" cy="256" r="110" fill="none" stroke="#10b981" stroke-width="1" stroke-opacity="0.2" stroke-dasharray="4 4" />
+
+  <!-- Radar Crosshairs -->
+  <line x1="256" y1="56" x2="256" y2="456" stroke="#06b6d4" stroke-width="1" stroke-opacity="0.15" />
+  <line x1="56" y1="256" x2="456" y2="256" stroke="#06b6d4" stroke-width="1" stroke-opacity="0.15" />
+
+  <!-- Security Shield Outer Shadow -->
+  <g filter="url(#softShadow)">
+    <!-- Security Shield Base Outer -->
+    <path d="M 256,76 L 396,136 C 396,280 326,380 256,436 C 186,380 116,280 116,136 Z" 
+          fill="url(#shieldMetal)" 
+          stroke="url(#goldGradient)" 
+          stroke-width="5" />
+
+    <!-- Shield Inner Inset -->
+    <path d="M 256,96 L 378,148 C 378,270 318,360 256,412 C 194,360 134,270 134,148 Z" 
+          fill="#050b14" 
+          stroke="url(#emeraldGradient)" 
+          stroke-width="2.5" 
+          stroke-opacity="0.8" />
+  </g>
+
+  <!-- Islamic Dome / Crest Silhouette inside Shield -->
+  <path d="M 256,128 C 280,165 304,185 328,198 C 316,252 292,305 256,336 C 220,305 196,252 184,198 C 208,185 232,165 256,128 Z" 
+        fill="url(#emeraldGradient)" 
+        fill-opacity="0.22" 
+        stroke="url(#emeraldGradient)" 
+        stroke-width="1.5" />
+
+  <!-- Crescent and Star (Islamic Ponpes Identity) -->
+  <g transform="translate(256, 175) scale(0.85)" filter="url(#glow)">
+    <!-- Crescent Moon -->
+    <path d="M 0,-40 A 40 40 0 1 0 40 10 A 32 32 0 1 1 -10 -40 A 39 39 0 0 0 0 -40 Z" 
+          fill="url(#goldGradient)" />
+    <!-- 5-Point Star -->
+    <polygon points="12,-16 16,-5 27,-5 18,2 22,13 12,6 3,13 7,2 -2,-5 9,-5" 
+             fill="#fef08a" />
+  </g>
+
+  <!-- Tactical Security Check / Lock Core -->
+  <g transform="translate(256, 268) scale(1)">
+    <!-- Central Hexagonal Tech Core -->
+    <polygon points="0,-36 31,-18 31,18 0,36 -31,18 -31,-18" 
+             fill="#020617" 
+             stroke="url(#cyanBeam)" 
+             stroke-width="2.5" />
+    
+    <!-- Central Shield / Security Check -->
+    <path d="M -12,-2 L -3,8 L 14,-10" 
+          fill="none" 
+          stroke="url(#goldGradient)" 
+          stroke-width="4.5" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+  </g>
+
+  <!-- Bottom Banner Ribbon: AL-MALIKI -->
+  <g transform="translate(256, 362)">
+    <rect x="-110" y="-14" width="220" height="28" rx="6" fill="#0f172a" stroke="url(#goldGradient)" stroke-width="1.5" />
+    <text x="0" y="5" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="900" font-size="13" fill="#f8fafc" letter-spacing="3">AL-MALIKI</text>
+  </g>
+
+  <!-- Sub-label: SECURITY COMMAND -->
+  <text x="256" y="394" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-weight="800" font-size="9" fill="#38bdf8" letter-spacing="2">SECURITY COMMAND</text>
+  
+  <!-- Subtle Top Star Accents -->
+  <circle cx="160" cy="120" r="2.5" fill="#f59e0b" opacity="0.7" />
+  <circle cx="352" cy="120" r="2.5" fill="#f59e0b" opacity="0.7" />
+</svg>

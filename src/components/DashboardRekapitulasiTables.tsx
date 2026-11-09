@@ -369,7 +369,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
           </div>
 
           {/* Table Container */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden shadow-inner">
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 overflow-hidden shadow-inner track-scroll-box">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
                 <thead className="bg-slate-900/90 border-b border-slate-800 text-slate-300 uppercase tracking-wider text-[10px]">
@@ -676,7 +676,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
           </div>
 
           {/* Table Container */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden shadow-inner">
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 overflow-hidden shadow-inner track-scroll-box">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
                 <thead className="bg-slate-900/90 border-b border-slate-800 text-slate-300 uppercase tracking-wider text-[10px]">

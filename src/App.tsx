@@ -33,6 +33,7 @@ import { LaporanStatistik } from './components/LaporanStatistik';
 import { DatabaseSettings } from './components/DatabaseSettings';
 import { SuratIzinModal } from './components/SuratIzinModal';
 import { NotificationModal } from './components/NotificationModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
   // Authentication & Session
@@ -373,6 +374,9 @@ export default function App() {
         notifications={notifications}
         onNavigate={(menuId) => setActiveMenu(menuId as ActiveMenu)}
       />
+
+      {/* Real-time PWA Connectivity Indicator */}
+      <OfflineIndicator />
 
     </div>
   );

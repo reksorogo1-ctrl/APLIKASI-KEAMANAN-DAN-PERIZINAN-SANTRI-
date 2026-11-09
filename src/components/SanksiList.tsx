@@ -291,7 +291,7 @@ Wassalamu'alaikum Wr. Wb.`;
       </div>
 
       {/* SANKSI EDUKATIF RECAPITULATION TABLE (EXACT REQUESTED COLUMNS) */}
-      <div className="metallic-glass-card border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl hover-rainbow-edge">
+      <div className="metallic-glass-card border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl hover-rainbow-edge track-scroll-box">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-200">
             <thead className="table-header-metallic text-slate-300 uppercase text-[10px] font-mono tracking-wider">

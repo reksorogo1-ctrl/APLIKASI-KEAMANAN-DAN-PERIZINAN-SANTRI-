@@ -1,8 +1,38 @@
+# Dependencies
 node_modules/
-build/
+.pnp
+.pnp.js
+
+# Production Build Artifacts
 dist/
+build/
 coverage/
-.DS_Store
-*.log
-.env*
+
+# Local Environment & Secrets (NEVER COMMIT SENSITIVE KEYS)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 !.env.example
+
+# Vercel Deployment Cache & Project State
+.vercel
+
+# Logs & Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Editor & OS Metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

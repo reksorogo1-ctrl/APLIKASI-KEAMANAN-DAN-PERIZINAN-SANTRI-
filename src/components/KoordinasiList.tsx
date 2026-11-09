@@ -321,7 +321,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
             )}
           </div>
 
-          <div className="space-y-3 max-h-[750px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-[750px] overflow-y-auto p-2.5 rounded-2xl track-scroll-box">
             {filteredList.length === 0 ? (
               <div className="metallic-glass-card rounded-2xl p-8 border border-slate-800/80 text-center text-slate-400 text-xs font-mono">
                 <MessageSquare className="w-8 h-8 text-slate-600 mx-auto mb-2" />

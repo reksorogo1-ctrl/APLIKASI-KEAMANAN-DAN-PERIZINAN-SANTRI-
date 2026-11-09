@@ -19,6 +19,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { UserRole } from '../types';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type ActiveMenu = 
   | 'dashboard'
@@ -337,6 +338,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* SIDEBAR FOOTER: ADMIN OPTION PANEL + TOMBOL KELUAR DI PALING BAWAH */}
         <div className="p-3.5 border-t border-slate-800/90 bg-gradient-to-b from-slate-950 to-black space-y-2.5">
           
+          {/* PWA App Install Button (Mobile & Desktop) */}
+          <PWAInstallButton variant="sidebar" />
+
           {/* Central Option Panel Tab for Admin (Placed at the very bottom above logout button) */}
           {isAdmin && (
             <button
