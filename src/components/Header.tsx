@@ -20,6 +20,8 @@ interface HeaderProps {
   currentUser: UserAccount;
   logoUrl?: string;
   namaPondok?: string;
+  namaAplikasi?: string;
+  namaPendekAplikasi?: string;
   onToggleSidebar: () => void;
   onOpenNotifications: () => void;
   onLogout: () => void;
@@ -30,6 +32,8 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   logoUrl,
   namaPondok,
+  namaAplikasi,
+  namaPendekAplikasi,
   onToggleSidebar,
   onOpenNotifications,
   onLogout,
@@ -104,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-nowrap">
               <span className="text-xs sm:text-sm font-black tracking-tight text-white font-sans uppercase truncate">
-                SIM-KAMTIB
+                {namaPendekAplikasi || 'SIM-KAMTIB'}
               </span>
               <span className="hidden xs:inline-flex text-[9px] font-mono text-amber-400 font-bold px-1.5 py-0.5 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 rounded border border-amber-400/40 shadow-xs shrink-0">
                 3D SEC-OPS

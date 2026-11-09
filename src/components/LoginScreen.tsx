@@ -86,7 +86,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         </div>
 
         {/* 3D Metallic Glass Card Body */}
-        <div className="p-8 sm:p-10 metallic-glass-card border-x border-b border-slate-800 rounded-b-3xl shadow-2xl backdrop-blur-2xl relative overflow-hidden hover-rainbow-edge">
+        <div className="p-5 sm:p-8 md:p-10 metallic-glass-card border-x border-b border-slate-800 rounded-b-3xl shadow-2xl backdrop-blur-2xl relative overflow-hidden hover-rainbow-edge">
           
           {/* Top Specular Edge Line */}
           <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-400 via-amber-400 via-pink-500 to-blue-600" />
@@ -106,7 +106,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 {systemConfig.namaPondok || "PONDOK PESANTREN SALAF AL-MALIKI"}
               </p>
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight uppercase mt-0.5 font-sans">
-                Sistem Informasi Manajemen Keamanan
+                {systemConfig.namaAplikasi || "KEAMANAN SANTRI AL-MALIKI"}
               </h1>
               <p className="text-xs text-slate-400 font-mono tracking-wider mt-1">
                 CENTRAL SECURITY & RBAC INTELLIGENCE COMMAND

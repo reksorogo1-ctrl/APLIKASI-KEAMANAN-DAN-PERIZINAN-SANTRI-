@@ -61,6 +61,13 @@ export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
     footerCatatan: 'Dokumen ini sah diterbitkan secara otomatis oleh SIM Kamtib Al-Maliki dan diarsipkan dalam pangkalan data kedisiplinan pondok.',
     tampilkanStempelSah: true,
   },
+  namaAplikasi: 'KEAMANAN SANTRI AL-MALIKI',
+  namaPendekAplikasi: 'AL-MALIKI',
+  deskripsiAplikasi: 'Sistem Informasi Manajemen Keamanan dan Ketertiban Santri Pondok Pesantren Salaf Al-Maliki',
+  appIconUrl: '/icon.svg',
+  themeColor: '#030712',
+  backgroundColor: '#030712',
+  splashScreenUrl: '/src/assets/images/tactical_hq_background_1794052517484.jpg',
 };
 
 export const INITIAL_USERS: UserAccount[] = [

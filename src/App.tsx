@@ -34,6 +34,7 @@ import { DatabaseSettings } from './components/DatabaseSettings';
 import { SuratIzinModal } from './components/SuratIzinModal';
 import { NotificationModal } from './components/NotificationModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { syncPWAIdentity } from './services/pwaSyncService';
 
 export default function App() {
   // Authentication & Session
@@ -83,11 +84,24 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Sync PWA Identity (Title, Favicon, Theme-color, Manifest) whenever systemConfig changes
+  useEffect(() => {
+    syncPWAIdentity(systemConfig);
+  }, [systemConfig]);
+
   // Handle Logout
   const handleLogout = () => {
     storageService.logout();
     setCurrentUser(null);
   };
+
+  // Enforce RBAC route protection: non-admins cannot access admin_options or database
+  const isAdmin = currentUser?.role === 'admin';
+  useEffect(() => {
+    if (currentUser && !isAdmin && (activeMenu === 'admin_options' || activeMenu === 'database')) {
+      setActiveMenu('dashboard');
+    }
+  }, [currentUser, isAdmin, activeMenu]);
 
   // If not logged in, render the luxury tactical login screen
   if (!currentUser) {
@@ -161,6 +175,8 @@ export default function App() {
         currentUser={currentUser}
         logoUrl={systemConfig.logoUrl}
         namaPondok={systemConfig.namaPondok}
+        namaAplikasi={systemConfig.namaAplikasi}
+        namaPendekAplikasi={systemConfig.namaPendekAplikasi}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onOpenNotifications={() => setIsNotifOpen(true)}
         onLogout={handleLogout}
@@ -200,9 +216,9 @@ export default function App() {
           onLogout={handleLogout}
         />
 
-        {/* Viewport Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-black">
-          <div className="max-w-7xl mx-auto">
+        {/* Viewport Content Area (Full fluid responsive width) */}
+        <main className="flex-1 min-w-0 p-3 sm:p-5 lg:p-7 overflow-y-auto overflow-x-hidden bg-black">
+          <div className="w-full max-w-[1720px] mx-auto">
             
             {/* 1. Dashboard Komando */}
             {activeMenu === 'dashboard' && (
@@ -225,8 +241,8 @@ export default function App() {
               />
             )}
 
-            {/* 2. Admin Option Panel & Central Database (Admin Only) */}
-            {activeMenu === 'admin_options' && (
+            {/* 3. Admin Option Panel & Central Database (Admin Only) */}
+            {activeMenu === 'admin_options' && isAdmin && (
               <AdminOptionPanel
                 systemConfig={systemConfig}
                 usersList={usersList}

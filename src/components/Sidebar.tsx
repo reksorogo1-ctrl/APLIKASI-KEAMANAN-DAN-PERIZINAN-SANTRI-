@@ -68,6 +68,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const isAdmin = userRole === 'admin';
 
+  // Lock body scroll when mobile drawer is open to prevent background scrolling
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   // Navigation structure based on role
   // PENGURUS: Navigation items (Including Koordinasi, Sentry Gate & Radar Monitoring)
   const pengurusNavItems = [
@@ -207,7 +219,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 3D Sidebar Container */}
       <aside
-        className={`fixed lg:sticky top-0 lg:top-[57px] left-0 z-40 h-screen lg:h-[calc(100vh-57px)] w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-black border-r border-cyan-500/20 shadow-[2px_0_24px_rgba(6,182,212,0.12)] flex flex-col justify-between transition-transform duration-300 ease-in-out font-sans relative ${
+        className={`fixed lg:sticky top-0 lg:top-[57px] left-0 z-50 h-screen lg:h-[calc(100vh-57px)] w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-black border-r border-cyan-500/20 shadow-[2px_0_24px_rgba(6,182,212,0.12)] flex flex-col justify-between transition-transform duration-300 ease-in-out font-sans relative ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >

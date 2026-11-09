@@ -75,7 +75,8 @@ class StorageService {
     localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(INITIAL_PELANGGARAN));
     localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(INITIAL_SANKSI));
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(INITIAL_USERS[0]));
+    // Keamanan Autentikasi: Sesi pengguna harus diawali dari layar login (tidak otomatis login)
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(INITIAL_SYSTEM_CONFIG));
     localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(INITIAL_KOORDINASI));
     
@@ -209,7 +210,7 @@ class StorageService {
   public getSystemConfig(): SystemConfig {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SYSTEM_CONFIG);
-      return data ? JSON.parse(data) : INITIAL_SYSTEM_CONFIG;
+      return data ? { ...INITIAL_SYSTEM_CONFIG, ...JSON.parse(data) } : INITIAL_SYSTEM_CONFIG;
     } catch {
       return INITIAL_SYSTEM_CONFIG;
     }

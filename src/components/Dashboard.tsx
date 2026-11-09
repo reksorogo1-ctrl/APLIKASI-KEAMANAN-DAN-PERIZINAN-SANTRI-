@@ -202,7 +202,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       {/* Primary KPI Grid (High-Tech 3D International Command Center) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         
         {/* Card 1: Santri Sedang di Luar */}
         <div 

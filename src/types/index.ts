@@ -309,6 +309,14 @@ export interface SystemConfig {
   modeOperasiDarurat: boolean; // Emergency lockdown mode
   suratIzinLayout?: SuratIzinLayoutConfig;
   suratSanksiLayout?: SuratSanksiLayoutConfig;
+  // Pengaturan Identitas Aplikasi & PWA
+  namaAplikasi?: string;
+  namaPendekAplikasi?: string;
+  deskripsiAplikasi?: string;
+  appIconUrl?: string;
+  themeColor?: string;
+  backgroundColor?: string;
+  splashScreenUrl?: string;
 }
 
 // -------------------------------------------------------------

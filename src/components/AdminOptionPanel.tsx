@@ -25,9 +25,14 @@ import {
   FileCheck,
   FileText,
   Printer,
-  GraduationCap
+  GraduationCap,
+  Smartphone,
+  Monitor,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
+import { syncPWAIdentity } from '../services/pwaSyncService';
 import { SystemConfig, UserAccount, UserRole, Santri, DewanKeamanan, Gender, SuratIzinLayoutConfig, SuratSanksiLayoutConfig } from '../types';
 
 interface AdminOptionPanelProps {
@@ -109,9 +114,63 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     storageService.updateSystemConfig(configForm);
-    setSaveSuccessMsg('Konfigurasi Option Panel dan penyesuaian visual berhasil disimpan.');
-    setTimeout(() => setSaveSuccessMsg(''), 4000);
+    syncPWAIdentity(configForm);
+    setSaveSuccessMsg('Konfigurasi sistem, logo resmi, dan identitas PWA berhasil disimpan & disinkronkan!');
+    setTimeout(() => setSaveSuccessMsg(''), 4500);
     onConfigUpdated();
+  };
+
+  // PWA App Icon Uploader with safe-zone canvas normalization
+  const handleUploadAppIcon = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type === 'image/svg+xml') {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const svgContent = evt.target?.result as string;
+        setConfigForm(prev => ({ ...prev, appIconUrl: svgContent }));
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const b64 = evt.target?.result as string;
+      const img = new (window as any).Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = configForm.backgroundColor || '#030712';
+          ctx.fillRect(0, 0, 512, 512);
+
+          const targetSize = 410;
+          let drawWidth = targetSize;
+          let drawHeight = targetSize;
+
+          if (img.width > img.height) {
+            drawHeight = (img.height / img.width) * targetSize;
+          } else {
+            drawWidth = (img.width / img.height) * targetSize;
+          }
+
+          const dx = (512 - drawWidth) / 2;
+          const dy = (512 - drawHeight) / 2;
+          ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+
+          const normalizedPng = canvas.toDataURL('image/png', 0.95);
+          setConfigForm(prev => ({ ...prev, appIconUrl: normalizedPng }));
+        } else {
+          setConfigForm(prev => ({ ...prev, appIconUrl: b64 }));
+        }
+      };
+      img.src = b64;
+    };
+    reader.readAsDataURL(file);
   };
 
   // Image Upload Handlers for Logo & Background
@@ -270,7 +329,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       <div className="metallic-glass-card border border-slate-800/80 p-2 rounded-2xl flex items-center gap-2 overflow-x-auto text-xs shadow-lg font-mono">
         {[
           { key: 'control', label: '1. Pengaturan Operasional Gerbang' },
-          { key: 'visual', label: '2. Edit Logo & Background Aplikasi' },
+          { key: 'visual', label: '2. Edit Logo, Ikon PWA & Identitas Aplikasi' },
           { key: 'surat_layout', label: '3. Editor Layout Surat Izin Digital' },
           { key: 'surat_sanksi_layout', label: '4. Editor Layout Surat Pelanggaran & Sanksi' },
           { key: 'santri_crud', label: `5. Input & Hapus Santri (${santriList.length})` },
@@ -408,30 +467,252 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
         </form>
       )}
 
-      {/* SUB-TAB 2: EDIT LOGO & LATAR BELAKANG APLIKASI */}
+      {/* SUB-TAB 2: EDIT LOGO, IKON PWA & IDENTITAS APLIKASI */}
       {activeSubTab === 'visual' && (
         <form onSubmit={handleSaveConfig} className="metallic-glass-card rounded-3xl p-6 border border-slate-800/80 shadow-2xl space-y-6 hover-rainbow-edge">
-          <div>
-            <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
-              <Palette className="w-4 h-4 text-yellow-400" />
-              Kustomisasi Logo & Latar Belakang Aplikasi
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 font-mono">
-              Ganti lambang pondok pesantren dan visual wallpaper latar belakang aplikasi secara real-time
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+            <div>
+              <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
+                <Palette className="w-4 h-4 text-amber-400" />
+                Kustomisasi Logo, Ikon PWA & Identitas Aplikasi
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 font-mono">
+                Atur identitas aplikasi yang terpasang di HP / Laptop (PWA), lambang pondok pesantren, dan latar belakang komando
+              </p>
+            </div>
+            <span className="self-start sm:self-auto px-3 py-1 rounded-xl text-[10px] font-mono font-bold uppercase bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 glow-cyan">
+              PWA & VISUAL SYNC
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            
-            {/* 1. Pengaturan Logo */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* PANEL 1: PENGATURAN IKON APLIKASI PWA (DESKTOP, ANDROID, IOS) */}
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800/80 space-y-4 shadow-md hover-rainbow-edge">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 font-mono">
+                  <Smartphone className="w-4 h-4 text-cyan-400" />
+                  Ikon Aplikasi PWA (Android / iOS / PC)
+                </h4>
+                <span className="text-[10px] text-cyan-300 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-400/30 font-mono">
+                  AUTO SAFE-ZONE
+                </span>
+              </div>
+
+              {/* TRIPLE PREVIEW: STANDARD, ANDROID SQUIRCLE, DESKTOP BADGE */}
+              <div className="p-4 bg-black/70 rounded-2xl border border-slate-800/90 space-y-3">
+                <p className="text-[11px] font-mono text-slate-300 font-bold flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  Pratinjau Tampilan Ikon di Berbagai Perangkat:
+                </p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  {/* Preview 1: Android Squircle Maskable */}
+                  <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div className="w-14 h-14 rounded-[22%] p-1.5 bg-slate-950 border border-amber-400/60 shadow-lg flex items-center justify-center overflow-hidden">
+                      <img
+                        src={configForm.appIconUrl || '/icon.svg'}
+                        alt="Android Icon"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-400">Android (Maskable)</span>
+                  </div>
+
+                  {/* Preview 2: iOS Rounded App Icon */}
+                  <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div className="w-14 h-14 rounded-2xl p-1.5 bg-slate-950 border border-cyan-400/60 shadow-lg flex items-center justify-center overflow-hidden">
+                      <img
+                        src={configForm.appIconUrl || '/icon.svg'}
+                        alt="iOS Icon"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-400">iPhone / iPad</span>
+                  </div>
+
+                  {/* Preview 3: Desktop Taskbar / Chrome */}
+                  <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <div className="w-14 h-14 rounded-xl p-1.5 bg-slate-950 border border-blue-400/60 shadow-lg flex items-center justify-center overflow-hidden">
+                      <img
+                        src={configForm.appIconUrl || '/icon.svg'}
+                        alt="Desktop Icon"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-400">PC / Desktop</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed font-mono">
+                  * Gambar otomatis dinormalisasi ke rasio 1:1 (512x512) dengan margin aman 15% agar logo tidak terpotong saat dipasang di HP.
+                </p>
+              </div>
+
+              {/* Upload & URL Controls */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1 font-mono">
+                    Unggah Ikon Baru (PNG / JPG / SVG)
+                  </label>
+                  <label className="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-cyan-500 text-slate-200 text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs group">
+                    <Upload className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                    <span className="font-semibold">Pilih File Ikon dari Komputer / HP</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                      onChange={handleUploadAppIcon}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-[10px] text-slate-400 font-mono mt-1">
+                    Rekomendasi resolusi: <strong className="text-cyan-300">192×192</strong> atau <strong className="text-cyan-300">512×512 piksel</strong>.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1 font-mono">
+                    Atau Masukkan URL Ikon Kustom
+                  </label>
+                  <input
+                    type="text"
+                    value={configForm.appIconUrl || ''}
+                    onChange={(e) => setConfigForm({ ...configForm, appIconUrl: e.target.value })}
+                    placeholder="/icon.svg atau https://..."
+                    className="w-full px-3 py-2 bg-black border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfigForm({ ...configForm, appIconUrl: '/icon.svg' })}
+                  className="text-xs text-amber-400 hover:text-amber-300 hover:underline cursor-pointer font-mono"
+                >
+                  ↺ Reset ke Ikon Bawaan Al-Maliki
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    storageService.updateSystemConfig({ ...configForm });
+                    syncPWAIdentity(configForm);
+                    onConfigUpdated();
+                    setSaveSuccessMsg('Ikon PWA dan manifest berhasil disinkronkan secara instan!');
+                    setTimeout(() => setSaveSuccessMsg(''), 4500);
+                  }}
+                  className="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md font-mono flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Terapkan Ikon Sekarang
+                </button>
+              </div>
+            </div>
+
+            {/* PANEL 2: IDENTITAS APLIKASI PWA & WARNA SISTEM */}
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800/80 space-y-4 shadow-md hover-rainbow-edge">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between font-mono">
+                <span className="flex items-center gap-2">
+                  <Sliders className="w-4 h-4 text-amber-400" />
+                  Identitas PWA & Warna Sistem
+                </span>
+                <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-400/30 font-mono">
+                  MANIFEST READY
+                </span>
+              </h4>
+
+              <div className="space-y-3.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1 font-mono">
+                    Nama Lengkap Aplikasi (Title Bar & Splash Screen)
+                  </label>
+                  <input
+                    type="text"
+                    value={configForm.namaAplikasi || ''}
+                    onChange={(e) => setConfigForm({ ...configForm, namaAplikasi: e.target.value })}
+                    placeholder="KEAMANAN SANTRI AL-MALIKI"
+                    className="w-full px-3 py-2 bg-black border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                  />
+                  <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
+                    Nama resmi saat aplikasi dibuka atau dipasang.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1 font-mono">
+                    Nama Pendek Aplikasi (Ikon Layar Utama HP / Desktop)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={14}
+                    value={configForm.namaPendekAplikasi || ''}
+                    onChange={(e) => setConfigForm({ ...configForm, namaPendekAplikasi: e.target.value })}
+                    placeholder="AL-MALIKI"
+                    className="w-full px-3 py-2 bg-black border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
+                  />
+                  <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
+                    Maksimal 12-14 karakter agar teks tidak terpotong titik-titik di HP.
+                  </span>
+                </div>
+
+                {/* Theme & Background Color Picker */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="p-3 bg-black/60 rounded-xl border border-slate-800 space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-300 uppercase font-mono">
+                      Warna Tema Toolbar (Theme Color)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={configForm.themeColor || '#030712'}
+                        onChange={(e) => setConfigForm({ ...configForm, themeColor: e.target.value })}
+                        className="w-8 h-8 rounded-lg border border-slate-700 bg-transparent cursor-pointer shrink-0"
+                      />
+                      <input
+                        type="text"
+                        value={configForm.themeColor || '#030712'}
+                        onChange={(e) => setConfigForm({ ...configForm, themeColor: e.target.value })}
+                        className="w-full px-2 py-1 bg-black border border-slate-700 rounded-lg text-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-black/60 rounded-xl border border-slate-800 space-y-1.5">
+                    <label className="block text-[10px] font-bold text-slate-300 uppercase font-mono">
+                      Warna Latar Splash (Background)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={configForm.backgroundColor || '#030712'}
+                        onChange={(e) => setConfigForm({ ...configForm, backgroundColor: e.target.value })}
+                        className="w-8 h-8 rounded-lg border border-slate-700 bg-transparent cursor-pointer shrink-0"
+                      />
+                      <input
+                        type="text"
+                        value={configForm.backgroundColor || '#030712'}
+                        onChange={(e) => setConfigForm({ ...configForm, backgroundColor: e.target.value })}
+                        className="w-full px-2 py-1 bg-black border border-slate-700 rounded-lg text-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Technical Note on PWA Cache */}
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 font-mono leading-relaxed">
+                  <strong>Catatan Sinkronisasi PWA:</strong> Perubahan langsung aktif di peramban web. Untuk aplikasi yang sudah diinstal di layar utama perangkat, browser memperbarui ikon saat update background service worker atau pengguna dapat menghapus dan memasang ulang aplikasi jika ingin melihat perubahan secara instan.
+                </div>
+              </div>
+            </div>
+
+            {/* PANEL 3: PENGATURAN LOGO RESMI PONDOK PESANTREN */}
             <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800/80 space-y-4 hover-rainbow-edge transition-all shadow-md">
               <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between font-mono">
                 <span className="flex items-center gap-2">
                   <Image className="w-4 h-4 text-cyan-400" />
                   Logo Resmi Pondok Pesantren
                 </span>
-                <span className="text-[10px] text-amber-300 font-bold bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
-                  REALTIME SYNC
+                <span className="text-[10px] text-amber-300 font-bold bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30 font-mono">
+                  IN-APP LOGO
                 </span>
               </h4>
 
@@ -450,13 +731,13 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                     Pratinjau Logo Aktif
                   </p>
                   <p className="text-[11px] text-slate-400">
-                    Otomatis sinkron ke <span className="text-cyan-300 font-semibold">Sidebar</span>, <span className="text-cyan-300 font-semibold">Header Bar</span>, <span className="text-cyan-300 font-semibold">Layar Login</span>, <span className="text-cyan-300 font-semibold">Kartu Santri (KTS)</span>, dan <span className="text-cyan-300 font-semibold">Kop Surat Izin</span>.
+                    Otomatis sinkron ke <span className="text-cyan-300 font-semibold">Sidebar</span>, <span className="text-cyan-300 font-semibold">Header Bar</span>, <span className="text-cyan-300 font-semibold">Layar Login</span>, dan <span className="text-cyan-300 font-semibold">Kop Surat Resmi</span>.
                   </p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">URL Logo Baru (Link Eksternal atau Path)</label>
+                <label className="block text-[11px] font-bold text-zinc-300 mb-1 font-mono">URL Logo Baru</label>
                 <input
                   type="text"
                   value={configForm.logoUrl}
@@ -467,7 +748,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">Unggah Logo dari Komputer / HP</label>
+                <label className="block text-[11px] font-bold text-zinc-300 mb-1 font-mono">Unggah Logo dari Komputer / HP</label>
                 <label className="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-cyan-500 text-slate-200 text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs">
                   <Upload className="w-4 h-4 text-amber-400" />
                   <span className="font-semibold">Pilih File Logo (PNG/JPG/WEBP)</span>
@@ -483,26 +764,14 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 >
                   ↺ Reset ke Logo Bawaan Al-Maliki
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    storageService.updateSystemConfig({ ...configForm });
-                    onConfigUpdated();
-                    setSaveSuccessMsg('Logo pesantren berhasil diperbarui ke seluruh sistem!');
-                    setTimeout(() => setSaveSuccessMsg(''), 4000);
-                  }}
-                  className="px-3 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl cursor-pointer shadow-md shadow-cyan-950 font-mono"
-                >
-                  Terapkan Logo Sekarang
-                </button>
               </div>
             </div>
 
-            {/* 2. Pengaturan Latar Belakang (Background Wallpaper) */}
-            <div className="p-5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-4 tactile-interactive">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            {/* PANEL 4: PENGATURAN LATAR BELAKANG (WALLPAPER LAYAR KOMANDO) */}
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800/80 space-y-4 hover-rainbow-edge shadow-md">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 font-mono">
                 <Palette className="w-4 h-4 text-red-500" />
-                Latar Belakang (Wallpaper Layar)
+                Latar Belakang (Wallpaper Layar Komando)
               </h4>
 
               <div className="relative h-24 rounded-xl overflow-hidden border border-zinc-700">
@@ -517,7 +786,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">URL Latar Belakang Baru</label>
+                <label className="block text-[11px] font-bold text-zinc-300 mb-1 font-mono">URL Latar Belakang Baru</label>
                 <input
                   type="text"
                   value={configForm.bgUrl}
@@ -528,7 +797,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-zinc-300 mb-1">Unggah Wallpaper Gambar Lokal</label>
+                <label className="block text-[11px] font-bold text-zinc-300 mb-1 font-mono">Unggah Wallpaper Gambar Lokal</label>
                 <label className="w-full py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 text-zinc-300 text-xs flex items-center justify-center gap-2 cursor-pointer">
                   <Upload className="w-4 h-4 text-blue-400" />
                   <span>Pilih Gambar Wallpaper dari Komputer</span>
@@ -551,13 +820,13 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 />
               </div>
 
-              <div className="pt-2 border-t border-zinc-800 flex items-center gap-3 text-xs">
+              <div className="pt-2 border-t border-zinc-800 flex items-center gap-3 text-xs font-mono">
                 <button
                   type="button"
                   onClick={() => setConfigForm({ ...configForm, bgUrl: '/src/assets/images/tactical_hq_background_1794052517484.jpg' })}
                   className="text-blue-400 hover:underline cursor-pointer text-[11px]"
                 >
-                  Preset: Tactical HQ Room
+                  Preset: Tactical HQ
                 </button>
                 <span>·</span>
                 <button
@@ -565,19 +834,22 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   onClick={() => setConfigForm({ ...configForm, bgUrl: '/src/assets/images/pos_keamanan_gate_1794050743446.jpg' })}
                   className="text-yellow-400 hover:underline cursor-pointer text-[11px]"
                 >
-                  Preset: Pos Gerbang Pesantren
+                  Preset: Pos Gerbang
                 </button>
               </div>
             </div>
 
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-zinc-800">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-800 flex-wrap gap-3">
+            <span className="text-xs text-slate-400 font-mono">
+              * Perubahan tersimpan permanen di database konfigurasi sistem utama.
+            </span>
             <button
               type="submit"
-              className="px-6 py-2.5 font-bold text-xs uppercase tracking-wider text-black bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 rounded-xl shadow-lg shadow-amber-500/20 cursor-pointer"
+              className="px-6 py-2.5 font-bold text-xs uppercase tracking-wider text-black bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 rounded-xl shadow-lg shadow-amber-500/20 cursor-pointer transition-all active:scale-95"
             >
-              Simpan Perubahan Visual Logo & Background
+              Simpan Seluruh Pengaturan Logo, Ikon & Visual PWA
             </button>
           </div>
         </form>
