@@ -15,7 +15,9 @@ import {
   AlertCircle,
   FileText,
   User,
-  MapPin
+  MapPin,
+  QrCode,
+  ScanLine
 } from 'lucide-react';
 import { Perizinan, Santri, StatusIzin, JenisIzin, UserAccount } from '../types';
 import { storageService } from '../services/storageService';
@@ -26,6 +28,7 @@ interface PerizinanListProps {
   santriList: Santri[];
   currentUser: UserAccount;
   onViewSuratIzin: (izin: Perizinan) => void;
+  onOpenQRScanner?: () => void;
 }
 
 export const PerizinanList: React.FC<PerizinanListProps> = ({
@@ -33,6 +36,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
   santriList,
   currentUser,
   onViewSuratIzin,
+  onOpenQRScanner,
 }) => {
   const [selectedStatusTab, setSelectedStatusTab] = useState<string>('all');
   const [selectedJenisTab, setSelectedJenisTab] = useState<string>('all');
@@ -175,12 +179,15 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
     // Auto add notification to pengurus and admin
     storageService.addNotification({
       judul: `Izin Disetujui: ${izin.santriNama}`,
-      pesan: `Permohonan izin untuk ${izin.santriNama} telah disetujui oleh ${currentUser.nama}. Pengurus dapat langsung mencetak surat izin digital resmi dari dashboard pengurus.`,
+      pesan: `Permohonan izin untuk ${izin.santriNama} telah disetujui oleh ${currentUser.nama}. Surat perizinan digital resmi dengan QR code otomatis terbuka untuk dicetak.`,
       tipe: 'success',
       linkMenu: 'perizinan',
       noWaTujuan: izin.noWaPenjemput,
       waPesanTemplate: WhatsAppTemplates.izinDisetujui(updated),
     });
+
+    // Otomatis munculkan surat izin digital ber-QR code untuk langsung dicetak
+    onViewSuratIzin(updated);
   };
 
   // Reject with reason - triggers "Harap menghubungi ketua pondok" notification
@@ -286,13 +293,25 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 hover:from-amber-300 hover:to-yellow-300 rounded-xl transition-all shadow-xl shadow-amber-500/25 cursor-pointer self-start sm:self-auto border border-amber-300/60"
-        >
-          <Plus className="w-4 h-4 text-slate-950" />
-          <span>Buat Pengajuan Izin</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          {onOpenQRScanner && (
+            <button
+              onClick={onOpenQRScanner}
+              className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 rounded-xl transition-all shadow-xl shadow-emerald-500/25 cursor-pointer border border-emerald-300/60 glow-cyan"
+            >
+              <ScanLine className="w-4 h-4 text-slate-950" />
+              <span>Pindai QR Check-In</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 hover:from-amber-300 hover:to-yellow-300 rounded-xl transition-all shadow-xl shadow-amber-500/25 cursor-pointer border border-amber-300/60"
+          >
+            <Plus className="w-4 h-4 text-slate-950" />
+            <span>Buat Pengajuan Izin</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs by Status - 3D Styled */}

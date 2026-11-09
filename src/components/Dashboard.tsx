@@ -15,7 +15,9 @@ import {
   Radio,
   Sliders,
   Server,
-  AlertOctagon
+  AlertOctagon,
+  ScanLine,
+  QrCode
 } from 'lucide-react';
 import { Santri, Perizinan, Pelanggaran, Sanksi, UserAccount } from '../types';
 import { ActiveMenu } from './Sidebar';
@@ -33,6 +35,7 @@ interface DashboardProps {
   currentUser: UserAccount;
   onNavigate: (menu: ActiveMenu) => void;
   onViewSuratIzin: (izin: Perizinan) => void;
+  onOpenQRScanner?: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -43,6 +46,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   currentUser,
   onNavigate,
   onViewSuratIzin,
+  onOpenQRScanner,
 }) => {
   const isAdmin = currentUser.role === 'admin';
   const [activeCardId, setActiveCardId] = React.useState<string | null>(null);
@@ -70,6 +74,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
     window.open(url, '_blank');
   };
 
+  const systemConfig = storageService.getSystemConfig();
+  const logoBerlaku = systemConfig.logoUrl || "/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg";
+
   return (
     <div className="space-y-6">
       
@@ -84,34 +91,69 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-500 via-amber-400 to-blue-600 opacity-70" />
         
         {/* Glow Scrim & 3D Lighting */}
-        <div className="relative z-10 p-6 sm:p-8 bg-gradient-to-r from-slate-950/95 via-slate-950/85 to-blue-950/40">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-3 max-w-2xl">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-xs glow-cyan uppercase tracking-wider">
-                  <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                  {isAdmin ? 'CENTRAL SECURITY COMMAND GRID' : 'TACTICAL SECTOR DISPATCH'}
-                </span>
-                <span className="text-slate-600">·</span>
-                <span className="text-xs font-mono text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/30">
-                  NRP: {currentUser.nrp || 'SECOP-01'}
-                </span>
-                <span className="text-slate-600">·</span>
-                <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  DEFCON 4 (NORMAL)
-                </span>
+        <div className="relative z-10 p-5 sm:p-7 md:p-8 bg-gradient-to-r from-slate-950/95 via-slate-950/85 to-blue-950/40">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 max-w-3xl min-w-0">
+              
+              {/* Logo Berlaku Resmi Pesantren Salaf Al-Maliki (Admin & Pengurus) - Ukuran Lebih Besar & Jelas */}
+              <div className="relative shrink-0 group self-center sm:self-start">
+                <div className="absolute -inset-1.5 rounded-3xl bg-gradient-to-tr from-cyan-400 via-amber-400 to-emerald-400 opacity-90 blur-[5px] group-hover:opacity-100 transition-opacity" />
+                <div className="relative p-2 sm:p-2.5 rounded-3xl bg-slate-950/95 border-2 border-amber-400 shadow-2xl overflow-hidden glow-gold">
+                  <img
+                    src={logoBerlaku}
+                    alt="Logo Pondok Pesantren Salaf Al-Maliki"
+                    className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-2xl object-cover filter contrast-125 brightness-110 shadow-2xl"
+                  />
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full border-2 border-slate-950 animate-ping" />
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full border-2 border-slate-950 shadow-md shadow-cyan-400/80" />
+                </div>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight uppercase font-sans drop-shadow-md">
-                {isAdmin ? 'Pusat Komando Keamanan Terpadu Al-Maliki' : `Sektor Operasional Keamanan - ${currentUser.nama}`}
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
-                {isAdmin
-                  ? 'Pengawasan terpusat mutasi gerbang, penegakan tata tertib qanun, audit izin real-time, dan manajemen hak akses sistem terenkripsi.'
-                  : 'Sistem operasional keamanan santri per kelas, pencatatan perizinan terkonfigurasi langsung ke database pusat, dan pengawasan gerbang.'}
-              </p>
+              {/* Detail Identitas Pusat Komando & Otoritas */}
+              <div className="space-y-2.5 min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-xs glow-cyan uppercase tracking-wider">
+                    <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                    {isAdmin ? 'CENTRAL SECURITY COMMAND GRID' : 'TACTICAL SECTOR DISPATCH'}
+                  </span>
+                  <span className="text-slate-600">·</span>
+                  <span className="text-xs font-mono text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/30">
+                    NRP: {currentUser.nrp || 'SECOP-01'}
+                  </span>
+                  <span className="text-slate-600">·</span>
+                  <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    DEFCON 4 (NORMAL)
+                  </span>
+                </div>
+
+                <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight uppercase font-sans drop-shadow-md">
+                  {isAdmin ? 'Pusat Komando Keamanan Terpadu Al-Maliki' : `Sektor Operasional Keamanan - ${currentUser.nama}`}
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                  {isAdmin
+                    ? 'Pengawasan terpusat mutasi gerbang, penegakan tata tertib qanun, audit izin real-time, dan manajemen hak akses sistem terenkripsi.'
+                    : 'Sistem operasional keamanan santri per kelas, pencatatan perizinan terkonfigurasi langsung ke database pusat, dan pengawasan gerbang.'}
+                </p>
+              </div>
             </div>
+
+            {/* Quick Action: Pindai QR Surat Izin (Check-In Kepulangan) */}
+            {onOpenQRScanner && (
+              <div className="shrink-0 flex flex-col items-stretch sm:items-end gap-2">
+                <button
+                  onClick={onOpenQRScanner}
+                  className="tactile-interactive flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-xs font-mono tracking-wider uppercase shadow-xl shadow-emerald-500/30 border border-emerald-300 cursor-pointer glow-cyan transition-transform active:scale-95"
+                >
+                  <ScanLine className="w-4 h-4 text-slate-950 animate-pulse" />
+                  <span>Pindai QR Surat Izin</span>
+                </button>
+                <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5 self-center sm:self-end">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>Check-In Masuk & Verifikasi Radar</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

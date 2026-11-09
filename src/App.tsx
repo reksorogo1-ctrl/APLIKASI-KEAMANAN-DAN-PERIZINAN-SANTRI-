@@ -33,6 +33,7 @@ import { LaporanStatistik } from './components/LaporanStatistik';
 import { DatabaseSettings } from './components/DatabaseSettings';
 import { SuratIzinModal } from './components/SuratIzinModal';
 import { NotificationModal } from './components/NotificationModal';
+import { QuickQRScannerModal } from './components/QuickQRScannerModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { syncPWAIdentity } from './services/pwaSyncService';
 
@@ -44,6 +45,7 @@ export default function App() {
   const [activeMenu, setActiveMenu] = useState<ActiveMenu>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState<boolean>(false);
   const [selectedSuratIzin, setSelectedSuratIzin] = useState<Perizinan | null>(null);
   const [preSelectedPelanggaran, setPreSelectedPelanggaran] = useState<Pelanggaran | null>(null);
 
@@ -61,10 +63,16 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotifikasiApp[]>(storageService.getNotifications());
   const [koordinasiList, setKoordinasiList] = useState<PesanKoordinasi[]>(storageService.getKoordinasiList());
 
-  // Subscribe to storage service
+  // Subscribe to storage service & automated background tardiness monitoring
   useEffect(() => {
     // Force dark tactical theme default
     document.documentElement.classList.add('dark');
+
+    // Run tardiness check on startup and subscribe
+    storageService.checkAndDetectLatePermits();
+    const lateTimer = setInterval(() => {
+      storageService.checkAndDetectLatePermits();
+    }, 15000);
 
     const unsubscribe = storageService.subscribe(() => {
       setCurrentUser(storageService.getCurrentUser());
@@ -81,7 +89,11 @@ export default function App() {
       setNotifications(storageService.getNotifications());
       setKoordinasiList(storageService.getKoordinasiList());
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribe();
+      clearInterval(lateTimer);
+    };
   }, []);
 
   // Sync PWA Identity (Title, Favicon, Theme-color, Manifest) whenever systemConfig changes
@@ -168,7 +180,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col font-sans antialiased selection:bg-yellow-400 selection:text-black">
+    <div className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-black text-white flex flex-col font-sans antialiased selection:bg-yellow-400 selection:text-black">
       
       {/* Tactical Top Bar Header */}
       <Header
@@ -197,10 +209,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Layout Canvas */}
-      <div className="flex-1 flex w-full">
+      {/* Main Layout Canvas: Menyesuaikan panjang sidebar dan konten ke bawah layar website secara penuh */}
+      <div className="flex-1 flex w-full relative min-h-[calc(100vh-57px)] md:h-[calc(100vh-57px)] md:max-h-[calc(100vh-57px)] md:overflow-hidden items-stretch">
         
-        {/* Navigation Sidebar */}
+        {/* Navigation Sidebar: Selalu terbuka di laptop & PC, drawer di HP */}
         <Sidebar
           activeMenu={activeMenu}
           onSelectMenu={(menu) => setActiveMenu(menu)}
@@ -214,11 +226,16 @@ export default function App() {
           logoUrl={systemConfig.logoUrl}
           namaPondok={systemConfig.namaPondok}
           onLogout={handleLogout}
+          currentUser={currentUser}
         />
 
-        {/* Viewport Content Area (Full fluid responsive width) */}
-        <main className="flex-1 min-w-0 p-3 sm:p-5 lg:p-7 overflow-y-auto overflow-x-hidden bg-black">
-          <div className="w-full max-w-[1720px] mx-auto">
+        {/* Viewport Content Area: Responsif penuh layar laptop/PC dan mobile */}
+        <main 
+          className={`flex-1 h-full min-w-0 p-2 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-black transition-all ${
+            isSidebarOpen ? 'max-md:overflow-hidden max-md:pointer-events-none' : ''
+          }`}
+        >
+          <div className="w-full max-w-full">
             
             {/* 1. Dashboard Komando */}
             {activeMenu === 'dashboard' && (
@@ -230,6 +247,7 @@ export default function App() {
                 currentUser={currentUser}
                 onNavigate={(menu) => setActiveMenu(menu)}
                 onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
+                onOpenQRScanner={() => setIsQRScannerOpen(true)}
               />
             )}
 
@@ -295,6 +313,7 @@ export default function App() {
                 santriList={scopedSantriList}
                 currentUser={currentUser}
                 onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
+                onOpenQRScanner={() => setIsQRScannerOpen(true)}
               />
             )}
 
@@ -381,6 +400,13 @@ export default function App() {
       <SuratIzinModal
         izin={selectedSuratIzin}
         onClose={() => setSelectedSuratIzin(null)}
+      />
+
+      {/* Quick QR Code Scanner Modal (Pos Pengurus & Admin Check-In) */}
+      <QuickQRScannerModal
+        isOpen={isQRScannerOpen}
+        onClose={() => setIsQRScannerOpen(false)}
+        currentUser={currentUser}
       />
 
       {/* Notifications Drawer / Modal */}

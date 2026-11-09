@@ -196,17 +196,32 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     reader.readAsDataURL(file);
   };
 
+  const handleUploadSantriFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const b64 = evt.target?.result as string;
+      setSantriForm(prev => ({ ...prev, foto: b64 }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Santri Handlers
   const handleSaveSantri = (e: React.FormEvent) => {
     e.preventDefault();
     if (!santriForm.nis || !santriForm.nama) return;
 
+    const defaultFoto = santriForm.gender === 'putri' 
+      ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80'
+      : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80';
+
     const saved: Santri = {
       id: editingSantri ? editingSantri.id : `san_${Date.now()}`,
-      nis: santriForm.nis,
-      nama: santriForm.nama,
-      foto: santriForm.foto || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
-      gender: santriForm.gender as Gender,
+      nis: santriForm.nis.trim(),
+      nama: santriForm.nama.trim(),
+      foto: (santriForm.foto && santriForm.foto.trim()) ? santriForm.foto.trim() : defaultFoto,
+      gender: (santriForm.gender as Gender) || 'putra',
       kelas: santriForm.kelas || '1 Wustho',
       kamar: santriForm.kamar || 'K-01',
       asrama: santriForm.asrama || 'Asrama Utama',
@@ -329,7 +344,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       <div className="metallic-glass-card border border-slate-800/80 p-2 rounded-2xl flex items-center gap-2 overflow-x-auto text-xs shadow-lg font-mono">
         {[
           { key: 'control', label: '1. Pengaturan Operasional Gerbang' },
-          { key: 'visual', label: '2. Edit Logo, Ikon PWA & Identitas Aplikasi' },
+          { key: 'visual', label: '2. Edit Logo, Ikon PWA & Background Aplikasi' },
           { key: 'surat_layout', label: '3. Editor Layout Surat Izin Digital' },
           { key: 'surat_sanksi_layout', label: '4. Editor Layout Surat Pelanggaran & Sanksi' },
           { key: 'santri_crud', label: `5. Input & Hapus Santri (${santriList.length})` },
@@ -1892,8 +1907,17 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 {filteredSantri.map((s) => (
                   <tr key={s.id} className="table-row-rainbow transition-all cursor-pointer">
                     <td className="px-4 py-3">
-                      <div className="font-bold text-white text-xs">{s.nama}</div>
-                      <div className="text-[10px] font-mono text-zinc-400">NIS: {s.nis}</div>
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={s.foto || (s.gender === 'putri' ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100' : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100')}
+                          alt={s.nama}
+                          className="w-8 h-8 rounded-full object-cover border border-amber-400/60 shadow-xs shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="font-bold text-white text-xs truncate max-w-[150px]">{s.nama}</div>
+                          <div className="text-[10px] font-mono text-zinc-400">NIS: {s.nis}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3 capitalize text-[11px] font-mono">
                       {s.gender === 'putra' ? 'Banin (Putra)' : 'Banat (Putri)'}
@@ -2243,9 +2267,16 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
 
       {/* Santri Modal (Input/Edit) */}
       {isSantriModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg metallic-glass-card border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating">
-            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950">
+        <div 
+          onClick={() => setIsSantriModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg max-h-[92vh] flex flex-col metallic-glass-card border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating"
+          >
+            {/* Header */}
+            <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <Users className="w-4 h-4 text-cyan-400" />
                 {editingSantri ? 'Ubah Data Santri' : 'Input Santri Baru'}
@@ -2258,14 +2289,84 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveSantri} className="p-6 space-y-4 text-xs font-mono">
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSaveSantri} className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-4 text-xs font-mono">
+              
+              {/* SECTION: FOTO SANTRI (URL LINK & FILE UPLOAD) */}
+              <div className="p-3.5 bg-slate-950/90 border border-slate-800 rounded-2xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 font-mono">
+                    Foto Profil Santri (Link URL / Berkas)
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-mono">
+                    Otomatis Sinkron
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  {/* Photo Preview Box */}
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-amber-400/80 shadow-md shrink-0 bg-slate-900 flex items-center justify-center">
+                    <img
+                      src={santriForm.foto || (santriForm.gender === 'putri' ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200' : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200')}
+                      alt="Pratinjau Foto Santri"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200';
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex-1 space-y-2 min-w-0">
+                    <div>
+                      <input
+                        type="url"
+                        placeholder="Tempelkan URL Foto: https://..."
+                        value={santriForm.foto || ''}
+                        onChange={(e) => setSantriForm({ ...santriForm, foto: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap text-[10px]">
+                      <label className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg cursor-pointer transition-colors border border-slate-700 font-sans">
+                        <span>Pilih Berkas Foto</span>
+                        <input type="file" accept="image/*" onChange={handleUploadSantriFoto} className="hidden" />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setSantriForm({ 
+                          ...santriForm, 
+                          foto: santriForm.gender === 'putri' 
+                            ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80'
+                            : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80'
+                        })}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg cursor-pointer transition-colors"
+                      >
+                        Default Avatar
+                      </button>
+                      {santriForm.foto && (
+                        <button
+                          type="button"
+                          onClick={() => setSantriForm({ ...santriForm, foto: '' })}
+                          className="px-2 py-1 text-red-400 hover:text-red-300 cursor-pointer"
+                        >
+                          Hapus Foto
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* NIS & Nama */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">NIS Santri</label>
                   <input
                     type="text"
                     required
-                    value={santriForm.nis}
+                    placeholder="Misal: 20240182"
+                    value={santriForm.nis || ''}
                     onChange={(e) => setSantriForm({ ...santriForm, nis: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-mono focus:outline-none focus:border-cyan-400"
                   />
@@ -2275,18 +2376,20 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   <input
                     type="text"
                     required
-                    value={santriForm.nama}
+                    placeholder="Nama lengkap santri"
+                    value={santriForm.nama || ''}
                     onChange={(e) => setSantriForm({ ...santriForm, nama: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400 font-sans"
                   />
                 </div>
               </div>
 
+              {/* Gender & Kelas */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Jenis Kelamin</label>
                   <select
-                    value={santriForm.gender}
+                    value={santriForm.gender || 'putra'}
                     onChange={(e) => setSantriForm({ ...santriForm, gender: e.target.value as Gender })}
                     className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400"
                   >
@@ -2299,60 +2402,107 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   <input
                     type="text"
                     required
-                    value={santriForm.kelas}
+                    placeholder="Misal: 1 Wustho / 2 Ulya"
+                    value={santriForm.kelas || ''}
                     onChange={(e) => setSantriForm({ ...santriForm, kelas: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400 font-sans"
                   />
                 </div>
               </div>
 
+              {/* Kamar & Asrama */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Kamar & Asrama</label>
+                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Kamar Santri</label>
                   <input
                     type="text"
                     required
-                    value={santriForm.kamar}
+                    placeholder="Misal: K-01 (Imam Nafi')"
+                    value={santriForm.kamar || ''}
                     onChange={(e) => setSantriForm({ ...santriForm, kamar: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400 font-sans"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Nama Wali Santri</label>
+                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Nama Asrama</label>
                   <input
                     type="text"
-                    required
-                    value={santriForm.namaWali}
-                    onChange={(e) => setSantriForm({ ...santriForm, namaWali: e.target.value })}
+                    placeholder="Misal: Asrama Putra Sunan Giri"
+                    value={santriForm.asrama || ''}
+                    onChange={(e) => setSantriForm({ ...santriForm, asrama: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400 font-sans"
                   />
                 </div>
               </div>
 
+              {/* Wali & No WhatsApp */}
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Nama Orang Tua / Wali</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nama wali santri"
+                    value={santriForm.namaWali || ''}
+                    onChange={(e) => setSantriForm({ ...santriForm, namaWali: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400 font-sans"
+                  />
+                </div>
                 <div>
                   <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">No. WhatsApp Wali</label>
                   <input
                     type="text"
                     required
-                    value={santriForm.noWaWali}
+                    placeholder="081234567890"
+                    value={santriForm.noWaWali || ''}
                     onChange={(e) => setSantriForm({ ...santriForm, noWaWali: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-mono focus:outline-none focus:border-cyan-400"
                   />
                 </div>
+              </div>
+
+              {/* Alamat Asal & Status */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Poin Pelanggaran</label>
+                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Alamat Asal Santri</label>
                   <input
-                    type="number"
-                    min="0"
-                    value={santriForm.poinPelanggaran}
-                    onChange={(e) => setSantriForm({ ...santriForm, poinPelanggaran: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-amber-300 font-mono font-bold focus:outline-none focus:border-amber-400"
+                    type="text"
+                    placeholder="Kota / Kab Asal"
+                    value={santriForm.alamat || ''}
+                    onChange={(e) => setSantriForm({ ...santriForm, alamat: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400 font-sans"
                   />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Status Santri</label>
+                  <select
+                    value={santriForm.status || 'Aktif'}
+                    onChange={(e) => setSantriForm({ ...santriForm, status: e.target.value as any })}
+                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="Aktif">Aktif di Pondok</option>
+                    <option value="Izin Keluar">Sedang Izin Keluar</option>
+                    <option value="Izin Pulang">Sedang Izin Pulang</option>
+                    <option value="Terlambat">Status Terlambat</option>
+                    <option value="Alumni">Alumni / Mutasi</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              {/* Poin Pelanggaran */}
+              <div>
+                <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">Poin Pelanggaran Awal</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={santriForm.poinPelanggaran || 0}
+                  onChange={(e) => setSantriForm({ ...santriForm, poinPelanggaran: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-amber-300 font-mono font-bold focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsSantriModalOpen(false)}
@@ -2364,7 +2514,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   type="submit"
                   className="tactile-interactive px-5 py-2.5 font-mono font-bold text-xs text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 rounded-xl cursor-pointer shadow-lg border border-amber-300/60"
                 >
-                  Simpan Santri
+                  {editingSantri ? 'Simpan Perubahan' : 'Tambah Santri'}
                 </button>
               </div>
             </form>

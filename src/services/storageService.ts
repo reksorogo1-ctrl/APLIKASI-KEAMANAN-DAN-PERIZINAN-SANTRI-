@@ -47,6 +47,12 @@ class StorageService {
   private listeners: (() => void)[] = [];
 
   constructor() {
+    // Keamanan Autentikasi: Hapus residu sesi lama di localStorage agar setiap sesi baru selalu mulai dari Layar Login
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    } catch {
+      // ignore
+    }
     this.initIfEmpty();
   }
 
@@ -181,7 +187,14 @@ class StorageService {
     found.terakhirLogin = `Hari ini, ${timeNow} WIB`;
     this.saveUser(found);
 
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+    // Simpan sesi aktif hanya di sessionStorage agar saat browser/tab dibuka baru tidak langsung auto-login
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    } catch {
+      // fallback jika sessionStorage restricted
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+    }
     this.addLog('Autentikasi Masuk', `Personil ${found.nama} (${found.jabatan}) berhasil login ke sistem.`, 'admin');
     this.notify();
 
@@ -193,14 +206,26 @@ class StorageService {
     if (currentUser) {
       this.addLog('Keluar Sistem', `Pengguna ${currentUser.nama} keluar dari sistem.`, 'admin');
     }
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    } catch {
+      // ignore
+    }
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    } catch {
+      // ignore
+    }
     this.notify();
   }
 
   public getCurrentUser(): UserAccount | null {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      return data ? JSON.parse(data) : null;
+      const sessionData = sessionStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      if (sessionData) {
+        return JSON.parse(sessionData);
+      }
+      return null;
     } catch {
       return null;
     }
@@ -451,6 +476,51 @@ class StorageService {
 
     localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(updated));
     this.notify();
+  }
+
+  // Deteksi Otomatis Keterlambatan Santri (Automated Tardiness Detection)
+  public checkAndDetectLatePermits(): number {
+    const list = this.getPerizinanList();
+    const now = new Date();
+    let updatedCount = 0;
+
+    const updatedList = list.map(izin => {
+      if (izin.status === 'Sedang Keluar') {
+        const deadlineStr = `${izin.tglKembali}T${izin.jamKembali}:00`;
+        const deadline = new Date(deadlineStr);
+        if (!isNaN(deadline.getTime()) && now.getTime() > deadline.getTime()) {
+          const diffMinutes = Math.floor((now.getTime() - deadline.getTime()) / 60000);
+          if (diffMinutes > 0) {
+            updatedCount++;
+            return {
+              ...izin,
+              status: 'Terlambat' as const,
+              menitKeterlambatan: diffMinutes,
+            };
+          }
+        }
+      } else if (izin.status === 'Terlambat' && !izin.actualKembali) {
+        // Perbarui menit keterlambatan berjalan
+        const deadlineStr = `${izin.tglKembali}T${izin.jamKembali}:00`;
+        const deadline = new Date(deadlineStr);
+        if (!isNaN(deadline.getTime())) {
+          const diffMinutes = Math.floor((now.getTime() - deadline.getTime()) / 60000);
+          if (diffMinutes > 0 && diffMinutes !== izin.menitKeterlambatan) {
+            return {
+              ...izin,
+              menitKeterlambatan: diffMinutes,
+            };
+          }
+        }
+      }
+      return izin;
+    });
+
+    if (updatedCount > 0) {
+      localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(updatedList));
+      this.notify();
+    }
+    return updatedCount;
   }
 
   // Tata Tertib

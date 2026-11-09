@@ -12,7 +12,7 @@ import {
   ChevronDown,
   ShieldAlert
 } from 'lucide-react';
-import { UserAccount, UserRole } from '../types';
+import { UserAccount } from '../types';
 import { storageService } from '../services/storageService';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -64,35 +64,14 @@ export const Header: React.FC<HeaderProps> = ({
     setThemeState(next);
   };
 
-  const getRoleBadge = (role: UserRole) => {
-    switch (role) {
-      case 'admin':
-        return <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-400/20 px-2.5 py-0.5 rounded-lg border border-amber-400/40 shadow-xs shadow-amber-400/20">SUPER ADMIN</span>;
-      case 'ketua_keamanan':
-        return <span className="text-[10px] font-mono font-bold text-cyan-300 bg-cyan-600/20 px-2.5 py-0.5 rounded-lg border border-cyan-500/40 shadow-xs shadow-cyan-500/20">COMMAND CHIEF</span>;
-      case 'petugas_gerbang':
-        return <span className="text-[10px] font-mono font-bold text-red-300 bg-red-600/20 px-2.5 py-0.5 rounded-lg border border-red-500/40 shadow-xs shadow-red-500/20">GATE SENTRY</span>;
-      default:
-        return <span className="text-[10px] font-mono font-bold text-blue-300 bg-blue-900/40 px-2.5 py-0.5 rounded-lg border border-blue-600/40">SECURITY FORCE</span>;
-    }
-  };
-
   return (
     <header className="sticky top-0 z-50 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 bg-slate-950/95 border-b border-slate-800/80 text-white shadow-2xl backdrop-blur-xl w-full max-w-full">
       
       {/* 3D Top Specular Highlight Line */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 via-amber-400/40 to-transparent pointer-events-none" />
 
-      {/* Zone 1: Mobile Hamburger & 3D Brand Insignia (Screenshot 2: Top-Left Branding) */}
+      {/* Zone 1: 3D Brand Insignia */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
-        <button
-          onClick={onToggleSidebar}
-          className="lg:hidden p-2 text-zinc-400 hover:text-cyan-400 hover:bg-slate-900/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-slate-700 shrink-0"
-          aria-label="Toggle Menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
         <div className="flex items-center gap-2.5 group cursor-default min-w-0">
           <div className="relative shrink-0">
             {/* 3D Glow Ring Behind Crest */}
@@ -175,28 +154,21 @@ export const Header: React.FC<HeaderProps> = ({
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* 3D Active Officer Identity Card (Prevent overflow) */}
-        <div className="flex items-center gap-2 pl-2 pr-2.5 py-1 bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-xl shadow-md hover-rainbow-edge shrink-0 max-w-[170px] sm:max-w-xs">
-          <div className="relative shrink-0">
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.nama}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-cover border border-amber-400/80 shrink-0 shadow-sm"
-            />
-            <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-500 rounded-full border border-slate-950" />
+        {/* Tombol Garis Tiga (Mobile Hamburger Menu) - Jelas, Tebal, & Sangat Kontras di Pojok Kanan */}
+        <button
+          onClick={onToggleSidebar}
+          className="md:hidden flex items-center justify-center gap-1.5 px-3 py-2 text-amber-300 hover:text-white bg-gradient-to-r from-amber-500/25 via-yellow-400/30 to-amber-500/25 hover:from-amber-400/40 hover:to-yellow-400/50 rounded-xl transition-all cursor-pointer border-2 border-amber-400 shadow-xl shadow-amber-500/30 shrink-0 glow-gold ml-1 active:scale-95"
+          aria-label="Buka Menu Navigasi (Garis Tiga)"
+          title="Buka Menu Navigasi (Garis 3)"
+        >
+          {/* Tiga Garis Horizontal Tebal dan Terang */}
+          <div className="flex flex-col justify-between items-center w-5 h-4 py-0.5">
+            <span className="w-5 h-[2.5px] bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.95)]"></span>
+            <span className="w-5 h-[2.5px] bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.95)]"></span>
+            <span className="w-5 h-[2.5px] bg-amber-400 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.95)]"></span>
           </div>
-          <div className="hidden sm:block text-left min-w-0">
-            <div className="flex items-center gap-1.5 flex-nowrap">
-              <span className="text-xs font-bold text-white max-w-[80px] md:max-w-[110px] lg:max-w-[130px] truncate leading-tight">
-                {currentUser.nama}
-              </span>
-              <div className="shrink-0">{getRoleBadge(currentUser.role)}</div>
-            </div>
-            <p className="text-[10px] font-mono text-slate-400 leading-none mt-0.5 truncate">
-              NRP: <span className="text-cyan-400 font-semibold">{currentUser.nrp || 'SECOP-01'}</span>
-            </p>
-          </div>
-        </div>
+          <span className="text-[10px] font-mono font-black text-amber-300 tracking-wider">MENU</span>
+        </button>
 
       </div>
 

@@ -1,0 +1,118 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account for security personnel and administrators",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nama": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 50 },
+        "role": { "type": "string", "enum": ["admin", "ketua_keamanan", "petugas_gerbang", "pengurus_pesantren"] },
+        "jabatan": { "type": "string", "maxLength": 100 },
+        "statusAktif": { "type": "boolean" },
+        "nrp": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "nama", "username", "role", "statusAktif"]
+    },
+    "Santri": {
+      "title": "Santri",
+      "description": "Santri profile and identity record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nama": { "type": "string", "maxLength": 120 },
+        "nis": { "type": "string", "maxLength": 30 },
+        "gender": { "type": "string", "enum": ["putra", "putri"] },
+        "kelas": { "type": "string", "maxLength": 50 },
+        "kamar": { "type": "string", "maxLength": 50 },
+        "namaWali": { "type": "string", "maxLength": 100 },
+        "noWaWali": { "type": "string", "maxLength": 30 },
+        "poinPelanggaran": { "type": "number" },
+        "statusKedisiplinan": { "type": "string" }
+      },
+      "required": ["id", "nama", "nis", "gender", "kelas"]
+    },
+    "Perizinan": {
+      "title": "Perizinan",
+      "description": "Santri leave and permit clearance record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nomorIzin": { "type": "string", "maxLength": 60 },
+        "santriId": { "type": "string" },
+        "santriNama": { "type": "string", "maxLength": 120 },
+        "santriNis": { "type": "string", "maxLength": 30 },
+        "santriGender": { "type": "string", "enum": ["putra", "putri"] },
+        "jenisIzin": { "type": "string", "enum": ["Izin Pulang", "Izin Keluar", "Izin Khusus", "Izin Sakit", "Izin Sambangan"] },
+        "tglKeluar": { "type": "string" },
+        "jamKeluar": { "type": "string" },
+        "tglKembali": { "type": "string" },
+        "jamKembali": { "type": "string" },
+        "alasan": { "type": "string", "maxLength": 500 },
+        "tujuan": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string", "enum": ["Diajukan", "Diverifikasi", "Disetujui", "Ditolak", "Sedang Keluar", "Sudah Kembali", "Terlambat"] }
+      },
+      "required": ["id", "nomorIzin", "santriId", "santriNama", "jenisIzin", "status"]
+    },
+    "Pelanggaran": {
+      "title": "Pelanggaran",
+      "description": "Disciplinary violation incident report",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kodePelanggaran": { "type": "string", "maxLength": 50 },
+        "santriId": { "type": "string" },
+        "santriNama": { "type": "string", "maxLength": 120 },
+        "santriNis": { "type": "string", "maxLength": 30 },
+        "santriGender": { "type": "string", "enum": ["putra", "putri"] },
+        "tanggal": { "type": "string" },
+        "jenisPelanggaran": { "type": "string", "maxLength": 255 },
+        "kategori": { "type": "string", "enum": ["Ringan", "Sedang", "Berat"] },
+        "poin": { "type": "number" },
+        "lokasi": { "type": "string", "maxLength": 150 },
+        "namaPetugasPelapor": { "type": "string", "maxLength": 100 },
+        "statusVerifikasi": { "type": "string", "enum": ["Menunggu", "Terverifikasi", "Ditolak"] }
+      },
+      "required": ["id", "santriId", "santriNama", "jenisPelanggaran", "kategori", "poin"]
+    },
+    "Sanksi": {
+      "title": "Sanksi",
+      "description": "Educational sanction record for santri",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nomorSurat": { "type": "string", "maxLength": 60 },
+        "santriId": { "type": "string" },
+        "santriNama": { "type": "string", "maxLength": 120 },
+        "jenisSanksi": { "type": "string", "maxLength": 255 },
+        "kategori": { "type": "string", "enum": ["Ringan", "Sedang", "Berat"] },
+        "status": { "type": "string", "enum": ["Belum Dikerjakan", "Sedang Berjalan", "Selesai", "Kadaluarsa"] }
+      },
+      "required": ["id", "santriId", "santriNama", "jenisSanksi", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles of officers and administrators"
+    },
+    "/santri/{santriId}": {
+      "schema": { "$ref": "#/entities/Santri" },
+      "description": "Registered santri records"
+    },
+    "/perizinan/{izinId}": {
+      "schema": { "$ref": "#/entities/Perizinan" },
+      "description": "Active and archived permits"
+    },
+    "/pelanggaran/{pelanggaranId}": {
+      "schema": { "$ref": "#/entities/Pelanggaran" },
+      "description": "Disciplinary violations"
+    },
+    "/sanksi/{sanksiId}": {
+      "schema": { "$ref": "#/entities/Sanksi" },
+      "description": "Educational sanctions"
+    }
+  }
+}

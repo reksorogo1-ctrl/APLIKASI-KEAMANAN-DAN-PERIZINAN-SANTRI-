@@ -123,7 +123,18 @@ export const SuratSanksiModal: React.FC<SuratSanksiModalProps> = ({
         }
       }).then(url => setQrUrl(url)).catch(() => {});
     }
-  }, [sanksi]);
+  }, [sanksi, systemConfig.namaPondok, activeLayout.namaPihak2, activeLayout.namaPihak3]);
+
+  // Close on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   if (!sanksi) return null;
 
@@ -181,60 +192,68 @@ Wassalamu'alaikum Wr. Wb.
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white text-slate-900 rounded-3xl shadow-2xl border border-slate-700/80 my-8 overflow-hidden rainbow-active-border card-3d-floating">
+    <div 
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-700/80 overflow-hidden rainbow-active-border card-3d-floating"
+      >
         
-        {/* Top Control Bar (Hidden when printed) */}
-        <div className="no-print flex flex-wrap items-center justify-between px-6 py-4 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-slate-100 border-b border-slate-800 gap-3">
-          <div className="flex items-center gap-2.5">
-            <GraduationCap className="w-5 h-5 text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-            <div>
-              <h3 className="text-sm font-black tracking-wide text-amber-300 font-sans uppercase">
-                Pratinjau Surat Pelanggaran & Sanksi Edukatif
+        {/* Top Control Bar (Hidden when printed, Always Visible & Sticky at Top) */}
+        <div className="no-print shrink-0 flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-slate-100 border-b border-slate-800 gap-2 z-20">
+          <div className="flex items-center gap-2 min-w-0">
+            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-sm font-black tracking-wide text-amber-300 font-sans uppercase truncate">
+                Surat Sanksi Edukatif & Pembinaan
               </h3>
-              <p className="text-[10px] text-slate-400 font-mono">
-                Format resmi pondok pesantren · Siap dicetak atau diunduh PDF
+              <p className="text-[9px] sm:text-[10px] text-slate-400 font-mono truncate">
+                {editedNomor} · Resmi Ponpes Al-Maliki
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className={`tactile-interactive inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded-xl transition-all cursor-pointer shadow-md ${
+              className={`tactile-interactive inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-mono font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-md ${
                 isEditing 
                   ? 'bg-amber-400 text-slate-950 border border-amber-300' 
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
               }`}
               title="Edit redaksi atau nama sebelum cetak"
             >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>{isEditing ? 'Batal Edit' : 'Edit Surat'}</span>
+              <Edit3 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden xs:inline">{isEditing ? 'Batal' : 'Edit'}</span>
             </button>
 
             <button
               onClick={handleShareWA}
-              className="tactile-interactive inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 rounded-xl transition-all cursor-pointer shadow-md border border-emerald-300/60"
+              className="tactile-interactive inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-md border border-emerald-300/60"
               title="Kirim ke WhatsApp Wali Santri"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Kirim WA Wali</span>
+              <Share2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <span className="hidden sm:inline">Kirim WA</span>
             </button>
 
             <button
               onClick={handlePrint}
-              className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-mono font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition-all cursor-pointer shadow-md border border-blue-400/50"
+              className="tactile-interactive inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-mono font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-md border border-blue-400/50"
               title="Cetak Surat / Simpan PDF"
             >
-              <Printer className="w-3.5 h-3.5 text-cyan-300" />
-              <span>Cetak / Unduh PDF</span>
+              <Printer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-300" />
+              <span className="hidden xs:inline">Cetak / PDF</span>
             </button>
 
             <button
               onClick={onClose}
-              className="w-7 h-7 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg sm:rounded-xl bg-red-600/90 hover:bg-red-600 text-white text-[11px] sm:text-xs font-mono font-bold transition-all cursor-pointer shadow-md active:scale-95"
+              title="Tutup Surat (ESC)"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
+              <span>Tutup</span>
             </button>
           </div>
         </div>
@@ -343,50 +362,50 @@ Wassalamu'alaikum Wr. Wb.
           </div>
         )}
 
-        {/* Printable Official Letter Canvas */}
-        <div className="p-8 sm:p-12 font-sans printable-card bg-amber-50/15 text-slate-900 leading-normal">
+        {/* Printable Official Letter Canvas (Scrollable Inside without losing Header) */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 md:p-8 font-sans printable-card bg-amber-50/15 text-slate-900 leading-normal">
           
           {/* 1. Official Letterhead (Kop Surat) */}
-          <div className="flex items-center justify-between pb-4 border-b-2 border-emerald-900 text-center relative gap-4">
+          <div className="flex items-center justify-between pb-3 sm:pb-4 border-b-2 border-emerald-900 text-center relative gap-2 sm:gap-4">
             <img 
               src={systemConfig.logoUrl || "/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg"} 
               alt={systemConfig.namaPondok || "Logo Al-Maliki"} 
-              className="w-18 h-18 sm:w-20 sm:h-20 object-contain rounded-full border border-amber-500 shadow-xs shrink-0"
+              className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-full border border-amber-500 shadow-xs shrink-0"
             />
-            <div className="flex-1 px-2">
-              <p className="font-serif text-emerald-900 text-base sm:text-lg mb-0.5 tracking-wider font-semibold">
+            <div className="flex-1 px-1 sm:px-2 min-w-0">
+              <p className="font-serif text-emerald-900 text-xs sm:text-sm mb-0.5 tracking-wider font-semibold">
                 {activeLayout.teksBismillah || 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'}
               </p>
-              <h2 className="text-base sm:text-xl font-black tracking-tight text-emerald-950 uppercase">
+              <h2 className="text-xs sm:text-base font-black tracking-tight text-emerald-950 uppercase leading-snug">
                 {activeLayout.kopNamaInstansi || systemConfig.namaPondok || "PONDOK PESANTREN SALAF AL-MALIKI"}
               </h2>
-              <p className="text-xs sm:text-sm font-bold text-amber-900 tracking-wide uppercase">
+              <p className="text-[10px] sm:text-xs font-bold text-amber-900 tracking-wide uppercase">
                 {activeLayout.kopSubInstansi || "DEWAN KEAMANAN & PENEGAKAN KODIFIKASI QANUN KETERTIBAN"}
               </p>
-              <p className="text-[11px] text-neutral-600 mt-0.5">
+              <p className="text-[9px] sm:text-[10px] text-neutral-600 mt-0.5 leading-tight">
                 {activeLayout.kopAlamatKontak || "Jl. Pesantren Luhur No. 99, Telukjambe Timur, Karawang 41361 | Hotline: 0812-3456-7800"}
               </p>
             </div>
-            <div className="w-18 sm:w-20 hidden sm:block shrink-0">
+            <div className="w-12 sm:w-16 hidden sm:block shrink-0">
               {/* Balancer column */}
             </div>
           </div>
 
           {/* Double Separator Line */}
-          <div className="h-[1.5px] bg-amber-600 mt-1 mb-5" />
+          <div className="h-[1.5px] bg-amber-600 mt-1 mb-4" />
 
           {/* 2. Judul Dokumen & Nomor Surat */}
-          <div className="text-center mb-6">
-            <h1 className="text-base sm:text-lg font-black text-slate-950 uppercase tracking-wide underline decoration-amber-600 decoration-2 underline-offset-4">
+          <div className="text-center mb-4 sm:mb-5">
+            <h1 className="text-xs sm:text-base font-black text-slate-950 uppercase tracking-wide underline decoration-amber-600 decoration-2 underline-offset-4">
               {activeLayout.judulSurat || 'SURAT PELANGGARAN DAN SANKSI EDUKATIF'}
             </h1>
-            <p className="text-xs font-mono font-bold text-neutral-700 mt-1.5">
+            <p className="text-[10px] sm:text-xs font-mono font-bold text-neutral-700 mt-1">
               Nomor: {editedNomor}
             </p>
           </div>
 
           {/* 3. Kalimat Pembuka */}
-          <p className="text-xs text-justify text-neutral-800 mb-4 leading-relaxed font-sans">
+          <p className="text-[11px] sm:text-xs text-justify text-neutral-800 mb-3 leading-relaxed font-sans">
             {activeLayout.kalimatPembuka || 'Berdasarkan sidang rekapitulasi kodifikasi qanun ketertiban santri Pondok Pesantren Salaf Al-Maliki, dengan ini diterbitkan Surat Pelanggaran dan Penetapan Sanksi Edukatif kepada santri:'}
           </p>
 
@@ -577,27 +596,48 @@ Wassalamu'alaikum Wr. Wb.
           </div>
 
           {/* 9. QR Verification & Official Footer */}
-          <div className="pt-4 border-t border-neutral-200 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="pt-3 sm:pt-4 border-t border-neutral-200 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
               {qrUrl && (
                 <img 
                   src={qrUrl} 
                   alt="QR Verifikasi Sanksi" 
-                  className="w-16 h-16 border border-neutral-300 rounded-lg p-0.5 bg-white shadow-xs"
+                  className="w-12 h-12 sm:w-14 sm:h-14 border border-neutral-300 rounded-lg p-0.5 bg-white shadow-xs shrink-0"
                 />
               )}
-              <div className="text-[9px] text-neutral-600 font-mono">
+              <div className="text-[8px] sm:text-[9px] text-neutral-600 font-mono">
                 <p className="font-bold text-rose-900">VERIFIKASI DIGITAL KEAMANAN</p>
                 <p>Status: <span className="font-bold text-neutral-900">{sanksi.status}</span></p>
                 <p>Arsip ID: {sanksi.id}</p>
               </div>
             </div>
 
-            <div className="text-right text-[9px] text-neutral-500 font-mono max-w-xs">
+            <div className="text-right text-[8px] sm:text-[9px] text-neutral-500 font-mono max-w-xs">
               {activeLayout.footerCatatan || 'Dokumen ini sah diterbitkan secara otomatis oleh SIM Kamtib Al-Maliki dan diarsipkan dalam pangkalan data kedisiplinan pondok.'}
             </div>
           </div>
 
+        </div>
+
+        {/* Bottom Action Footer (Hidden in Print) - Tombol tutup selalu mudah diakses */}
+        <div className="no-print shrink-0 px-4 py-2.5 bg-slate-100 border-t border-slate-300 flex items-center justify-between text-xs font-mono text-slate-600">
+          <span className="text-[10px] hidden sm:inline">Tekan ESC atau klik luar untuk menutup surat</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={handlePrint}
+              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1 font-bold"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak / PDF</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer text-xs font-bold flex items-center gap-1 shadow-xs"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Tutup Surat</span>
+            </button>
+          </div>
         </div>
 
       </div>

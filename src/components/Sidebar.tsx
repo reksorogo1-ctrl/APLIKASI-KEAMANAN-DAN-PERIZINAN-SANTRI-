@@ -18,7 +18,7 @@ import {
   Radio,
   LogOut
 } from 'lucide-react';
-import { UserRole } from '../types';
+import { UserRole, UserAccount } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 
 export type ActiveMenu = 
@@ -50,6 +50,7 @@ interface SidebarProps {
   logoUrl?: string;
   namaPondok?: string;
   onLogout?: () => void;
+  currentUser?: UserAccount | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -65,19 +66,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
   logoUrl,
   namaPondok,
   onLogout,
+  currentUser,
 }) => {
   const isAdmin = userRole === 'admin';
 
-  // Lock body scroll when mobile drawer is open to prevent background scrolling
+  // Airtight mobile scroll lock: Ketika drawer terbuka di HP, kunci scroll latar belakang secara absolut
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && typeof window !== 'undefined' && window.innerWidth < 768) {
+      const scrollY = window.scrollY;
+      const originalOverflow = document.body.style.overflow;
+      const originalPosition = document.body.style.position;
+      const originalTop = document.body.style.top;
+      const originalWidth = document.body.style.width;
+
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
+
+      return () => {
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        document.body.style.overflow = originalOverflow;
+        window.scrollTo(0, scrollY);
+      };
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
   }, [isOpen]);
 
   // Navigation structure based on role
@@ -209,55 +223,70 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Backdrop */}
+      {/* Mobile Backdrop (Khusus HP / Tablet Portrait) dengan pembatalan sentuhan agar latar belakang tidak bisa discroll */}
       {isOpen && (
         <div 
           onClick={onClose} 
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md lg:hidden"
+          onTouchMove={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onWheel={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          className="fixed inset-0 z-40 bg-black/85 backdrop-blur-md md:hidden touch-none overscroll-none"
         />
       )}
 
-      {/* 3D Sidebar Container */}
+      {/* 3D Sidebar Container:
+          - Laptop & PC (md: ke atas): Selalu terbuka (md:sticky md:top-[57px] md:left-0 md:translate-x-0)
+          - HP (< md): Drawer meluncur dari kanan (fixed inset-y-0 right-0 h-[100dvh])
+      */}
       <aside
-        className={`fixed lg:sticky top-0 lg:top-[57px] left-0 z-50 h-screen lg:h-[calc(100vh-57px)] w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-black border-r border-cyan-500/20 shadow-[2px_0_24px_rgba(6,182,212,0.12)] flex flex-col justify-between transition-transform duration-300 ease-in-out font-sans relative ${
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        className={`fixed md:relative top-0 md:top-0 right-0 md:right-auto md:left-0 z-50 h-[100dvh] md:h-full md:min-h-full md:max-h-full w-72 sm:w-80 md:w-64 lg:w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-black border-l md:border-l-0 md:border-r border-cyan-500/20 shadow-[0_0_30px_rgba(0,0,0,0.8)] md:shadow-[2px_0_24px_rgba(6,182,212,0.12)] flex flex-col justify-between shrink-0 self-stretch transition-transform duration-300 ease-in-out font-sans ${
+          isOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
       >
         {/* Sleek Vertical Right Rim Light */}
         <div className="absolute top-0 right-0 bottom-0 w-[1.5px] bg-gradient-to-b from-cyan-400/60 via-blue-500/30 to-amber-400/40 pointer-events-none" />
 
-        {/* Dynamic Pondok Branding Header */}
-        <div className="p-3.5 border-b border-slate-800/90 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950/40 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* Profil Pemilik Akun di Bagian Atas Sidebar (Menggantikan Logo Pondok Sesuai Permintaan) */}
+        <div className="p-3 sm:p-3.5 border-b border-slate-800/90 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="relative shrink-0 group">
-              <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-cyan-400 via-amber-400 to-blue-500 opacity-70 blur-[2px] group-hover:opacity-100 transition-opacity" />
+              <div className="absolute -inset-1 rounded-xl bg-gradient-to-tr from-cyan-400 via-amber-400 to-blue-500 opacity-70 blur-[2px] group-hover:opacity-100 transition-opacity" />
               <img
-                src={logoUrl || "/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg"}
-                alt="Logo Pondok"
-                className="relative w-8 h-8 rounded-full border border-amber-400 object-cover shadow-md"
+                src={currentUser?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"}
+                alt={currentUser?.nama || "Pemilik Akun"}
+                className="relative w-9 h-9 rounded-xl border border-amber-400 object-cover shadow-md"
               />
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-slate-950 animate-pulse" />
             </div>
-            <div className="truncate">
-              <span className="text-xs font-black text-white uppercase tracking-wider block truncate leading-tight">
-                {namaPondok ? namaPondok.replace('PONDOK PESANTREN SALAF ', '') : 'AL-MALIKI'}
+            <div className="min-w-0 flex-1">
+              <span className="text-xs font-black text-white uppercase tracking-tight block truncate leading-tight">
+                {currentUser?.nama || (isAdmin ? 'KOMANDAN ADMIN' : 'PETUGAS PENGURUS')}
               </span>
-              <span className="text-[9px] font-mono font-bold text-amber-300 tracking-widest block uppercase">
-                {isAdmin ? '3D SEC-OPS ADMIN' : 'CONSOLE PENGURUS'}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[9px] font-mono font-bold text-amber-300 tracking-wider block uppercase px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 shrink-0">
+                  {isAdmin ? 'SUPER ADMIN' : (currentUser?.role === 'ketua_keamanan' ? 'COMMAND CHIEF' : 'PENGURUS')}
+                </span>
+                <span className="text-[10px] font-mono text-cyan-400 font-bold truncate">
+                  {currentUser?.nrp || 'SECOP-01'}
+                </span>
+              </div>
+              {currentUser?.jabatan && (
+                <span className="text-[9px] text-slate-400 block truncate mt-0.5 font-sans">
+                  {currentUser.jabatan}
+                </span>
+              )}
             </div>
           </div>
           <button 
             onClick={onClose} 
-            className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="md:hidden p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer shrink-0 border border-slate-800"
             aria-label="Tutup Menu"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-amber-400" />
           </button>
         </div>
 
-        {/* Scrollable Navigation */}
-        <div className="flex-1 overflow-y-auto px-3.5 py-4 space-y-6">
+        {/* Scrollable Navigation with overscroll-contain */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3.5 py-4 space-y-6">
           {!isAdmin ? (
             /* PENGURUS NAVIGATION: ONLY 6 DEDICATED TABS */
             <div className="space-y-2">
@@ -347,13 +376,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* SIDEBAR FOOTER: ADMIN OPTION PANEL + TOMBOL KELUAR DI PALING BAWAH */}
-        <div className="p-3.5 border-t border-slate-800/90 bg-gradient-to-b from-slate-950 to-black space-y-2.5">
+        {/* SIDEBAR FOOTER: OPTION PANEL, INSTALL PWA, DAN TOMBOL KELUAR PALING BAWAH SENDIRI */}
+        <div className="mt-auto shrink-0 w-full p-3.5 border-t border-slate-800/90 bg-gradient-to-b from-slate-950 via-slate-950 to-black space-y-2 pb-safe pb-4 sm:pb-3.5">
           
-          {/* PWA App Install Button (Mobile & Desktop) */}
-          <PWAInstallButton variant="sidebar" />
-
-          {/* Central Option Panel Tab for Admin (Placed at the very bottom above logout button) */}
+          {/* 1. Central Option Panel Tab for Admin */}
           {isAdmin && (
             <button
               onClick={() => {
@@ -385,7 +411,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           )}
 
-          {/* Tombol Keluar (Logout) - Langsung otomatis logout ke Dashboard Login */}
+          {/* 2. PWA App Install Button (Mobile & Desktop) */}
+          <PWAInstallButton variant="sidebar" />
+
+          {/* 3. Tombol Keluar (Logout) - Berada di Paling Bawah Sendiri */}
           {onLogout && (
             <button
               onClick={() => {
