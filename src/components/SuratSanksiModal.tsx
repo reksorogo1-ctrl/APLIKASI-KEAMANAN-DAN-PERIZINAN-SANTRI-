@@ -116,10 +116,11 @@ export const SuratSanksiModal: React.FC<SuratSanksiModalProps> = ({
       });
 
       QRCode.toDataURL(qrPayload, {
-        width: 130,
-        margin: 1,
+        width: 500,
+        margin: 4,
+        errorCorrectionLevel: 'Q',
         color: {
-          dark: '#7F1D1D',
+          dark: '#000000',
           light: '#FFFFFF'
         }
       }).then(url => setQrUrl(url)).catch(() => {});
@@ -172,10 +173,11 @@ export const SuratSanksiModal: React.FC<SuratSanksiModalProps> = ({
         });
 
         const url = await QRCode.toDataURL(qrPayload, {
-          width: 130,
-          margin: 1,
+          width: 500,
+          margin: 4,
+          errorCorrectionLevel: 'Q',
           color: {
-            dark: '#7F1D1D',
+            dark: '#000000',
             light: '#FFFFFF'
           }
         });
@@ -649,20 +651,23 @@ Wassalamu'alaikum Wr. Wb.
             )}
           </div>
 
-          {/* 9. QR Verification & Official Footer */}
-          <div className="avoid-break pt-3 sm:pt-4 border-t border-neutral-200 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
+          {/* 9. High-Fidelity 5x5 cm QR Verification & Official Footer */}
+          <div className="avoid-break pt-4 border-t border-neutral-300 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               {qrUrl && (
-                <img 
-                  src={qrUrl} 
-                  alt="QR Verifikasi Sanksi" 
-                  className="w-12 h-12 sm:w-14 sm:h-14 border border-neutral-300 rounded-lg p-0.5 bg-white shadow-xs shrink-0"
-                />
+                <div className="p-1.5 bg-white border-2 border-neutral-900 rounded-xl shadow-xs shrink-0">
+                  <img 
+                    src={qrUrl} 
+                    alt="QR Verifikasi Sanksi Edukatif" 
+                    className="official-qr-code w-24 h-24 sm:w-28 sm:h-28 object-contain rounded-lg block"
+                  />
+                </div>
               )}
-              <div className="text-[8px] sm:text-[9px] text-neutral-600 font-mono">
-                <p className="font-bold text-rose-900">VERIFIKASI DIGITAL KEAMANAN</p>
-                <p>Status: <span className="font-bold text-neutral-900">{sanksi.status}</span></p>
-                <p>Arsip ID: {sanksi.id}</p>
+              <div className="text-[9px] sm:text-[10px] text-neutral-700 font-mono space-y-0.5 max-w-[170px]">
+                <p className="font-bold text-rose-950 uppercase tracking-wide">VERIFIKASI DIGITAL KAMTIB</p>
+                <p>Status: <span className="font-bold text-neutral-950">{sanksi.status}</span></p>
+                <p className="text-neutral-500 text-[8px] sm:text-[9px]">ID Berkas: {sanksi.id}</p>
+                <p className="text-[8px] text-neutral-500 leading-tight">Pindai QR ini untuk verifikasi keabsahan takzir & status pembinaan.</p>
               </div>
             </div>
 

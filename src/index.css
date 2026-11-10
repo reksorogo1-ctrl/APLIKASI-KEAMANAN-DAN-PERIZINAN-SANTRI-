@@ -427,7 +427,21 @@
     print-color-adjust: exact !important;
   }
 
-  /* 10. Fallback for General Document Printing (e.g. Laporan or KTS) */
+  /* 10. Official High-Fidelity 5x5 cm QR Code on A4 Print */
+  .official-qr-code {
+    width: 48mm !important;
+    height: 48mm !important;
+    min-width: 48mm !important;
+    min-height: 48mm !important;
+    max-width: 50mm !important;
+    max-height: 50mm !important;
+    object-fit: contain !important;
+    background: #ffffff !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: crisp-edges !important;
+  }
+
+  /* 11. Fallback for General Document Printing (e.g. Laporan or KTS) */
   body:not(.modal-surat-open):not(.printing-letter) #root {
     overflow: visible !important;
     height: auto !important;
@@ -442,3 +456,34 @@
     max-height: none !important;
   }
 }
+
+/* ==========================================================================
+   AL-MALIKI REAL-TIME QR SCANNER VIEWPORT STYLING
+   Optimizes camera video stream, eliminates horizontal overflow, removes library watermark
+   ========================================================================== */
+#almaliki-qr-scanner-viewport {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+  background: #020617;
+  border-radius: 1rem;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#almaliki-qr-scanner-viewport video {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1rem !important;
+}
+
+#almaliki-qr-scanner-viewport img[alt="Info icon"],
+#almaliki-qr-scanner-viewport span:has(a) {
+  display: none !important;
+}
+

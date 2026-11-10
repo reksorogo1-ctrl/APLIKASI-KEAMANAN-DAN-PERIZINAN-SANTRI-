@@ -26,6 +26,7 @@ interface GateScannerProps {
   santriList: Santri[];
   currentUser: UserAccount;
   onViewSuratIzin: (izin: Perizinan) => void;
+  onOpenQRScanner?: () => void;
 }
 
 export const GateScanner: React.FC<GateScannerProps> = ({
@@ -33,6 +34,7 @@ export const GateScanner: React.FC<GateScannerProps> = ({
   santriList,
   currentUser,
   onViewSuratIzin,
+  onOpenQRScanner,
 }) => {
   const [activeTab, setActiveTab] = useState<'checkout' | 'checkin'>('checkout');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -483,9 +485,21 @@ export const GateScanner: React.FC<GateScannerProps> = ({
                   Klik "Catat Kedatangan" saat santri melapor di pos gerbang
                 </p>
               </div>
-              <span className="text-xs font-mono text-emerald-300 font-bold px-2.5 py-0.5 rounded-lg bg-emerald-400/10 border border-emerald-400/30 glow-cyan">
-                {outsidePermits.length} Santri di Luar
-              </span>
+              <div className="flex items-center gap-3">
+                {onOpenQRScanner && (
+                  <button
+                    type="button"
+                    onClick={onOpenQRScanner}
+                    className="tactile-interactive inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 font-mono font-bold text-xs shadow-md glow-cyan cursor-pointer"
+                  >
+                    <Camera className="w-4 h-4 text-slate-950" />
+                    <span className="hidden sm:inline">Pindai Kamera QR</span>
+                  </button>
+                )}
+                <span className="text-xs font-mono text-emerald-300 font-bold px-2.5 py-1 rounded-xl bg-emerald-400/10 border border-emerald-400/30 glow-cyan">
+                  {outsidePermits.length} Santri di Luar
+                </span>
+              </div>
             </div>
 
             {outsidePermits.length === 0 ? (

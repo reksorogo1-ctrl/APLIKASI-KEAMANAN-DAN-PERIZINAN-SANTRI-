@@ -324,6 +324,7 @@ export default function App() {
                 santriList={scopedSantriList}
                 currentUser={currentUser}
                 onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
+                onOpenQRScanner={() => setIsQRScannerOpen(true)}
               />
             )}
 

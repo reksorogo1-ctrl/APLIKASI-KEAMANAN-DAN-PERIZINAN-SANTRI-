@@ -16,7 +16,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
   const systemConfig = storageService.getSystemConfig();
   const layout = systemConfig.suratIzinLayout || {};
 
-  // Generate QR Code as soon as izin is provided
+  // Generate High-Resolution QR Code (Level Q, Quiet Zone 4 modules, Crisp 500px Canvas)
   useEffect(() => {
     if (izin) {
       const qrPayload = JSON.stringify({
@@ -30,10 +30,11 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
         pesantren: layout.kopNamaInstansi || systemConfig.namaPondok || 'Pondok Pesantren Salaf Al-Maliki'
       });
       QRCode.toDataURL(qrPayload, {
-        width: 140,
-        margin: 1,
+        width: 500,
+        margin: 4,
+        errorCorrectionLevel: 'Q',
         color: {
-          dark: '#064E3B',
+          dark: '#000000',
           light: '#FFFFFF'
         }
       }).then(url => setQrUrl(url)).catch(() => {});
@@ -70,7 +71,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
   if (!izin) return null;
 
   const handlePrint = async () => {
-    // Pastikan QR code sudah siap sebelum memanggil window.print()
+    // Pastikan QR code beresolusi tinggi sudah siap sebelum memanggil window.print()
     if (!qrUrl) {
       try {
         const qrPayload = JSON.stringify({
@@ -84,10 +85,11 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           pesantren: layout.kopNamaInstansi || systemConfig.namaPondok || 'Pondok Pesantren Salaf Al-Maliki'
         });
         const url = await QRCode.toDataURL(qrPayload, {
-          width: 140,
-          margin: 1,
+          width: 500,
+          margin: 4,
+          errorCorrectionLevel: 'Q',
           color: {
-            dark: '#064E3B',
+            dark: '#000000',
             light: '#FFFFFF'
           }
         });
@@ -306,22 +308,28 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           {/* Validation & Official Signatures Row */}
           <div className="avoid-break flex flex-col sm:flex-row items-center sm:items-end justify-between gap-3 pt-1">
             
-            {/* QR Code Validation */}
+            {/* High-Fidelity 5x5 cm QR Code Validation */}
             {layout.tampilkanQrCode !== false && (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
                 {qrUrl ? (
-                  <img src={qrUrl} alt="QR Code Verifikasi" className="w-14 h-14 sm:w-16 sm:h-16 border border-emerald-900/20 rounded-lg p-0.5 bg-white shadow-xs" />
+                  <div className="p-1.5 bg-white border-2 border-neutral-900 rounded-xl shadow-xs shrink-0">
+                    <img 
+                      src={qrUrl} 
+                      alt="QR Code Verifikasi Resmi" 
+                      className="official-qr-code w-24 h-24 sm:w-28 sm:h-28 object-contain rounded-lg block" 
+                    />
+                  </div>
                 ) : (
-                  <div className="w-14 h-14 bg-neutral-100 rounded-lg animate-pulse" />
+                  <div className="w-24 h-24 sm:w-28 sm:h-28 bg-neutral-100 rounded-xl animate-pulse" />
                 )}
-                <div>
-                  <p className="text-[8px] sm:text-[9px] text-neutral-500 uppercase font-semibold">Status Validasi</p>
-                  <p className="text-[11px] sm:text-xs font-bold text-emerald-800 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <div className="max-w-[150px]">
+                  <p className="text-[9px] text-neutral-500 uppercase font-mono font-bold">Autentikasi SIM-KAMTIB</p>
+                  <p className="text-xs font-black text-emerald-800 flex items-center gap-1 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     Terverifikasi Sah
                   </p>
-                  <p className="text-[8px] sm:text-[9px] text-neutral-500 mt-0.5 max-w-[130px] leading-tight font-mono">
-                    Pindai QR di Pos Gerbang untuk verifikasi keaslian.
+                  <p className="text-[8px] sm:text-[9px] text-neutral-600 mt-1 leading-tight font-mono">
+                    Pindai QR ini di Pos Gerbang untuk verifikasi kepulangan otomatis.
                   </p>
                 </div>
               </div>
