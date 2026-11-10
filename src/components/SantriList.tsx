@@ -639,9 +639,9 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
 
       {/* Printable Santri ID Card Modal (KTS - Kartu Tanda Santri) */}
       {cardPreviewSantri && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-neutral-900 border border-amber-500/40 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-800 bg-neutral-950">
+        <div className="surat-print-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
+          <div className="surat-print-modal w-full max-w-md bg-neutral-900 border border-amber-500/40 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="no-print flex items-center justify-between px-5 py-3 border-b border-neutral-800 bg-neutral-950">
               <span className="text-xs font-bold text-amber-300">Pratinjau Kartu Tanda Santri (KTS)</span>
               <div className="flex items-center gap-2">
                 <button
@@ -658,7 +658,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
             </div>
 
             {/* Visual Student ID Card */}
-            <div className="p-6">
+            <div className="surat-print-sheet p-6">
               <div className="w-full rounded-2xl bg-gradient-to-br from-emerald-950 via-neutral-900 to-emerald-900 border-2 border-amber-400/80 p-5 shadow-2xl relative overflow-hidden text-neutral-100">
                 {/* Islamic watermark crest */}
                 <div className="absolute right-[-20px] bottom-[-20px] opacity-10 pointer-events-none">

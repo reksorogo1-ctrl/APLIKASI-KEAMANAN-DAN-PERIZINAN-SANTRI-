@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import { Perizinan } from '../types';
-import { Printer, Share2, X, CheckCircle2, ShieldCheck, Clock, Calendar, Check } from 'lucide-react';
+import { Printer, Share2, X, CheckCircle2, ShieldCheck, Clock, Calendar } from 'lucide-react';
 import { WhatsAppTemplates, createWhatsAppUrl } from '../services/waService';
 import { storageService } from '../services/storageService';
 
@@ -15,6 +16,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
   const systemConfig = storageService.getSystemConfig();
   const layout = systemConfig.suratIzinLayout || {};
 
+  // Generate QR Code as soon as izin is provided
   useEffect(() => {
     if (izin) {
       const qrPayload = JSON.stringify({
@@ -38,20 +40,63 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
     }
   }, [izin, systemConfig, layout]);
 
-  // Close on Escape key
+  // Manage print isolation state and Escape key
   useEffect(() => {
+    if (izin) {
+      document.body.classList.add('modal-surat-open');
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       }
     };
+
+    const handleAfterPrint = () => {
+      document.body.classList.remove('printing-letter');
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      document.body.classList.remove('modal-surat-open');
+      document.body.classList.remove('printing-letter');
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [izin, onClose]);
 
   if (!izin) return null;
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    // Pastikan QR code sudah siap sebelum memanggil window.print()
+    if (!qrUrl) {
+      try {
+        const qrPayload = JSON.stringify({
+          nomor: izin.nomorIzin,
+          santri: izin.santriNama,
+          nis: izin.santriNis,
+          status: izin.status,
+          pengaju: izin.petugasPencatat || 'Pengurus Keamanan',
+          penyetujui: izin.disetujuiOleh || layout.namaPenandatangan || 'Ketua Keamanan',
+          validUntil: `${izin.tglKembali} ${izin.jamKembali}`,
+          pesantren: layout.kopNamaInstansi || systemConfig.namaPondok || 'Pondok Pesantren Salaf Al-Maliki'
+        });
+        const url = await QRCode.toDataURL(qrPayload, {
+          width: 140,
+          margin: 1,
+          color: {
+            dark: '#064E3B',
+            light: '#FFFFFF'
+          }
+        });
+        setQrUrl(url);
+      } catch (e) {
+        console.error('Failed to generate QR Code:', e);
+      }
+    }
+
     // Otomatis ubah status izin santri menjadi 'Sedang Keluar' agar langsung masuk ke Radar Monitoring (Admin & Pengurus)
     if (izin.status === 'Disetujui' || izin.status === 'Diverifikasi' || izin.status === 'Diajukan') {
       const now = new Date();
@@ -77,7 +122,14 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
         noWaTujuan: izin.noWaPenjemput,
       });
     }
-    window.print();
+
+    // Tandai body untuk isolasi cetak sempurna
+    document.body.classList.add('printing-letter');
+    
+    // Beri jeda 80ms untuk memastikan render layout browser selesai
+    setTimeout(() => {
+      window.print();
+    }, 80);
   };
 
   const handleShareWA = () => {
@@ -86,14 +138,14 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
     window.open(url, '_blank');
   };
 
-  return (
+  const modalContent = (
     <div 
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+      className="surat-print-overlay fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xl sm:max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-700/80 overflow-hidden rainbow-active-border card-3d-floating"
+        className="surat-print-modal relative w-full max-w-xl sm:max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-700/80 overflow-hidden rainbow-active-border card-3d-floating"
       >
         
         {/* Action Header (Hidden in Print, Always Visible & Sticky at Top) */}
@@ -121,11 +173,11 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
             </button>
             <button
               onClick={handlePrint}
-              className="tactile-interactive inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-mono font-bold text-white bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-md"
+              className="tactile-interactive inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-mono font-bold text-white bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-md"
               title="Cetak Surat Izin"
             >
               <Printer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-400" />
-              <span className="hidden xs:inline">Cetak</span>
+              <span className="hidden xs:inline">Cetak / PDF</span>
             </button>
             <button
               onClick={onClose}
@@ -138,11 +190,12 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           </div>
         </div>
 
-        {/* Printable Official Letter Container (Scrollable Inside without losing Header) */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 md:p-8 font-sans printable-card bg-amber-50/20 text-slate-900">
+        {/* Printable Official Letter Container */}
+        <div className="surat-print-sheet flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 md:p-8 font-sans bg-amber-50/20 text-slate-900">
           
           {/* Pesantren Official Letterhead (Kop Surat) */}
-          <div className="flex items-center justify-between pb-3 sm:pb-4 border-b-2 border-emerald-900 text-center relative gap-2 sm:gap-3">
+          <div className="avoid-break flex items-center justify-between pb-3 sm:pb-4 border-b-2 border-emerald-900 text-center relative gap-2 sm:gap-3">
+
             <img 
               src={systemConfig.logoUrl || "/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg"} 
               alt={systemConfig.namaPondok || "Logo Al-Maliki"} 
@@ -183,7 +236,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           </p>
 
           {/* Santri Data Grid */}
-          <div className="bg-white rounded-xl p-3 sm:p-3.5 border border-emerald-900/15 shadow-xs mb-3 text-[11px] sm:text-xs">
+          <div className="avoid-break bg-white rounded-xl p-3 sm:p-3.5 border border-emerald-900/15 shadow-xs mb-3 text-[11px] sm:text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-3">
               <div className="flex">
                 <span className="w-28 sm:w-32 text-neutral-500 shrink-0">Nama Santri</span>
@@ -213,7 +266,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           </div>
 
           {/* Schedule & Destination Card */}
-          <div className="border border-amber-300 bg-amber-50/50 rounded-xl p-3 mb-3 text-[11px] sm:text-xs">
+          <div className="avoid-break border border-amber-300 bg-amber-50/50 rounded-xl p-3 mb-3 text-[11px] sm:text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <p className="text-[10px] font-medium text-amber-900 uppercase tracking-wide flex items-center gap-1 mb-0.5">
@@ -241,7 +294,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           </div>
 
           {/* Rules & Responsibilities */}
-          <div className="text-[10px] sm:text-[11px] text-neutral-600 bg-neutral-50 p-2.5 sm:p-3 rounded-lg border border-neutral-200 mb-4">
+          <div className="avoid-break text-[10px] sm:text-[11px] text-neutral-600 bg-neutral-50 p-2.5 sm:p-3 rounded-lg border border-neutral-200 mb-4">
             <p className="font-semibold text-neutral-800 mb-0.5">Ketentuan Santri Selama di Luar Pondok:</p>
             <ol className="list-decimal pl-3.5 space-y-0.5">
               <li>{layout.ketentuanPoin1 || 'Wajib menjaga akhlaqul karimah, adab santri, dan shalat lima waktu berjamaah.'}</li>
@@ -251,7 +304,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           </div>
 
           {/* Validation & Official Signatures Row */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-3 pt-1">
+          <div className="avoid-break flex flex-col sm:flex-row items-center sm:items-end justify-between gap-3 pt-1">
             
             {/* QR Code Validation */}
             {layout.tampilkanQrCode !== false && (
@@ -335,10 +388,10 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={handlePrint}
-              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1"
+              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1 font-bold"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Cetak</span>
+              <span>Cetak / PDF</span>
             </button>
             <button
               onClick={onClose}
@@ -353,4 +406,7 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
+

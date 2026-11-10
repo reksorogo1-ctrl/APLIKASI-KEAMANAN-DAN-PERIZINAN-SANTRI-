@@ -287,5 +287,158 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
+/* ==========================================================================
+   OFFICIAL SURAT IZIN & SURAT SANKSI HIGH-FIDELITY PRINT ARCHITECTURE
+   Fixes blank prints, overflow clipping, and page break issues
+   ========================================================================== */
 
+@page {
+  size: A4 portrait;
+  margin: 8mm 12mm 10mm 12mm;
+}
 
+@media print {
+  /* 1. Global Reset for Physical & PDF Print Rendering */
+  html,
+  body {
+    width: 100% !important;
+    min-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 2. When Official Letter Modal is Open, Completely Isolate the Letter */
+  body.modal-surat-open #root,
+  body.printing-letter #root {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* 3. Non-Print UI Elements Elimination */
+  .no-print,
+  header,
+  aside,
+  nav,
+  .offline-indicator,
+  button,
+  input,
+  textarea,
+  select,
+  .rainbow-active-border::before,
+  .rainbow-active-border::after,
+  .card-3d-floating::before,
+  .card-3d-floating::after {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 4. Transform Modal Backdrop into Clean Unconstrained Page */
+  .surat-print-overlay {
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    z-index: auto !important;
+    border: none !important;
+  }
+
+  /* 5. Transform Modal Card Container into Borderless Print Canvas */
+  .surat-print-modal {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  /* 6. Printable Sheet Styling */
+  .surat-print-sheet {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 7. Ensure Colors, Borders, Watermarks, and Badges Print Accurately */
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 8. Page Break Avoidance on Critical Sections */
+  .avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 9. Preserve Full Quality of Logos, Stamps, and QR Codes */
+  img {
+    max-width: 100% !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 10. Fallback for General Document Printing (e.g. Laporan or KTS) */
+  body:not(.modal-surat-open):not(.printing-letter) #root {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  body:not(.modal-surat-open):not(.printing-letter) main {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+}

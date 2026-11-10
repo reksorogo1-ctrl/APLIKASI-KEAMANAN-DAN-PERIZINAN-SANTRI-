@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import { Sanksi, Santri, SuratSanksiLayoutConfig } from '../types';
 import { 
@@ -125,22 +126,74 @@ export const SuratSanksiModal: React.FC<SuratSanksiModalProps> = ({
     }
   }, [sanksi, systemConfig.namaPondok, activeLayout.namaPihak2, activeLayout.namaPihak3]);
 
-  // Close on Escape key
+  // Manage print isolation state and Escape key
   React.useEffect(() => {
+    if (sanksi) {
+      document.body.classList.add('modal-surat-open');
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       }
     };
+
+    const handleAfterPrint = () => {
+      document.body.classList.remove('printing-letter');
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      document.body.classList.remove('modal-surat-open');
+      document.body.classList.remove('printing-letter');
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [sanksi, onClose]);
 
   if (!sanksi) return null;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    // Pastikan QR code sudah selesai digenerate sebelum memanggil print
+    if (!qrUrl) {
+      try {
+        const qrPayload = JSON.stringify({
+          dokumen: 'SURAT PELANGGARAN & SANKSI EDUKATIF',
+          kode: sanksi.kodeSanksi,
+          santri: sanksi.santriNama,
+          nis: sanksi.santriNis,
+          pelanggaran: sanksi.jenisPelanggaran,
+          sanksi: editedBentukSanksi || sanksi.bentukSanksi,
+          batas: editedBatasMaksimal || sanksi.batasMaksimal || sanksi.tanggalTargetSelesai,
+          instansi: systemConfig.namaPondok,
+          status: sanksi.status,
+        });
+
+        const url = await QRCode.toDataURL(qrPayload, {
+          width: 130,
+          margin: 1,
+          color: {
+            dark: '#7F1D1D',
+            light: '#FFFFFF'
+          }
+        });
+        setQrUrl(url);
+      } catch (err) {
+        console.error('Failed to generate Sanksi QR Code:', err);
+      }
+    }
+
+    // Tandai body untuk isolasi cetak sempurna
+    document.body.classList.add('printing-letter');
+
+    // Beri jeda 80ms untuk memastikan render layout browser selesai
+    setTimeout(() => {
+      window.print();
+    }, 80);
   };
+
 
   const handleSaveEdits = () => {
     const updated: Sanksi = {
@@ -191,14 +244,14 @@ Wassalamu'alaikum Wr. Wb.
     window.open(createWhatsAppUrl(targetWa, text), '_blank');
   };
 
-  return (
+  const modalContent = (
     <div 
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+      className="surat-print-overlay fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-700/80 overflow-hidden rainbow-active-border card-3d-floating"
+        className="surat-print-modal relative w-full max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-700/80 overflow-hidden rainbow-active-border card-3d-floating"
       >
         
         {/* Top Control Bar (Hidden when printed, Always Visible & Sticky at Top) */}
@@ -362,11 +415,12 @@ Wassalamu'alaikum Wr. Wb.
           </div>
         )}
 
-        {/* Printable Official Letter Canvas (Scrollable Inside without losing Header) */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 md:p-8 font-sans printable-card bg-amber-50/15 text-slate-900 leading-normal">
+        {/* Printable Official Letter Canvas */}
+        <div className="surat-print-sheet flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 md:p-8 font-sans bg-amber-50/15 text-slate-900 leading-normal">
           
           {/* 1. Official Letterhead (Kop Surat) */}
-          <div className="flex items-center justify-between pb-3 sm:pb-4 border-b-2 border-emerald-900 text-center relative gap-2 sm:gap-4">
+          <div className="avoid-break flex items-center justify-between pb-3 sm:pb-4 border-b-2 border-emerald-900 text-center relative gap-2 sm:gap-4">
+
             <img 
               src={systemConfig.logoUrl || "/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg"} 
               alt={systemConfig.namaPondok || "Logo Al-Maliki"} 
@@ -410,7 +464,7 @@ Wassalamu'alaikum Wr. Wb.
           </p>
 
           {/* 4. Identitas Santri Table */}
-          <div className="bg-white/90 border border-neutral-300 rounded-xl p-4 mb-5 shadow-xs">
+          <div className="avoid-break bg-white/90 border border-neutral-300 rounded-xl p-4 mb-5 shadow-xs">
             <table className="w-full text-xs text-neutral-800">
               <tbody className="divide-y divide-neutral-200/70">
                 <tr>
@@ -465,7 +519,7 @@ Wassalamu'alaikum Wr. Wb.
           </div>
 
           {/* 5. Ketetapan Hukuman / Sanksi Edukatif */}
-          <div className="mb-5">
+          <div className="avoid-break mb-5">
             <p className="text-xs font-bold text-neutral-900 mb-2">
               {activeLayout.formatKalimatHukuman || 'Santri yang bersangkutan diwajibkan menyelesaikan takzir edukatif dan pembinaan ibadah/keilmuan sebagai berikut:'}
             </p>
@@ -483,7 +537,7 @@ Wassalamu'alaikum Wr. Wb.
           </div>
 
           {/* 6. Batas Waktu & Pembina */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 p-3 bg-neutral-100/70 rounded-xl text-xs border border-neutral-200">
+          <div className="avoid-break grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 p-3 bg-neutral-100/70 rounded-xl text-xs border border-neutral-200">
             <div>
               <span className="font-bold text-neutral-600 block">Batas Maksimal Pengumpulan / Selesai:</span>
               <span className="font-black text-rose-800 text-xs sm:text-sm font-mono mt-0.5 block">
@@ -499,12 +553,12 @@ Wassalamu'alaikum Wr. Wb.
           </div>
 
           {/* 7. Pesan Edukasi & Prinsip Pembinaan */}
-          <p className="text-[11px] text-neutral-600 text-justify mb-8 leading-relaxed italic border-t border-neutral-200 pt-3">
+          <p className="avoid-break text-[11px] text-neutral-600 text-justify mb-8 leading-relaxed italic border-t border-neutral-200 pt-3">
             {activeLayout.pesanEdukasi || 'Sanksi ini bersifat edukatif dan pembinaan ruhiyah semata tanpa kekerasan fisik. Santri wajib menyelesaikan dan menyetorkan tugas pembinaan sebelum batas waktu yang telah ditentukan.'}
           </p>
 
           {/* 8. Tanggal Surat & Kolom Tanda Tangan */}
-          <div className="mb-4">
+          <div className="avoid-break mb-4">
             <div className="text-right text-xs text-neutral-800 mb-4 font-mono font-medium">
               {activeLayout.kotaTerbit || 'Karawang'}, {sanksi.tanggalPenetapan}
             </div>
@@ -596,7 +650,7 @@ Wassalamu'alaikum Wr. Wb.
           </div>
 
           {/* 9. QR Verification & Official Footer */}
-          <div className="pt-3 sm:pt-4 border-t border-neutral-200 flex items-center justify-between gap-3">
+          <div className="avoid-break pt-3 sm:pt-4 border-t border-neutral-200 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               {qrUrl && (
                 <img 
@@ -643,4 +697,6 @@ Wassalamu'alaikum Wr. Wb.
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
