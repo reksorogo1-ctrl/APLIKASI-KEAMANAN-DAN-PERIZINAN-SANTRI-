@@ -15,9 +15,7 @@ import {
   Radio,
   Sliders,
   Server,
-  AlertOctagon,
-  ScanLine,
-  QrCode
+  AlertOctagon
 } from 'lucide-react';
 import { Santri, Perizinan, Pelanggaran, Sanksi, UserAccount } from '../types';
 import { ActiveMenu } from './Sidebar';
@@ -26,6 +24,7 @@ import { RadarMonitoringPerizinan } from './RadarMonitoringPerizinan';
 import { AdvancedDataVisualization, AnimatedCounter } from './AdvancedDataVisualization';
 import { DashboardRekapitulasiTables } from './DashboardRekapitulasiTables';
 import { storageService } from '../services/storageService';
+import { getWIBDateTime } from '../utils/timeUtils';
 
 interface DashboardProps {
   santriList: Santri[];
@@ -50,6 +49,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const isAdmin = currentUser.role === 'admin';
   const [activeCardId, setActiveCardId] = React.useState<string | null>(null);
+  const [wibTime, setWibTime] = React.useState(getWIBDateTime());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setWibTime(getWIBDateTime());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleCardClick = (id: string, action?: () => void) => {
     setActiveCardId(prev => prev === id ? null : id);
@@ -138,22 +145,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
 
-            {/* Quick Action: Pindai QR Surat Izin (Check-In Kepulangan) */}
-            {onOpenQRScanner && (
-              <div className="shrink-0 flex flex-col items-stretch sm:items-end gap-2">
-                <button
-                  onClick={onOpenQRScanner}
-                  className="tactile-interactive flex items-center justify-center gap-2.5 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-xs font-mono tracking-wider uppercase shadow-xl shadow-emerald-500/30 border border-emerald-300 cursor-pointer glow-cyan transition-transform active:scale-95"
-                >
-                  <ScanLine className="w-4 h-4 text-slate-950 animate-pulse" />
-                  <span>Pindai QR Surat Izin</span>
-                </button>
-                <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5 self-center sm:self-end">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span>Check-In Masuk & Verifikasi Radar</span>
+            {/* Real-time Synced WIB Clock & Quick Perizinan Access */}
+            <div className="shrink-0 flex flex-col items-stretch sm:items-end gap-2.5">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-950/90 border border-cyan-500/40 shadow-xl flex flex-col items-start sm:items-end">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span className="text-[10px] font-mono font-bold tracking-wider text-cyan-300 uppercase">
+                    WAKTU RESMI KAMTIB (WIB / UTC+7)
+                  </span>
+                </div>
+                <div className="text-xl sm:text-2xl font-black font-mono tracking-wider text-amber-300 tabular-nums drop-shadow-md">
+                  {wibTime.timeWithSeconds} <span className="text-xs text-cyan-400 font-sans font-bold">WIB</span>
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                  {wibTime.dateStr} · Asia/Jakarta Real-Time
                 </div>
               </div>
-            )}
+
+              <button
+                onClick={() => onNavigate('perizinan')}
+                className="tactile-interactive flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-600/30 hover:from-cyan-500/30 hover:to-blue-600/40 text-cyan-200 hover:text-white font-bold text-xs font-mono tracking-wider border border-cyan-400/40 cursor-pointer glow-cyan transition-transform active:scale-95"
+              >
+                <Clock className="w-3.5 h-3.5 text-cyan-300" />
+                <span>Administrasi Perizinan Santri</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

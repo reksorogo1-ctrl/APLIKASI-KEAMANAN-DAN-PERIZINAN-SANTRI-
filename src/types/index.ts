@@ -38,6 +38,8 @@ export interface Santri {
   status: 'Aktif' | 'Cuti' | 'Alumni' | 'Diskors';
   poinPelanggaran: number;
   tglMasuk: string;
+  suspendIzinHingga?: string; // Tanggal akhir suspensi izin keluar (YYYY-MM-DD WIB)
+  alasanSuspensi?: string;
 }
 
 export interface DewanKeamanan {

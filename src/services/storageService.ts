@@ -315,6 +315,38 @@ class StorageService {
     this.notify();
   }
 
+  public suspendSantri(santriId: string, suspendUntilDate: string, alasan: string) {
+    const list = this.getSantriList();
+    const santri = list.find(s => s.id === santriId);
+    if (santri) {
+      santri.suspendIzinHingga = suspendUntilDate;
+      santri.alasanSuspensi = alasan;
+      localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
+      this.addLog(
+        'Penangguhan Izin Santri',
+        `Santri ${santri.nama} (${santri.nis}) ditangguhkan izin keluarnya hingga ${suspendUntilDate}. Alasan: ${alasan}`,
+        'santri'
+      );
+      this.notify();
+    }
+  }
+
+  public liftSantriSuspension(santriId: string) {
+    const list = this.getSantriList();
+    const santri = list.find(s => s.id === santriId);
+    if (santri) {
+      delete santri.suspendIzinHingga;
+      delete santri.alasanSuspensi;
+      localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
+      this.addLog(
+        'Pemulihan Izin Santri',
+        `Penangguhan izin keluar santri ${santri.nama} (${santri.nis}) telah dipulihkan.`,
+        'santri'
+      );
+      this.notify();
+    }
+  }
+
   // Dewan Keamanan
   public getDewanKeamananList(): DewanKeamanan[] {
     try {

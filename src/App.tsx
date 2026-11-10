@@ -247,7 +247,6 @@ export default function App() {
                 currentUser={currentUser}
                 onNavigate={(menu) => setActiveMenu(menu)}
                 onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
-                onOpenQRScanner={() => setIsQRScannerOpen(true)}
               />
             )}
 
@@ -313,7 +312,6 @@ export default function App() {
                 santriList={scopedSantriList}
                 currentUser={currentUser}
                 onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
-                onOpenQRScanner={() => setIsQRScannerOpen(true)}
               />
             )}
 
