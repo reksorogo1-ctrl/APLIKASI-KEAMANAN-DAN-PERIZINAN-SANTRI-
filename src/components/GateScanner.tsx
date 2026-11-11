@@ -246,6 +246,7 @@ export const GateScanner: React.FC<GateScannerProps> = ({
         {showRadar && (
           <RadarMonitoringPerizinan
             perizinanList={perizinanList}
+            currentUser={currentUser}
             onViewSuratIzin={onViewSuratIzin}
             size="medium"
           />

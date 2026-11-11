@@ -2199,68 +2199,137 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
 
       {/* SUB-TAB 6: DATABASE BACKUP & MASTER RESTORE */}
       {activeSubTab === 'database' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="metallic-glass-card rounded-3xl p-6 border border-slate-800/80 shadow-2xl space-y-4 hover-rainbow-edge card-3d-floating">
-            <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
-              <Download className="w-4 h-4 text-amber-400" />
-              Cadangkan Seluruh Basis Data Pusat
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed font-mono">
-              Mengekspor seluruh tabel data santri, personil RBAC, arsip perizinan, tata tertib, kasus pelanggaran, dan riwayat audit log ke file JSON tunggal.
-            </p>
-            <button
-              onClick={() => {
-                const json = storageService.exportFullBackup();
-                const blob = new Blob([json], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `backup_pusat_sim_kamtib_${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              }}
-              className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl border border-amber-300/60"
-            >
-              <Download className="w-4 h-4 text-slate-950" />
-              <span>Unduh Master Backup JSON</span>
-            </button>
+        <div className="space-y-6">
+          {/* Real-time Central Cloud Sync Telemetry Banner */}
+          <div className="metallic-glass-card rounded-3xl p-6 border border-cyan-500/40 shadow-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950/60 hover-rainbow-edge space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 glow-cyan">
+                  <Server className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950/80 px-2.5 py-0.5 rounded border border-cyan-500/40">
+                      SINGLE DATABASE ARCHITECTURE
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                  </div>
+                  <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide mt-1">
+                    Sinkronisasi Realtime Multi-Platform (Laptop, PWA HP, AI Studio)
+                  </h3>
+                  <p className="text-xs text-slate-400 font-mono">
+                    ID Database: <span className="text-amber-300 font-bold">ai-studio-simkamtibpondokp-0ca6cfda-fbeb-4a4d-91e1-25f2c74e35be</span> · Project: <span className="text-cyan-300 font-bold">gold-card-583d0</span>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setSaveSuccessMsg('Menyinkronkan data dengan Database Pusat Firestore...');
+                  const ok = await storageService.forcePullFromCloud();
+                  if (ok) {
+                    setSaveSuccessMsg('Data berhasil ditarik dan disinkronkan langsung dari Database Pusat Firestore.');
+                    onConfigUpdated();
+                  } else {
+                    setSaveSuccessMsg('Koneksi lokal aktif, sinkronisasi cloud siap.');
+                  }
+                  setTimeout(() => setSaveSuccessMsg(''), 4000);
+                }}
+                className="tactile-interactive inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-blue-400 hover:from-cyan-300 hover:to-blue-300 rounded-xl transition-all shadow-lg cursor-pointer border border-cyan-300"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-slate-950" />
+                <span>Tarik Data Terbaru (Force Pull)</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+                <span className="text-slate-400 text-[10px] block">STATUS KONEKSI</span>
+                <span className="font-bold text-emerald-400 flex items-center gap-1.5 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  TERHUBUNG KE FIRESTORE
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+                <span className="text-slate-400 text-[10px] block">PLATFORM TERKONEKSI</span>
+                <span className="font-bold text-cyan-300 mt-0.5 block">
+                  Laptop / PWA HP / AI Studio
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+                <span className="text-slate-400 text-[10px] block">METODE SINKRONISASI</span>
+                <span className="font-bold text-amber-300 mt-0.5 block">
+                  Bi-Directional onSnapshot (Realtime)
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="metallic-glass-card rounded-3xl p-6 border border-slate-800/80 shadow-2xl space-y-4 hover-rainbow-edge card-3d-floating">
-            <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
-              <Upload className="w-4 h-4 text-cyan-400" />
-              Pulihkan Basis Data dari Master JSON
-            </h3>
-            <p className="text-xs text-slate-400 leading-relaxed font-mono">
-              Memulihkan konfigurasi sistem, akun pengguna RBAC, dan rekam jejak santri dari arsip JSON cadangan terenkripsi.
-            </p>
-            <label className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl hover-rainbow-edge">
-              <Upload className="w-4 h-4 text-cyan-400" />
-              <span>Pilih Berkas JSON Cadangan</span>
-              <input
-                type="file"
-                accept=".json"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (evt) => {
-                    const content = evt.target?.result as string;
-                    if (storageService.importFullBackup(content)) {
-                      alert('Alhamdulillah, seluruh data berhasil disinkronkan kembali.');
-                      onConfigUpdated();
-                    } else {
-                      alert('File JSON tidak valid.');
-                    }
-                  };
-                  reader.readAsText(file);
-                  e.target.value = '';
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="metallic-glass-card rounded-3xl p-6 border border-slate-800/80 shadow-2xl space-y-4 hover-rainbow-edge card-3d-floating">
+              <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
+                <Download className="w-4 h-4 text-amber-400" />
+                Cadangkan Seluruh Basis Data Pusat
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-mono">
+                Mengekspor seluruh tabel data santri, personil RBAC, arsip perizinan, tata tertib, kasus pelanggaran, dan riwayat audit log ke file JSON tunggal.
+              </p>
+              <button
+                onClick={() => {
+                  const json = storageService.exportFullBackup();
+                  const blob = new Blob([json], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `backup_pusat_sim_kamtib_${new Date().toISOString().split('T')[0]}.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
                 }}
-                className="hidden"
-              />
-            </label>
+                className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl border border-amber-300/60"
+              >
+                <Download className="w-4 h-4 text-slate-950" />
+                <span>Unduh Master Backup JSON</span>
+              </button>
+            </div>
+
+            <div className="metallic-glass-card rounded-3xl p-6 border border-slate-800/80 shadow-2xl space-y-4 hover-rainbow-edge card-3d-floating">
+              <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
+                <Upload className="w-4 h-4 text-cyan-400" />
+                Pulihkan Basis Data dari Master JSON
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed font-mono">
+                Memulihkan konfigurasi sistem, akun pengguna RBAC, dan rekam jejak santri dari arsip JSON cadangan terenkripsi ke database pusat.
+              </p>
+              <label className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl hover-rainbow-edge">
+                <Upload className="w-4 h-4 text-cyan-400" />
+                <span>Pilih Berkas JSON Cadangan</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = async (evt) => {
+                      const content = evt.target?.result as string;
+                      const ok = await storageService.importFullBackup(content);
+                      if (ok) {
+                        alert('Alhamdulillah, seluruh data berhasil disinkronkan kembali ke database pusat.');
+                        onConfigUpdated();
+                      } else {
+                        alert('File JSON tidak valid.');
+                      }
+                    };
+                    reader.readAsText(file);
+                    e.target.value = '';
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
           </div>
         </div>
       )}

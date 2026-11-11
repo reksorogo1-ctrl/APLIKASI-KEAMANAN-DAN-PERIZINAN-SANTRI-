@@ -103,13 +103,13 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Zone 2: Live International Security Radar & Telemetry (Hidden on tablet/smaller to avoid crowding) */}
       <div className="hidden xl:flex items-center gap-3 text-xs shrink min-w-0">
         {/* Central DB Uplink */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-inner font-mono text-slate-300 hover-rainbow-edge shrink-0">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-emerald-500/40 shadow-inner font-mono text-slate-300 hover-rainbow-edge shrink-0 glow-cyan">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
           <span className="text-[11px] text-slate-400">DATABASE PUSAT:</span>
-          <span className="font-bold text-cyan-300">ONLINE ENCRYPTED</span>
+          <span className="font-bold text-emerald-300">REALTIME SYNC (ONLINE)</span>
         </div>
 
         {/* Live Jakarta Precision Clock */}

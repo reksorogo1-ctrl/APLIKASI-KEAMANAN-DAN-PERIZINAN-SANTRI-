@@ -22,9 +22,19 @@ import {
   INITIAL_SANKSI, 
   INITIAL_USERS, 
   INITIAL_SYSTEM_CONFIG, 
-  INITIAL_LOGS,
-  INITIAL_KOORDINASI
+  INITIAL_LOGS, 
+  INITIAL_KOORDINASI 
 } from '../data/seedData';
+import { db, handleFirestoreError, OperationType } from './firebase';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  onSnapshot, 
+  getDocs,
+  Unsubscribe 
+} from 'firebase/firestore';
 
 const STORAGE_KEYS = {
   SANTRI: 'sim_kamtib_santri_v2',
@@ -43,22 +53,123 @@ const STORAGE_KEYS = {
   KOORDINASI: 'sim_kamtib_koordinasi_v2',
 };
 
+// Firestore collections naming mapping
+const CLOUD_COLLECTIONS = {
+  USERS: 'users',
+  SANTRI: 'santri',
+  DEWAN_KEAMANAN: 'dewan_keamanan',
+  PERIZINAN: 'perizinan',
+  TATA_TERTIB: 'tata_tertib',
+  PELANGGARAN: 'pelanggaran',
+  SANKSI: 'sanksi',
+  SYSTEM_CONFIG: 'system_config',
+  LOGS: 'logs',
+  NOTIFIKASI: 'notifikasi',
+  KOORDINASI: 'koordinasi',
+};
+
+/**
+ * Sanitizes an object before writing to Firestore.
+ * Removes undefined fields to prevent Firestore serialization errors.
+ */
+function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeForFirestore(item)) as unknown as T;
+  }
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = sanitizeForFirestore(value);
+    }
+  }
+  return clean as T;
+}
+
+export interface CloudSyncTelemetry {
+  status: 'connected' | 'syncing' | 'offline' | 'error';
+  lastSyncTime: string;
+  cloudConnected: boolean;
+  databaseId: string;
+  projectId: string;
+  activeListenersCount: number;
+  totalSyncedItems: number;
+}
+
 class StorageService {
   private listeners: (() => void)[] = [];
+  private unsubscribers: Unsubscribe[] = [];
+  private cloudConnected: boolean = false;
+  private lastSyncTime: string = 'Inisialisasi...';
+  private syncError: string | null = null;
+
+  // Cached in-memory state for instant UI access & offline speed
+  private cache = {
+    santri: [] as Santri[],
+    dewan: [] as DewanKeamanan[],
+    perizinan: [] as Perizinan[],
+    tataTertib: [] as TataTertib[],
+    pelanggaran: [] as Pelanggaran[],
+    sanksi: [] as Sanksi[],
+    users: [] as UserAccount[],
+    systemConfig: INITIAL_SYSTEM_CONFIG as SystemConfig,
+    logs: [] as LogAktivitas[],
+    notifikasi: [] as NotifikasiApp[],
+    koordinasi: [] as PesanKoordinasi[],
+  };
 
   constructor() {
-    // Keamanan Autentikasi: Hapus residu sesi lama di localStorage agar setiap sesi baru selalu mulai dari Layar Login
+    // Keamanan Autentikasi: Sesi baru diawali dari Layar Login
     try {
       localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     } catch {
       // ignore
     }
-    this.initIfEmpty();
+
+    // 1. Populate initial memory cache from localStorage or seed fallback
+    this.loadFromLocalStorage();
+
+    // 2. Initialize Real-Time Bi-Directional Firestore Cloud Synchronization
+    this.initRealtimeCloudSync();
   }
 
-  private initIfEmpty() {
-    if (!localStorage.getItem(STORAGE_KEYS.SANTRI)) {
-      this.resetToDefault();
+  private loadFromLocalStorage() {
+    try {
+      const s = localStorage.getItem(STORAGE_KEYS.SANTRI);
+      this.cache.santri = s ? JSON.parse(s) : INITIAL_SANTRI;
+
+      const d = localStorage.getItem(STORAGE_KEYS.DEWAN_KEAMANAN);
+      this.cache.dewan = d ? JSON.parse(d) : INITIAL_DEWAN_KEAMANAN;
+
+      const p = localStorage.getItem(STORAGE_KEYS.PERIZINAN);
+      this.cache.perizinan = p ? JSON.parse(p) : INITIAL_PERIZINAN;
+
+      const tt = localStorage.getItem(STORAGE_KEYS.TATA_TERTIB);
+      this.cache.tataTertib = tt ? JSON.parse(tt) : INITIAL_TATA_TERTIB;
+
+      const pel = localStorage.getItem(STORAGE_KEYS.PELANGGARAN);
+      this.cache.pelanggaran = pel ? JSON.parse(pel) : INITIAL_PELANGGARAN;
+
+      const snk = localStorage.getItem(STORAGE_KEYS.SANKSI);
+      this.cache.sanksi = snk ? JSON.parse(snk) : INITIAL_SANKSI;
+
+      const u = localStorage.getItem(STORAGE_KEYS.USERS);
+      this.cache.users = u ? JSON.parse(u) : INITIAL_USERS;
+
+      const cfg = localStorage.getItem(STORAGE_KEYS.SYSTEM_CONFIG);
+      this.cache.systemConfig = cfg ? { ...INITIAL_SYSTEM_CONFIG, ...JSON.parse(cfg) } : INITIAL_SYSTEM_CONFIG;
+
+      const l = localStorage.getItem(STORAGE_KEYS.LOGS);
+      this.cache.logs = l ? JSON.parse(l) : INITIAL_LOGS;
+
+      const n = localStorage.getItem(STORAGE_KEYS.NOTIFIKASI);
+      this.cache.notifikasi = n ? JSON.parse(n) : [];
+
+      const k = localStorage.getItem(STORAGE_KEYS.KOORDINASI);
+      this.cache.koordinasi = k ? JSON.parse(k) : INITIAL_KOORDINASI;
+    } catch (err) {
+      console.warn('LocalStorage load warning:', err);
     }
   }
 
@@ -70,84 +181,396 @@ class StorageService {
   }
 
   private notify() {
-    this.listeners.forEach(fn => fn());
+    this.listeners.forEach(fn => {
+      try {
+        fn();
+      } catch (err) {
+        console.error('Listener notify error:', err);
+      }
+    });
   }
 
-  public resetToDefault() {
-    localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(INITIAL_SANTRI));
-    localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(INITIAL_DEWAN_KEAMANAN));
-    localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(INITIAL_PERIZINAN));
-    localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(INITIAL_TATA_TERTIB));
-    localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(INITIAL_PELANGGARAN));
-    localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(INITIAL_SANKSI));
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
-    // Keamanan Autentikasi: Sesi pengguna harus diawali dari layar login (tidak otomatis login)
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-    localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(INITIAL_SYSTEM_CONFIG));
-    localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(INITIAL_KOORDINASI));
-    
-    // Initial activity logs
-    const initialLogs: LogAktivitas[] = [
-      {
-        id: 'log_01',
-        waktu: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-        user: 'Kang Deden Suherman',
-        role: 'Petugas Gerbang',
-        aksi: 'Check-In Santri',
-        detail: 'Mencatat kepulangan santri Ahmad Zaki Mubarak (Tepat Waktu)',
-        tipe: 'gerbang',
-      },
-      {
-        id: 'log_02',
-        waktu: new Date(Date.now() - 3600000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-        user: 'Ustadz Abdul Rohman, S.Pd.I',
-        role: 'Ketua Keamanan',
-        aksi: 'Persetujuan Izin',
-        detail: 'Menyetujui perizinan keluar santri Muhammad Al-Fatih Gunawan',
-        tipe: 'izin',
-      }
-    ];
-    localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(initialLogs));
+  /**
+   * Initializes live Firestore onSnapshot listeners for all 11 application collections.
+   * Any change made on any device (Laptop, Mobile browser, HP PWA, or AI Studio)
+   * is instantly broadcasted by Firestore and received in real time by all other devices.
+   */
+  public initRealtimeCloudSync() {
+    // Clean up any existing listeners
+    this.unsubscribers.forEach(unsub => {
+      try { unsub(); } catch { /* ignore */ }
+    });
+    this.unsubscribers = [];
 
-    // Initial notifications
-    const initialNotifs: NotifikasiApp[] = [
-      {
-        id: 'notif_01',
-        waktu: 'Baru saja',
-        judul: 'Peringatan Keamanan Pos Gerbang',
-        pesan: 'Santri Muhammad Rizqy Habibi melewati batas waktu kembali izin (+45 menit).',
-        tipe: 'danger',
-        dibaca: false,
-        linkMenu: 'monitoring',
-        noWaTujuan: '081577889900',
-      },
-      {
-        id: 'notif_02',
-        waktu: '1 jam lalu',
-        judul: 'Pengajuan Izin Baru Masuk',
-        pesan: 'Santri Aisyah Nurfadilah mengajukan Izin Keluar untuk keperluan madrasah.',
-        tipe: 'info',
-        dibaca: false,
-        linkMenu: 'perizinan',
-      }
-    ];
-    localStorage.setItem(STORAGE_KEYS.NOTIFIKASI, JSON.stringify(initialNotifs));
-    localStorage.setItem(STORAGE_KEYS.GENDER_SCOPE, 'all');
-    this.notify();
-  }
+    const handleSyncUpdate = () => {
+      this.cloudConnected = true;
+      this.syncError = null;
+      this.lastSyncTime = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+      this.notify();
+    };
 
-  // RBAC User Accounts
-  public getUsers(): UserAccount[] {
+    // 1. Santri Collection Realtime Listener
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.USERS);
-      return data ? JSON.parse(data) : INITIAL_USERS;
-    } catch {
-      return INITIAL_USERS;
+      const unsubSantri = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.SANTRI),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: Santri[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as Santri);
+            });
+            this.cache.santri = list;
+            localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
+            handleSyncUpdate();
+          } else if (this.cache.santri.length > 0) {
+            // Seed cloud if empty
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.SANTRI, this.cache.santri);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.SANTRI)
+      );
+      this.unsubscribers.push(unsubSantri);
+    } catch (e) {
+      console.warn('Sync santri listener warning:', e);
+    }
+
+    // 2. Dewan Keamanan Collection Realtime Listener
+    try {
+      const unsubDewan = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: DewanKeamanan[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as DewanKeamanan);
+            });
+            this.cache.dewan = list;
+            localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(list));
+            handleSyncUpdate();
+          } else if (this.cache.dewan.length > 0) {
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, this.cache.dewan);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.DEWAN_KEAMANAN)
+      );
+      this.unsubscribers.push(unsubDewan);
+    } catch (e) {
+      console.warn('Sync dewan listener warning:', e);
+    }
+
+    // 3. Perizinan Collection Realtime Listener
+    try {
+      const unsubPerizinan = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.PERIZINAN),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: Perizinan[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as Perizinan);
+            });
+            // Sort by tglPengajuan desc or id
+            this.cache.perizinan = list.sort((a, b) => (b.id > a.id ? 1 : -1));
+            localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(this.cache.perizinan));
+            handleSyncUpdate();
+          } else if (this.cache.perizinan.length > 0) {
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.PERIZINAN, this.cache.perizinan);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.PERIZINAN)
+      );
+      this.unsubscribers.push(unsubPerizinan);
+    } catch (e) {
+      console.warn('Sync perizinan listener warning:', e);
+    }
+
+    // 4. Pelanggaran Collection Realtime Listener
+    try {
+      const unsubPelanggaran = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.PELANGGARAN),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: Pelanggaran[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as Pelanggaran);
+            });
+            this.cache.pelanggaran = list.sort((a, b) => (b.id > a.id ? 1 : -1));
+            localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(this.cache.pelanggaran));
+            handleSyncUpdate();
+          } else if (this.cache.pelanggaran.length > 0) {
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.PELANGGARAN, this.cache.pelanggaran);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.PELANGGARAN)
+      );
+      this.unsubscribers.push(unsubPelanggaran);
+    } catch (e) {
+      console.warn('Sync pelanggaran listener warning:', e);
+    }
+
+    // 5. Sanksi Collection Realtime Listener
+    try {
+      const unsubSanksi = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.SANKSI),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: Sanksi[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as Sanksi);
+            });
+            this.cache.sanksi = list.sort((a, b) => (b.id > a.id ? 1 : -1));
+            localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(this.cache.sanksi));
+            handleSyncUpdate();
+          } else if (this.cache.sanksi.length > 0) {
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.SANKSI, this.cache.sanksi);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.SANKSI)
+      );
+      this.unsubscribers.push(unsubSanksi);
+    } catch (e) {
+      console.warn('Sync sanksi listener warning:', e);
+    }
+
+    // 6. Tata Tertib Collection Realtime Listener
+    try {
+      const unsubTataTertib = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.TATA_TERTIB),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: TataTertib[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as TataTertib);
+            });
+            this.cache.tataTertib = list;
+            localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(list));
+            handleSyncUpdate();
+          } else if (this.cache.tataTertib.length > 0) {
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.TATA_TERTIB, this.cache.tataTertib);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.TATA_TERTIB)
+      );
+      this.unsubscribers.push(unsubTataTertib);
+    } catch (e) {
+      console.warn('Sync tata tertib listener warning:', e);
+    }
+
+    // 7. Users Collection Realtime Listener
+    try {
+      const unsubUsers = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.USERS),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: UserAccount[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as UserAccount);
+            });
+            this.cache.users = list;
+            localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(list));
+            handleSyncUpdate();
+          } else if (this.cache.users.length > 0) {
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.USERS, this.cache.users);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.USERS)
+      );
+      this.unsubscribers.push(unsubUsers);
+    } catch (e) {
+      console.warn('Sync users listener warning:', e);
+    }
+
+    // 8. System Config Document Realtime Listener
+    try {
+      const unsubConfig = onSnapshot(
+        doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'),
+        docSnap => {
+          if (docSnap.exists()) {
+            const cfg = { ...INITIAL_SYSTEM_CONFIG, ...docSnap.data() } as SystemConfig;
+            this.cache.systemConfig = cfg;
+            localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(cfg));
+            handleSyncUpdate();
+          } else {
+            // Upload default config to cloud
+            setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(INITIAL_SYSTEM_CONFIG), { merge: true })
+              .catch(err => console.warn('Config seed error:', err));
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`)
+      );
+      this.unsubscribers.push(unsubConfig);
+    } catch (e) {
+      console.warn('Sync config listener warning:', e);
+    }
+
+    // 9. Logs Collection Realtime Listener
+    try {
+      const unsubLogs = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.LOGS),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: LogAktivitas[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as LogAktivitas);
+            });
+            this.cache.logs = list.sort((a, b) => ((b.timestamp || 0) > (a.timestamp || 0) ? 1 : -1)).slice(0, 300);
+            localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(this.cache.logs));
+            handleSyncUpdate();
+          } else if (this.cache.logs.length > 0) {
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.LOGS, this.cache.logs);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.LOGS)
+      );
+      this.unsubscribers.push(unsubLogs);
+    } catch (e) {
+      console.warn('Sync logs listener warning:', e);
+    }
+
+    // 10. Notifikasi Collection Realtime Listener
+    try {
+      const unsubNotifikasi = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.NOTIFIKASI),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: NotifikasiApp[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as NotifikasiApp);
+            });
+            this.cache.notifikasi = list.slice(0, 50);
+            localStorage.setItem(STORAGE_KEYS.NOTIFIKASI, JSON.stringify(this.cache.notifikasi));
+            handleSyncUpdate();
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.NOTIFIKASI)
+      );
+      this.unsubscribers.push(unsubNotifikasi);
+    } catch (e) {
+      console.warn('Sync notifikasi listener warning:', e);
+    }
+
+    // 11. Koordinasi Collection Realtime Listener
+    try {
+      const unsubKoordinasi = onSnapshot(
+        collection(db, CLOUD_COLLECTIONS.KOORDINASI),
+        snapshot => {
+          if (!snapshot.empty) {
+            const list: PesanKoordinasi[] = [];
+            snapshot.forEach(docSnap => {
+              list.push({ ...docSnap.data(), id: docSnap.id } as PesanKoordinasi);
+            });
+            this.cache.koordinasi = list.sort((a, b) => (b.id > a.id ? 1 : -1));
+            localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(this.cache.koordinasi));
+            handleSyncUpdate();
+          } else if (this.cache.koordinasi.length > 0) {
+            this.uploadCollectionBatch(CLOUD_COLLECTIONS.KOORDINASI, this.cache.koordinasi);
+          }
+        },
+        error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.KOORDINASI)
+      );
+      this.unsubscribers.push(unsubKoordinasi);
+    } catch (e) {
+      console.warn('Sync koordinasi listener warning:', e);
     }
   }
 
+  private async uploadCollectionBatch<T extends { id: string }>(collectionName: string, items: T[]) {
+    try {
+      for (const item of items) {
+        await setDoc(doc(db, collectionName, item.id), sanitizeForFirestore(item), { merge: true });
+      }
+    } catch (err) {
+      console.warn(`Batch upload ${collectionName} warning:`, err);
+    }
+  }
+
+  public getCloudSyncStatus(): CloudSyncTelemetry {
+    const total = 
+      this.cache.santri.length +
+      this.cache.dewan.length +
+      this.cache.perizinan.length +
+      this.cache.pelanggaran.length +
+      this.cache.sanksi.length +
+      this.cache.users.length +
+      this.cache.logs.length +
+      this.cache.koordinasi.length;
+
+    return {
+      status: this.cloudConnected ? 'connected' : 'syncing',
+      lastSyncTime: this.lastSyncTime,
+      cloudConnected: this.cloudConnected,
+      databaseId: 'ai-studio-simkamtibpondokp-0ca6cfda-fbeb-4a4d-91e1-25f2c74e35be',
+      projectId: 'gold-card-583d0',
+      activeListenersCount: this.unsubscribers.length,
+      totalSyncedItems: total,
+    };
+  }
+
+  /**
+   * Forces pulling latest records directly from central Firestore database
+   */
+  public async forcePullFromCloud(): Promise<boolean> {
+    try {
+      // 1. Santri
+      const snapSantri = await getDocs(collection(db, CLOUD_COLLECTIONS.SANTRI));
+      if (!snapSantri.empty) {
+        this.cache.santri = snapSantri.docs.map(d => ({ ...d.data(), id: d.id } as Santri));
+        localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(this.cache.santri));
+      }
+
+      // 2. Perizinan
+      const snapIzin = await getDocs(collection(db, CLOUD_COLLECTIONS.PERIZINAN));
+      if (!snapIzin.empty) {
+        this.cache.perizinan = snapIzin.docs.map(d => ({ ...d.data(), id: d.id } as Perizinan));
+        localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(this.cache.perizinan));
+      }
+
+      // 3. Pelanggaran
+      const snapPel = await getDocs(collection(db, CLOUD_COLLECTIONS.PELANGGARAN));
+      if (!snapPel.empty) {
+        this.cache.pelanggaran = snapPel.docs.map(d => ({ ...d.data(), id: d.id } as Pelanggaran));
+        localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(this.cache.pelanggaran));
+      }
+
+      // 4. Sanksi
+      const snapSanksi = await getDocs(collection(db, CLOUD_COLLECTIONS.SANKSI));
+      if (!snapSanksi.empty) {
+        this.cache.sanksi = snapSanksi.docs.map(d => ({ ...d.data(), id: d.id } as Sanksi));
+        localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(this.cache.sanksi));
+      }
+
+      // 5. Dewan Keamanan
+      const snapDewan = await getDocs(collection(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN));
+      if (!snapDewan.empty) {
+        this.cache.dewan = snapDewan.docs.map(d => ({ ...d.data(), id: d.id } as DewanKeamanan));
+        localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(this.cache.dewan));
+      }
+
+      // 6. Users
+      const snapUsers = await getDocs(collection(db, CLOUD_COLLECTIONS.USERS));
+      if (!snapUsers.empty) {
+        this.cache.users = snapUsers.docs.map(d => ({ ...d.data(), id: d.id } as UserAccount));
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(this.cache.users));
+      }
+
+      this.cloudConnected = true;
+      this.lastSyncTime = new Date().toLocaleTimeString('id-ID') + ' WIB';
+      this.notify();
+      return true;
+    } catch (err) {
+      console.error('Force pull failed:', err);
+      return false;
+    }
+  }
+
+  // ==========================================
+  // RBAC User Accounts
+  // ==========================================
+  public getUsers(): UserAccount[] {
+    return this.cache.users.length > 0 ? this.cache.users : INITIAL_USERS;
+  }
+
   public saveUser(user: UserAccount) {
-    const list = this.getUsers();
+    const list = [...this.getUsers()];
     const index = list.findIndex(u => u.id === user.id);
     if (index >= 0) {
       list[index] = user;
@@ -156,15 +579,25 @@ class StorageService {
       list.push(user);
       this.addLog('Tambah Akun RBAC', `Mendaftarkan personil baru: ${user.nama} (${user.role})`, 'admin');
     }
+    this.cache.users = list;
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(list));
     this.notify();
+
+    // Async sync to central Firestore database
+    setDoc(doc(db, CLOUD_COLLECTIONS.USERS, user.id), sanitizeForFirestore(user), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.USERS}/${user.id}`));
   }
 
   public deleteUser(userId: string) {
     const list = this.getUsers().filter(u => u.id !== userId);
+    this.cache.users = list;
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(list));
     this.addLog('Hapus Akun RBAC', `Menonaktifkan / menghapus akun ID: ${userId}`, 'admin');
     this.notify();
+
+    // Async delete from central Firestore database
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.USERS, userId))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.USERS}/${userId}`));
   }
 
   // Authentication & Session
@@ -187,12 +620,11 @@ class StorageService {
     found.terakhirLogin = `Hari ini, ${timeNow} WIB`;
     this.saveUser(found);
 
-    // Simpan sesi aktif hanya di sessionStorage agar saat browser/tab dibuka baru tidak langsung auto-login
+    // Simpan sesi aktif hanya di sessionStorage agar saat browser/tab dibuka baru tetap aman
     try {
       sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
       localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
     } catch {
-      // fallback jika sessionStorage restricted
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
     }
     this.addLog('Autentikasi Masuk', `Personil ${found.nama} (${found.jabatan}) berhasil login ke sistem.`, 'admin');
@@ -208,14 +640,10 @@ class StorageService {
     }
     try {
       sessionStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     try {
       localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     this.notify();
   }
 
@@ -231,22 +659,24 @@ class StorageService {
     }
   }
 
+  // ==========================================
   // System Configuration (Admin Option Panel)
+  // ==========================================
   public getSystemConfig(): SystemConfig {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.SYSTEM_CONFIG);
-      return data ? { ...INITIAL_SYSTEM_CONFIG, ...JSON.parse(data) } : INITIAL_SYSTEM_CONFIG;
-    } catch {
-      return INITIAL_SYSTEM_CONFIG;
-    }
+    return this.cache.systemConfig || INITIAL_SYSTEM_CONFIG;
   }
 
   public updateSystemConfig(config: Partial<SystemConfig>) {
     const current = this.getSystemConfig();
     const updated = { ...current, ...config };
+    this.cache.systemConfig = updated;
     localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(updated));
     this.addLog('Konfigurasi Sistem', 'Admin memperbarui parameter pengaturan manual di Option Panel.', 'admin');
     this.notify();
+
+    // Sync to central Firestore database
+    setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(updated), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`));
   }
 
   // Gender Scope
@@ -280,18 +710,15 @@ class StorageService {
     this.notify();
   }
 
-  // Data Santri
+  // ==========================================
+  // Master Data Santri
+  // ==========================================
   public getSantriList(): Santri[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.SANTRI);
-      return data ? JSON.parse(data) : INITIAL_SANTRI;
-    } catch {
-      return INITIAL_SANTRI;
-    }
+    return this.cache.santri.length > 0 ? this.cache.santri : INITIAL_SANTRI;
   }
 
   public saveSantri(santri: Santri) {
-    const list = this.getSantriList();
+    const list = [...this.getSantriList()];
     const index = list.findIndex(s => s.id === santri.id);
     if (index >= 0) {
       list[index] = santri;
@@ -300,27 +727,38 @@ class StorageService {
       list.unshift(santri);
       this.addLog('Tambah Santri', `Menambahkan santri: ${santri.nama} (${santri.nis})`, 'santri');
     }
+    this.cache.santri = list;
     localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
     this.notify();
+
+    // Realtime write to central Firestore database
+    setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`));
   }
 
   public deleteSantri(id: string) {
     const list = this.getSantriList();
     const target = list.find(s => s.id === id);
     const updated = list.filter(s => s.id !== id);
+    this.cache.santri = updated;
     localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(updated));
     if (target) {
       this.addLog('Hapus Santri', `Menghapus data santri: ${target.nama} (${target.nis})`, 'santri');
     }
     this.notify();
+
+    // Realtime delete from central Firestore database
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.SANTRI}/${id}`));
   }
 
   public suspendSantri(santriId: string, suspendUntilDate: string, alasan: string) {
-    const list = this.getSantriList();
+    const list = [...this.getSantriList()];
     const santri = list.find(s => s.id === santriId);
     if (santri) {
       santri.suspendIzinHingga = suspendUntilDate;
       santri.alasanSuspensi = alasan;
+      this.cache.santri = list;
       localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
       this.addLog(
         'Penangguhan Izin Santri',
@@ -328,15 +766,20 @@ class StorageService {
         'santri'
       );
       this.notify();
+
+      // Write to central Firestore
+      setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
+        .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`));
     }
   }
 
   public liftSantriSuspension(santriId: string) {
-    const list = this.getSantriList();
+    const list = [...this.getSantriList()];
     const santri = list.find(s => s.id === santriId);
     if (santri) {
       delete santri.suspendIzinHingga;
       delete santri.alasanSuspensi;
+      this.cache.santri = list;
       localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
       this.addLog(
         'Pemulihan Izin Santri',
@@ -344,50 +787,55 @@ class StorageService {
         'santri'
       );
       this.notify();
+
+      setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
+        .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`));
     }
   }
 
-  // Dewan Keamanan
+  // ==========================================
+  // Dewan Keamanan & Piket
+  // ==========================================
   public getDewanKeamananList(): DewanKeamanan[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.DEWAN_KEAMANAN);
-      return data ? JSON.parse(data) : INITIAL_DEWAN_KEAMANAN;
-    } catch {
-      return INITIAL_DEWAN_KEAMANAN;
-    }
+    return this.cache.dewan.length > 0 ? this.cache.dewan : INITIAL_DEWAN_KEAMANAN;
   }
 
   public saveDewanKeamanan(pengurus: DewanKeamanan) {
-    const list = this.getDewanKeamananList();
+    const list = [...this.getDewanKeamananList()];
     const index = list.findIndex(p => p.id === pengurus.id);
     if (index >= 0) {
       list[index] = pengurus;
     } else {
       list.unshift(pengurus);
     }
+    this.cache.dewan = list;
     localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(list));
     this.notify();
+
+    // Central Firestore sync
+    setDoc(doc(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, pengurus.id), sanitizeForFirestore(pengurus), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.DEWAN_KEAMANAN}/${pengurus.id}`));
   }
 
   public deleteDewanKeamanan(id: string) {
-    const list = this.getDewanKeamananList();
-    const updated = list.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(updated));
+    const list = this.getDewanKeamananList().filter(p => p.id !== id);
+    this.cache.dewan = list;
+    localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(list));
     this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.DEWAN_KEAMANAN}/${id}`));
   }
 
-  // Perizinan
+  // ==========================================
+  // Perizinan Santri
+  // ==========================================
   public getPerizinanList(): Perizinan[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.PERIZINAN);
-      return data ? JSON.parse(data) : INITIAL_PERIZINAN;
-    } catch {
-      return INITIAL_PERIZINAN;
-    }
+    return this.cache.perizinan.length > 0 ? this.cache.perizinan : INITIAL_PERIZINAN;
   }
 
   public savePerizinan(izin: Perizinan, note?: string) {
-    const list = this.getPerizinanList();
+    const list = [...this.getPerizinanList()];
     const index = list.findIndex(i => i.id === izin.id);
     const currentUser = this.getCurrentUser();
     const actorName = currentUser ? currentUser.nama : (izin.petugasPencatat || 'Petugas Keamanan');
@@ -440,28 +888,8 @@ class StorageService {
           dataSebelum: { status: prev.status, actualKeluar: prev.actualKeluar, actualKembali: prev.actualKembali },
           dataSesudah: { status: izin.status, actualKeluar: izin.actualKeluar, actualKembali: izin.actualKembali },
         });
-      } else {
-        // Data revision/correction
-        this.addAuditLog({
-          aksi: 'Koreksi/Revisi Data Perizinan',
-          detail: `Pengurus merevisi rincian perizinan santri ${izin.santriNama} (${izin.nomorIzin}). ${note ? `Alasan: ${note}` : ''}`,
-          tipe: 'koreksi',
-          izinId: izin.id,
-          santriId: izin.santriId,
-          santriNama: izin.santriNama,
-          santriNis: izin.santriNis,
-          santriGender: izin.santriGender,
-          jenisIzin: izin.jenisIzin,
-          statusIzin: izin.status,
-          peranAktor: 'Pengawas',
-          isRevisi: true,
-          alasanRevisi: note || 'Penyesuaian jadwal atau rincian penjemput',
-          dataSebelum: prev,
-          dataSesudah: izin,
-        });
       }
     } else {
-      // New permit submission
       list.unshift(izin);
       this.addAuditLog({
         aksi: 'Pengajuan Perizinan Baru',
@@ -482,8 +910,13 @@ class StorageService {
       });
     }
 
+    this.cache.perizinan = list;
     localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(list));
     this.notify();
+
+    // Realtime write to central Firestore database
+    setDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, izin.id), sanitizeForFirestore(izin), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PERIZINAN}/${izin.id}`));
   }
 
   public deletePerizinan(id: string, alasan?: string) {
@@ -506,11 +939,15 @@ class StorageService {
       });
     }
 
+    this.cache.perizinan = updated;
     localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(updated));
     this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PERIZINAN}/${id}`));
   }
 
-  // Deteksi Otomatis Keterlambatan Santri (Automated Tardiness Detection)
+  // Automated Tardiness Detection
   public checkAndDetectLatePermits(): number {
     const list = this.getPerizinanList();
     const now = new Date();
@@ -524,24 +961,30 @@ class StorageService {
           const diffMinutes = Math.floor((now.getTime() - deadline.getTime()) / 60000);
           if (diffMinutes > 0) {
             updatedCount++;
-            return {
+            const updated = {
               ...izin,
               status: 'Terlambat' as const,
               menitKeterlambatan: diffMinutes,
             };
+            // Async push to firestore
+            setDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, updated.id), sanitizeForFirestore(updated), { merge: true })
+              .catch(() => {});
+            return updated;
           }
         }
       } else if (izin.status === 'Terlambat' && !izin.actualKembali) {
-        // Perbarui menit keterlambatan berjalan
         const deadlineStr = `${izin.tglKembali}T${izin.jamKembali}:00`;
         const deadline = new Date(deadlineStr);
         if (!isNaN(deadline.getTime())) {
           const diffMinutes = Math.floor((now.getTime() - deadline.getTime()) / 60000);
           if (diffMinutes > 0 && diffMinutes !== izin.menitKeterlambatan) {
-            return {
+            const updated = {
               ...izin,
               menitKeterlambatan: diffMinutes,
             };
+            setDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, updated.id), sanitizeForFirestore(updated), { merge: true })
+              .catch(() => {});
+            return updated;
           }
         }
       }
@@ -549,53 +992,55 @@ class StorageService {
     });
 
     if (updatedCount > 0) {
+      this.cache.perizinan = updatedList;
       localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(updatedList));
       this.notify();
     }
     return updatedCount;
   }
 
+  // ==========================================
   // Tata Tertib
+  // ==========================================
   public getTataTertibList(): TataTertib[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.TATA_TERTIB);
-      return data ? JSON.parse(data) : INITIAL_TATA_TERTIB;
-    } catch {
-      return INITIAL_TATA_TERTIB;
-    }
+    return this.cache.tataTertib.length > 0 ? this.cache.tataTertib : INITIAL_TATA_TERTIB;
   }
 
   public saveTataTertib(tt: TataTertib) {
-    const list = this.getTataTertibList();
+    const list = [...this.getTataTertibList()];
     const index = list.findIndex(t => t.id === tt.id);
     if (index >= 0) {
       list[index] = tt;
     } else {
       list.push(tt);
     }
+    this.cache.tataTertib = list;
     localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(list));
     this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.TATA_TERTIB, tt.id), sanitizeForFirestore(tt), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.TATA_TERTIB}/${tt.id}`));
   }
 
   public deleteTataTertib(id: string) {
-    const list = this.getTataTertibList();
-    const updated = list.filter(t => t.id !== id);
-    localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(updated));
+    const list = this.getTataTertibList().filter(t => t.id !== id);
+    this.cache.tataTertib = list;
+    localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(list));
     this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.TATA_TERTIB, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.TATA_TERTIB}/${id}`));
   }
 
+  // ==========================================
   // Pelanggaran & Takzir
+  // ==========================================
   public getPelanggaranList(): Pelanggaran[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.PELANGGARAN);
-      return data ? JSON.parse(data) : INITIAL_PELANGGARAN;
-    } catch {
-      return INITIAL_PELANGGARAN;
-    }
+    return this.cache.pelanggaran.length > 0 ? this.cache.pelanggaran : INITIAL_PELANGGARAN;
   }
 
   public savePelanggaran(pel: Pelanggaran, note?: string) {
-    const list = this.getPelanggaranList();
+    const list = [...this.getPelanggaranList()];
     const index = list.findIndex(p => p.id === pel.id);
     const currentUser = this.getCurrentUser();
     const reporterName = pel.namaPetugasPelapor || (currentUser ? currentUser.nama : 'Petugas Keamanan');
@@ -641,8 +1086,13 @@ class StorageService {
       });
     }
 
+    this.cache.pelanggaran = list;
     localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(list));
     this.notify();
+
+    // Central Firestore sync
+    setDoc(doc(db, CLOUD_COLLECTIONS.PELANGGARAN, pel.id), sanitizeForFirestore(pel), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PELANGGARAN}/${pel.id}`));
   }
 
   public deletePelanggaran(id: string, alasan?: string) {
@@ -664,31 +1114,35 @@ class StorageService {
         dataSesudah: { status: 'Dibatalkan' },
       });
     }
+    this.cache.pelanggaran = updated;
     localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(updated));
     this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.PELANGGARAN, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PELANGGARAN}/${id}`));
   }
 
   private updateSantriPoin(santriId: string, poinDelta: number) {
-    const santriList = this.getSantriList();
+    const santriList = [...this.getSantriList()];
     const santri = santriList.find(s => s.id === santriId);
     if (santri) {
       santri.poinPelanggaran = Math.max(0, (santri.poinPelanggaran || 0) + poinDelta);
+      this.cache.santri = santriList;
       localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(santriList));
+      setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
+        .catch(() => {});
     }
   }
 
+  // ==========================================
   // Sanksi & Takzir Edukatif
+  // ==========================================
   public getSanksiList(): Sanksi[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.SANKSI);
-      return data ? JSON.parse(data) : INITIAL_SANKSI;
-    } catch {
-      return INITIAL_SANKSI;
-    }
+    return this.cache.sanksi.length > 0 ? this.cache.sanksi : INITIAL_SANKSI;
   }
 
   public saveSanksi(sanksi: Sanksi, note?: string) {
-    const list = this.getSanksiList();
+    const list = [...this.getSanksiList()];
     const index = list.findIndex(s => s.id === sanksi.id);
     const currentUser = this.getCurrentUser();
     const assignerName = sanksi.petugasPenetap || (currentUser ? currentUser.nama : 'Dewan Keamanan');
@@ -725,24 +1179,6 @@ class StorageService {
           dataSebelum: { status: prev.status },
           dataSesudah: { status: 'Selesai', tanggalAktualSelesai: sanksi.tanggalAktualSelesai },
         });
-      } else {
-        this.addAuditLog({
-          aksi: 'Koreksi/Pembaruan Data Takzir',
-          detail: `Pengurus memperbarui data sanksi takzir ${sanksi.kodeSanksi} santri ${sanksi.santriNama}. ${note ? `Catatan: ${note}` : ''}`,
-          tipe: 'koreksi',
-          sanksiId: sanksi.id,
-          santriId: sanksi.santriId,
-          santriNama: sanksi.santriNama,
-          santriNis: sanksi.santriNis,
-          santriGender: sanksi.santriGender,
-          jenisHukuman: sanksi.bentukSanksi,
-          statusHukuman: sanksi.status,
-          peranAktor: 'Penetap',
-          isRevisi: true,
-          alasanRevisi: note || 'Penyesuaian target atau bentuk pembinaan',
-          dataSebelum: prev,
-          dataSesudah: preparedSanksi,
-        });
       }
     } else {
       list.unshift(preparedSanksi);
@@ -765,8 +1201,13 @@ class StorageService {
       });
     }
 
+    this.cache.sanksi = list;
     localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(list));
     this.notify();
+
+    // Central Firestore sync
+    setDoc(doc(db, CLOUD_COLLECTIONS.SANKSI, preparedSanksi.id), sanitizeForFirestore(preparedSanksi), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANKSI}/${preparedSanksi.id}`));
   }
 
   public deleteSanksi(id: string, alasan?: string) {
@@ -789,8 +1230,12 @@ class StorageService {
       });
     }
 
+    this.cache.sanksi = updated;
     localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(updated));
     this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.SANKSI, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.SANKSI}/${id}`));
   }
 
   // Audit Hash & Immutable Log Engine
@@ -807,17 +1252,7 @@ class StorageService {
   }
 
   public getLogs(): LogAktivitas[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.LOGS);
-      if (data) {
-        const parsed: LogAktivitas[] = JSON.parse(data);
-        if (parsed.length > 0) return parsed;
-      }
-      localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(INITIAL_LOGS));
-      return INITIAL_LOGS;
-    } catch {
-      return INITIAL_LOGS;
-    }
+    return this.cache.logs.length > 0 ? this.cache.logs : INITIAL_LOGS;
   }
 
   public addAuditLog(entry: Partial<LogAktivitas>): LogAktivitas {
@@ -845,11 +1280,16 @@ class StorageService {
       hashAudit: hash,
     };
 
-    // Immutable append-only log: newest entries on top, preserves history
     const existing = this.getLogs();
     const logs = [newLog, ...existing].slice(0, 300);
+    this.cache.logs = logs;
     localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
     this.notify();
+
+    // Central Firestore sync
+    setDoc(doc(db, CLOUD_COLLECTIONS.LOGS, newLog.id), sanitizeForFirestore(newLog), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.LOGS}/${newLog.id}`));
+
     return newLog;
   }
 
@@ -857,14 +1297,11 @@ class StorageService {
     return this.addAuditLog({ aksi, detail, tipe });
   }
 
-  // Notifications
+  // ==========================================
+  // Notifikasi Terpusat
+  // ==========================================
   public getNotifications(): NotifikasiApp[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.NOTIFIKASI);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return this.cache.notifikasi;
   }
 
   public addNotification(notif: Omit<NotifikasiApp, 'id' | 'waktu' | 'dibaca'>) {
@@ -875,59 +1312,71 @@ class StorageService {
       ...notif,
     };
     const current = [newNotif, ...this.getNotifications()].slice(0, 50);
+    this.cache.notifikasi = current;
     localStorage.setItem(STORAGE_KEYS.NOTIFIKASI, JSON.stringify(current));
     this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, newNotif.id), sanitizeForFirestore(newNotif), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.NOTIFIKASI}/${newNotif.id}`));
   }
 
   public markAllNotificationsRead() {
     const current = this.getNotifications().map(n => ({ ...n, dibaca: true }));
+    this.cache.notifikasi = current;
     localStorage.setItem(STORAGE_KEYS.NOTIFIKASI, JSON.stringify(current));
     this.notify();
-  }
 
-  // -------------------------------------------------------------
-  // TAB KOORDINASI ADMIN DAN DEWAN KEAMANAN
-  // -------------------------------------------------------------
-  public getKoordinasiList(): PesanKoordinasi[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.KOORDINASI);
-      if (!data) {
-        localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(INITIAL_KOORDINASI));
-        return INITIAL_KOORDINASI;
-      }
-      return JSON.parse(data);
-    } catch {
-      return INITIAL_KOORDINASI;
+    // Update in firestore
+    for (const notif of current) {
+      setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, notif.id), { dibaca: true }, { merge: true }).catch(() => {});
     }
   }
 
+  public markNotificationRead(id: string) {
+    const current = this.getNotifications().map(n => n.id === id ? { ...n, dibaca: true } : n);
+    this.cache.notifikasi = current;
+    localStorage.setItem(STORAGE_KEYS.NOTIFIKASI, JSON.stringify(current));
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, id), { dibaca: true }, { merge: true }).catch(() => {});
+  }
+
+  // ==========================================
+  // Koordinasi Admin & Dewan Keamanan
+  // ==========================================
+  public getKoordinasiList(): PesanKoordinasi[] {
+    return this.cache.koordinasi.length > 0 ? this.cache.koordinasi : INITIAL_KOORDINASI;
+  }
+
   public saveKoordinasi(pesan: PesanKoordinasi) {
-    const list = this.getKoordinasiList();
+    const list = [...this.getKoordinasiList()];
     const index = list.findIndex(p => p.id === pesan.id);
     if (index >= 0) {
       list[index] = pesan;
     } else {
       list.unshift(pesan);
-      // Auto notification to dashboard
       this.addNotification({
         judul: `[KOORDINASI ${pesan.prioritas.toUpperCase()}] ${pesan.judul}`,
         pesan: `${pesan.pengirimNama} (${pesan.kategori}): ${pesan.isi.slice(0, 90)}...`,
         tipe: pesan.prioritas === 'Mendesak' ? 'danger' : pesan.prioritas === 'Penting' ? 'warning' : 'info',
         linkMenu: 'koordinasi',
       });
-      // Audit log
       this.addLog(
         'Disposisi Koordinasi',
         `${pesan.pengirimNama} (${pesan.pengirimRole}) mengirim ${pesan.kategori} [${pesan.prioritas}]: "${pesan.judul}"`,
         'admin'
       );
     }
+    this.cache.koordinasi = list;
     localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
     this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesan.id), sanitizeForFirestore(pesan), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.KOORDINASI}/${pesan.id}`));
   }
 
   public markKoordinasiAsRead(pesanId: string, userId: string) {
-    const list = this.getKoordinasiList();
+    const list = [...this.getKoordinasiList()];
     const item = list.find(p => p.id === pesanId);
     if (item) {
       let changed = false;
@@ -940,14 +1389,18 @@ class StorageService {
         changed = true;
       }
       if (changed) {
+        this.cache.koordinasi = list;
         localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
         this.notify();
+
+        setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(item), { merge: true })
+          .catch(() => {});
       }
     }
   }
 
   public balasKoordinasi(pesanId: string, balasan: BalasanKoordinasi) {
-    const list = this.getKoordinasiList();
+    const list = [...this.getKoordinasiList()];
     const item = list.find(p => p.id === pesanId);
     if (item) {
       item.balasan.push(balasan);
@@ -963,13 +1416,17 @@ class StorageService {
         tipe: 'info',
         linkMenu: 'koordinasi',
       });
+      this.cache.koordinasi = list;
       localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
       this.notify();
+
+      setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(item), { merge: true })
+        .catch(() => {});
     }
   }
 
   public tindakLanjutiKoordinasi(pesanId: string, catatan: string, petugasNama: string) {
-    const list = this.getKoordinasiList();
+    const list = [...this.getKoordinasiList()];
     const item = list.find(p => p.id === pesanId);
     if (item) {
       item.status = 'Ditindaklanjuti';
@@ -987,16 +1444,23 @@ class StorageService {
         `${petugasNama} menyelesaikan tindak lanjut tiket ${item.nomorTiket}: ${catatan}`,
         'admin'
       );
+      this.cache.koordinasi = list;
       localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
       this.notify();
+
+      setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(item), { merge: true })
+        .catch(() => {});
     }
   }
 
   public deleteKoordinasi(pesanId: string) {
-    const list = this.getKoordinasiList();
-    const filtered = list.filter(p => p.id !== pesanId);
-    localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(filtered));
+    const list = this.getKoordinasiList().filter(p => p.id !== pesanId);
+    this.cache.koordinasi = list;
+    localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
     this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.KOORDINASI}/${pesanId}`));
   }
 
   public getUnreadKoordinasiCount(user?: UserAccount): { total: number; mendesak: number } {
@@ -1010,10 +1474,14 @@ class StorageService {
     };
   }
 
+  // ==========================================
   // Backup & Restore
+  // ==========================================
   public exportFullBackup(): string {
     const backup = {
       timestamp: new Date().toISOString(),
+      databaseId: 'ai-studio-simkamtibpondokp-0ca6cfda-fbeb-4a4d-91e1-25f2c74e35be',
+      projectId: 'gold-card-583d0',
       config: this.getSystemConfig(),
       users: this.getUsers(),
       santri: this.getSantriList(),
@@ -1027,17 +1495,49 @@ class StorageService {
     return JSON.stringify(backup, null, 2);
   }
 
-  public importFullBackup(jsonString: string): boolean {
+  public async importFullBackup(jsonString: string): Promise<boolean> {
     try {
       const parsed = JSON.parse(jsonString);
-      if (parsed.santri) localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(parsed.santri));
-      if (parsed.dewanKeamanan) localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(parsed.dewanKeamanan));
-      if (parsed.perizinan) localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(parsed.perizinan));
-      if (parsed.tataTertib) localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(parsed.tataTertib));
-      if (parsed.pelanggaran) localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(parsed.pelanggaran));
-      if (parsed.sanksi) localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(parsed.sanksi));
-      if (parsed.users) localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(parsed.users));
-      if (parsed.config) localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(parsed.config));
+      if (parsed.santri) {
+        this.cache.santri = parsed.santri;
+        localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(parsed.santri));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.SANTRI, parsed.santri);
+      }
+      if (parsed.dewanKeamanan) {
+        this.cache.dewan = parsed.dewanKeamanan;
+        localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(parsed.dewanKeamanan));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, parsed.dewanKeamanan);
+      }
+      if (parsed.perizinan) {
+        this.cache.perizinan = parsed.perizinan;
+        localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(parsed.perizinan));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PERIZINAN, parsed.perizinan);
+      }
+      if (parsed.tataTertib) {
+        this.cache.tataTertib = parsed.tataTertib;
+        localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(parsed.tataTertib));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.TATA_TERTIB, parsed.tataTertib);
+      }
+      if (parsed.pelanggaran) {
+        this.cache.pelanggaran = parsed.pelanggaran;
+        localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(parsed.pelanggaran));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PELANGGARAN, parsed.pelanggaran);
+      }
+      if (parsed.sanksi) {
+        this.cache.sanksi = parsed.sanksi;
+        localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(parsed.sanksi));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.SANKSI, parsed.sanksi);
+      }
+      if (parsed.users) {
+        this.cache.users = parsed.users;
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(parsed.users));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.USERS, parsed.users);
+      }
+      if (parsed.config) {
+        this.cache.systemConfig = parsed.config;
+        localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(parsed.config));
+        await setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(parsed.config), { merge: true });
+      }
       this.addLog('Restore Database', 'Berhasil memulihkan seluruh arsip database pusat', 'admin');
       this.notify();
       return true;

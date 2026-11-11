@@ -719,6 +719,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
         <div className="space-y-4">
           <RadarMonitoringPerizinan
             perizinanList={perizinanList}
+            currentUser={currentUser}
             onViewSuratIzin={onViewSuratIzin}
           />
         </div>

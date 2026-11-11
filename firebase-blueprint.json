@@ -8,11 +8,12 @@
         "id": { "type": "string" },
         "nama": { "type": "string", "maxLength": 100 },
         "username": { "type": "string", "maxLength": 50 },
-        "role": { "type": "string", "enum": ["admin", "ketua_keamanan", "petugas_gerbang", "pengurus_pesantren"] },
+        "role": { "type": "string" },
         "jabatan": { "type": "string", "maxLength": 100 },
         "statusAktif": { "type": "boolean" },
         "nrp": { "type": "string", "maxLength": 30 },
-        "createdAt": { "type": "string" }
+        "divisi": { "type": "string" },
+        "genderAccess": { "type": "string" }
       },
       "required": ["id", "nama", "username", "role", "statusAktif"]
     },
@@ -30,9 +31,24 @@
         "namaWali": { "type": "string", "maxLength": 100 },
         "noWaWali": { "type": "string", "maxLength": 30 },
         "poinPelanggaran": { "type": "number" },
-        "statusKedisiplinan": { "type": "string" }
+        "status": { "type": "string" },
+        "suspendIzinHingga": { "type": "string" }
       },
       "required": ["id", "nama", "nis", "gender", "kelas"]
+    },
+    "DewanKeamanan": {
+      "title": "DewanKeamanan",
+      "description": "Security officer and guard profiles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nrp": { "type": "string", "maxLength": 30 },
+        "nama": { "type": "string", "maxLength": 120 },
+        "jabatan": { "type": "string", "maxLength": 100 },
+        "divisi": { "type": "string" },
+        "statusKeaktifan": { "type": "string" }
+      },
+      "required": ["id", "nrp", "nama", "jabatan"]
     },
     "Perizinan": {
       "title": "Perizinan",
@@ -45,14 +61,15 @@
         "santriNama": { "type": "string", "maxLength": 120 },
         "santriNis": { "type": "string", "maxLength": 30 },
         "santriGender": { "type": "string", "enum": ["putra", "putri"] },
-        "jenisIzin": { "type": "string", "enum": ["Izin Pulang", "Izin Keluar", "Izin Khusus", "Izin Sakit", "Izin Sambangan"] },
+        "jenisIzin": { "type": "string" },
         "tglKeluar": { "type": "string" },
         "jamKeluar": { "type": "string" },
         "tglKembali": { "type": "string" },
         "jamKembali": { "type": "string" },
         "alasan": { "type": "string", "maxLength": 500 },
         "tujuan": { "type": "string", "maxLength": 200 },
-        "status": { "type": "string", "enum": ["Diajukan", "Diverifikasi", "Disetujui", "Ditolak", "Sedang Keluar", "Sudah Kembali", "Terlambat"] }
+        "status": { "type": "string" },
+        "menitKeterlambatan": { "type": "number" }
       },
       "required": ["id", "nomorIzin", "santriId", "santriNama", "jenisIzin", "status"]
     },
@@ -73,7 +90,7 @@
         "poin": { "type": "number" },
         "lokasi": { "type": "string", "maxLength": 150 },
         "namaPetugasPelapor": { "type": "string", "maxLength": 100 },
-        "statusVerifikasi": { "type": "string", "enum": ["Menunggu", "Terverifikasi", "Ditolak"] }
+        "statusVerifikasi": { "type": "string" }
       },
       "required": ["id", "santriId", "santriNama", "jenisPelanggaran", "kategori", "poin"]
     },
@@ -83,14 +100,79 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "nomorSurat": { "type": "string", "maxLength": 60 },
+        "kodeSanksi": { "type": "string", "maxLength": 60 },
         "santriId": { "type": "string" },
         "santriNama": { "type": "string", "maxLength": 120 },
-        "jenisSanksi": { "type": "string", "maxLength": 255 },
-        "kategori": { "type": "string", "enum": ["Ringan", "Sedang", "Berat"] },
-        "status": { "type": "string", "enum": ["Belum Dikerjakan", "Sedang Berjalan", "Selesai", "Kadaluarsa"] }
+        "bentukSanksi": { "type": "string", "maxLength": 255 },
+        "status": { "type": "string" }
       },
-      "required": ["id", "santriId", "santriNama", "jenisSanksi", "status"]
+      "required": ["id", "santriId", "santriNama", "status"]
+    },
+    "TataTertib": {
+      "title": "TataTertib",
+      "description": "Boarding school rules and discipline code",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kode": { "type": "string" },
+        "pasal": { "type": "string" },
+        "deskripsi": { "type": "string" },
+        "tingkat": { "type": "string" },
+        "poin": { "type": "number" }
+      },
+      "required": ["id", "kode", "deskripsi", "poin"]
+    },
+    "SystemConfig": {
+      "title": "SystemConfig",
+      "description": "Application settings and branding parameters",
+      "type": "object",
+      "properties": {
+        "namaPondok": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "bgUrl": { "type": "string" }
+      },
+      "required": ["namaPondok"]
+    },
+    "LogAktivitas": {
+      "title": "LogAktivitas",
+      "description": "Audit trails and activity logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "waktu": { "type": "string" },
+        "user": { "type": "string" },
+        "aksi": { "type": "string" },
+        "detail": { "type": "string" }
+      },
+      "required": ["id", "waktu", "aksi"]
+    },
+    "NotifikasiApp": {
+      "title": "NotifikasiApp",
+      "description": "System broadcast and direct alerts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "waktu": { "type": "string" },
+        "judul": { "type": "string" },
+        "pesan": { "type": "string" },
+        "tipe": { "type": "string" },
+        "dibaca": { "type": "boolean" }
+      },
+      "required": ["id", "judul", "pesan", "dibaca"]
+    },
+    "PesanKoordinasi": {
+      "title": "PesanKoordinasi",
+      "description": "Internal coordination and dispatch tickets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nomorTiket": { "type": "string" },
+        "judul": { "type": "string" },
+        "isi": { "type": "string" },
+        "prioritas": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "nomorTiket", "judul", "isi", "status"]
     }
   },
   "firestore": {
@@ -101,6 +183,10 @@
     "/santri/{santriId}": {
       "schema": { "$ref": "#/entities/Santri" },
       "description": "Registered santri records"
+    },
+    "/dewan_keamanan/{dewanId}": {
+      "schema": { "$ref": "#/entities/DewanKeamanan" },
+      "description": "Security council roster"
     },
     "/perizinan/{izinId}": {
       "schema": { "$ref": "#/entities/Perizinan" },
@@ -113,6 +199,26 @@
     "/sanksi/{sanksiId}": {
       "schema": { "$ref": "#/entities/Sanksi" },
       "description": "Educational sanctions"
+    },
+    "/tata_tertib/{tataTertibId}": {
+      "schema": { "$ref": "#/entities/TataTertib" },
+      "description": "Pondok code of conduct"
+    },
+    "/system_config/{configId}": {
+      "schema": { "$ref": "#/entities/SystemConfig" },
+      "description": "Global application configuration"
+    },
+    "/logs/{logId}": {
+      "schema": { "$ref": "#/entities/LogAktivitas" },
+      "description": "System activity logs"
+    },
+    "/notifikasi/{notifId}": {
+      "schema": { "$ref": "#/entities/NotifikasiApp" },
+      "description": "App notification inbox"
+    },
+    "/koordinasi/{koordinasiId}": {
+      "schema": { "$ref": "#/entities/PesanKoordinasi" },
+      "description": "Command coordination messages"
     }
   }
 }

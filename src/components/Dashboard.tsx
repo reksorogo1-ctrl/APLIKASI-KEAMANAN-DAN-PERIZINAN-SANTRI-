@@ -65,9 +65,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  const sedangDiLuar = perizinanList.filter(i => i.status === 'Sedang Keluar');
-  const terlambatList = perizinanList.filter(i => i.status === 'Terlambat');
-  const menungguPersetujuan = perizinanList.filter(i => i.status === 'Diajukan' || i.status === 'Diverifikasi');
+  const sedangDiLuar = perizinanList.filter(i => (i.status === 'Sedang Keluar' || i.status === 'Disetujui') && !i.actualKembali);
+  const terlambatList = perizinanList.filter(i => (i.status === 'Terlambat' || (i.menitKeterlambatan && i.menitKeterlambatan > 0)) && !i.actualKembali);
+  const menungguPersetujuan = perizinanList.filter(i => (i.status === 'Diajukan' || i.status === 'Diverifikasi') && !i.actualKembali);
   const sanksiAktif = sanksiList.filter(s => s.status === 'Sedang Berjalan' || s.status === 'Belum Dikerjakan');
 
   // Real-time internal coordination telemetry
@@ -373,6 +373,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       >
         <RadarMonitoringPerizinan
           perizinanList={perizinanList}
+          currentUser={currentUser}
           onViewSuratIzin={onViewSuratIzin}
           onSendWaAlert={handleSendWaAlert}
         />

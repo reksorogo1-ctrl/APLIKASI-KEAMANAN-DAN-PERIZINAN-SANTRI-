@@ -74,7 +74,12 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
             notifications.map((item) => (
               <div
                 key={item.id}
-                className={`p-4 rounded-2xl border transition-all hover-rainbow-edge shadow-md ${
+                onClick={() => {
+                  if (!item.dibaca) {
+                    storageService.markNotificationRead(item.id);
+                  }
+                }}
+                className={`p-4 rounded-2xl border transition-all hover-rainbow-edge shadow-md cursor-pointer ${
                   item.dibaca
                     ? 'bg-slate-950/60 border-slate-800/80 text-slate-400'
                     : 'bg-slate-900/90 border-amber-400/30 text-slate-200'
@@ -86,8 +91,11 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-bold text-white truncate font-sans">
-                        {item.judul}
+                      <p className="text-xs font-bold text-white truncate font-sans flex items-center gap-2">
+                        <span>{item.judul}</span>
+                        {!item.dibaca && (
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                        )}
                       </p>
                       <span className="text-[10px] text-cyan-400 shrink-0 font-mono">
                         {item.waktu}
@@ -101,7 +109,9 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                     <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-slate-800">
                       {item.linkMenu && (
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            storageService.markNotificationRead(item.id);
                             onNavigate(item.linkMenu!);
                             onClose();
                           }}

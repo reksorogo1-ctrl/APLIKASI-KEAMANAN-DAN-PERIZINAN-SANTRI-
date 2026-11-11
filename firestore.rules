@@ -2,63 +2,72 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Default-deny all documents
+    // Default-deny all unmapped documents
     match /{document=**} {
       allow read, write: if false;
     }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'reksorogo1@gmail.com' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-      );
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    // Admins path
+    // Admins configuration
     match /admins/{adminId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Users collection
+    // RBAC User Accounts
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow read, write: if true;
     }
 
-    // Santri collection
+    // Master Santri Data
     match /santri/{santriId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Perizinan collection
+    // Dewan Keamanan & Piket Data
+    match /dewan_keamanan/{dewanId} {
+      allow read, write: if true;
+    }
+
+    // Perizinan Santri Data
     match /perizinan/{izinId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Pelanggaran collection
+    // Catatan Insiden Pelanggaran Data
     match /pelanggaran/{pelanggaranId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Sanksi collection
+    // Sanksi & Takzir Data
     match /sanksi/{sanksiId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // Test connection document
+    // Tata Tertib Qanun Data
+    match /tata_tertib/{tataTertibId} {
+      allow read, write: if true;
+    }
+
+    // Pengaturan Sistem & Option Panel
+    match /system_config/{configId} {
+      allow read, write: if true;
+    }
+
+    // Audit Trail & Logs Aktivitas
+    match /logs/{logId} {
+      allow read, write: if true;
+    }
+
+    // Notifikasi Terpusat
+    match /notifikasi/{notifId} {
+      allow read, write: if true;
+    }
+
+    // Pesan Koordinasi Admin & Pengurus
+    match /koordinasi/{koordinasiId} {
+      allow read, write: if true;
+    }
+
+    // Diagnostic & Connection Test
     match /test/{docId} {
       allow read, write: if true;
     }

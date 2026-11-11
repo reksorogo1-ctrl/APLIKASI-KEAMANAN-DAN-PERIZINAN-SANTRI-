@@ -40,17 +40,13 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
       const kembaliCount = perizinanList.filter(p => p.actualKembali && p.actualKembali.startsWith(iso)).length;
       const pelCount = pelanggaranList.filter(p => p.tanggal === iso).length;
 
-      // Ensure some dynamic baseline if empty for aesthetic demo
-      const baseIzin = izinCount || (i % 3 === 0 ? 3 : i % 2 === 0 ? 5 : 2);
-      const baseKembali = kembaliCount || Math.max(1, baseIzin - 1);
-      const basePel = pelCount || (i % 4 === 0 ? 2 : i % 5 === 0 ? 1 : 0);
-
+      // Exact counts from database
       data.push({
         date: iso,
         displayDate: dayLabel,
-        perizinan: baseIzin,
-        kembali: baseKembali,
-        pelanggaran: basePel,
+        perizinan: izinCount,
+        kembali: kembaliCount,
+        pelanggaran: pelCount,
       });
     }
 
@@ -409,7 +405,7 @@ export const InterpolBarChart: React.FC<InterpolBarChartProps> = ({ pelanggaranL
     const categories = ['Ubudiyah', 'Ketertiban', 'Elektronik', 'Akhlaq', 'Kebersihan'];
     const counts = categories.map(cat => ({
       name: cat,
-      count: pelanggaranList.filter(p => p.jenisPelanggaran.toLowerCase().includes(cat.toLowerCase()) || p.kategori.toLowerCase().includes(cat.toLowerCase())).length || Math.floor(Math.random() * 3 + 1),
+      count: pelanggaranList.filter(p => p.jenisPelanggaran.toLowerCase().includes(cat.toLowerCase()) || p.kategori.toLowerCase().includes(cat.toLowerCase())).length,
     }));
 
     const svg = d3

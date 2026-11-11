@@ -208,6 +208,7 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
           {/* Rotating Military Radar Controller (Medium Size) */}
           <RadarMonitoringPerizinan
             perizinanList={perizinanList}
+            currentUser={currentUser}
             onViewSuratIzin={onViewSuratIzin}
             size="medium"
           />
