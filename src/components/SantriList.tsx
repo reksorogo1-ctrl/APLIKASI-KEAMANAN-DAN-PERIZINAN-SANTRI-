@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Users, 
+  User,
   Search, 
   Plus, 
   Download, 
@@ -84,7 +85,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
     setFormData({
       nis: `20240${Math.floor(1000 + Math.random() * 9000)}`,
       nama: '',
-      foto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+      foto: '',
       gender: selectedGender === 'putri' ? 'putri' : 'putra',
       kelas: '1 Ulya (Aliyah)',
       kamar: selectedGender === 'putri' ? 'K-01 (Sayyidah Khadijah)' : 'K-01 (Imam Nafi\')',
@@ -114,7 +115,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
       id: editingSantri ? editingSantri.id : `san_${Date.now()}`,
       nis: formData.nis || '',
       nama: formData.nama || '',
-      foto: formData.foto || 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+      foto: formData.foto || '',
       gender: formData.gender as Gender,
       kelas: formData.kelas || '1 Ulya',
       kamar: formData.kamar || 'K-01',
@@ -185,7 +186,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
             id: `san_imp_${Date.now()}_${i}`,
             nis: parts[1] || `2024${Math.floor(1000 + Math.random() * 9000)}`,
             nama: parts[2] || 'Santri Baru',
-            foto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+            foto: '',
             gender: (parts[3]?.toLowerCase() === 'putri' ? 'putri' : 'putra') as Gender,
             kelas: parts[4] || '1 Wustho',
             kamar: parts[5] || 'K-01',
@@ -356,14 +357,17 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
                   <tr key={santri.id} className="table-row-rainbow transition-all cursor-pointer">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={santri.foto}
-                          alt={santri.nama}
-                          className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shrink-0 shadow-sm"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80';
-                          }}
-                        />
+                        {santri.foto ? (
+                          <img
+                            src={santri.foto}
+                            alt={santri.nama}
+                            className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shrink-0 shadow-sm"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-amber-400/40 shrink-0 shadow-sm flex items-center justify-center text-amber-400">
+                            <User className="w-5 h-5" />
+                          </div>
+                        )}
                         <div>
                           <div className="font-bold text-white text-xs font-sans tracking-wide">{santri.nama}</div>
                           <div className="text-[11px] text-slate-400">
@@ -688,11 +692,17 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
 
                 {/* Card Body */}
                 <div className="flex gap-4 items-center">
-                  <img
-                    src={cardPreviewSantri.foto}
-                    alt={cardPreviewSantri.nama}
-                    className="w-20 h-24 object-cover rounded-xl border-2 border-amber-400/80 shadow-md shrink-0"
-                  />
+                  {cardPreviewSantri.foto ? (
+                    <img
+                      src={cardPreviewSantri.foto}
+                      alt={cardPreviewSantri.nama}
+                      className="w-20 h-24 object-cover rounded-xl border-2 border-amber-400/80 shadow-md shrink-0"
+                    />
+                  ) : (
+                    <div className="w-20 h-24 rounded-xl border-2 border-amber-400/80 bg-slate-900 shadow-md shrink-0 flex items-center justify-center text-amber-400">
+                      <User className="w-10 h-10" />
+                    </div>
+                  )}
                   <div className="space-y-1 text-xs">
                     <p className="text-sm font-bold text-white leading-tight">
                       {cardPreviewSantri.nama}

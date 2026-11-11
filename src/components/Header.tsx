@@ -77,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
             {/* 3D Glow Ring Behind Crest */}
             <div className="absolute -inset-0.5 rounded-full bg-gradient-to-tr from-cyan-500 via-amber-400 to-blue-600 opacity-60 blur-[3px] group-hover:opacity-100 transition-opacity" />
             <img
-              src={logoUrl || "/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg"}
+              src={logoUrl || "https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png"}
               alt="Logo Al-Maliki"
               className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-amber-400/80 shadow-lg object-cover"
             />

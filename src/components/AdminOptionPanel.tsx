@@ -29,7 +29,8 @@ import {
   Smartphone,
   Monitor,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  User
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { syncPWAIdentity } from '../services/pwaSyncService';
@@ -75,7 +76,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     jarakRumahKm: 15,
     status: 'Aktif',
     poinPelanggaran: 0,
-    foto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+    foto: '',
   });
 
   // Modals for Dewan Keamanan CRUD in Option Panel
@@ -89,7 +90,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     noWa: '0812',
     alamat: 'Komplek Asatidz Al-Maliki',
     statusKeaktifan: 'Aktif',
-    foto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+    foto: '',
     jadwalPiket: [{ hari: 'Senin', shift: 'Pagi (06.00 - 14.00)', pos: 'Pos Gerbang Utama' }],
   });
 
@@ -106,7 +107,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     divisi: 'Pos Gerbang Utama',
     genderAccess: 'all',
     noWa: '0812',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+    avatar: '',
     statusAktif: true,
   });
 
@@ -212,15 +213,11 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     e.preventDefault();
     if (!santriForm.nis || !santriForm.nama) return;
 
-    const defaultFoto = santriForm.gender === 'putri' 
-      ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80'
-      : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80';
-
     const saved: Santri = {
       id: editingSantri ? editingSantri.id : `san_${Date.now()}`,
       nis: santriForm.nis.trim(),
       nama: santriForm.nama.trim(),
-      foto: (santriForm.foto && santriForm.foto.trim()) ? santriForm.foto.trim() : defaultFoto,
+      foto: (santriForm.foto && santriForm.foto.trim()) ? santriForm.foto.trim() : '',
       gender: (santriForm.gender as Gender) || 'putra',
       kelas: santriForm.kelas || '1 Wustho',
       kamar: santriForm.kamar || 'K-01',
@@ -248,7 +245,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       id: editingDewan ? editingDewan.id : `dk_${Date.now()}`,
       nrp: dewanForm.nrp || `KAMTIB-${Math.floor(100 + Math.random() * 900)}`,
       nama: dewanForm.nama,
-      foto: dewanForm.foto || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+      foto: dewanForm.foto || '',
       jabatan: dewanForm.jabatan || 'Anggota Keamanan',
       divisi: (dewanForm.divisi as any) || 'Pos Gerbang Utama',
       noWa: dewanForm.noWa || '08123456789',
@@ -278,7 +275,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       divisi: userFormData.divisi || 'Komando Pusat',
       genderAccess: userFormData.genderAccess as any,
       noWa: userFormData.noWa || '08123456789',
-      avatar: userFormData.avatar || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+      avatar: userFormData.avatar || '',
       statusAktif: userFormData.statusAktif ?? true,
     };
 
@@ -1868,7 +1865,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   jarakRumahKm: 15,
                   status: 'Aktif',
                   poinPelanggaran: 0,
-                  foto: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80',
+                  foto: '',
                 });
                 setIsSantriModalOpen(true);
               }}
@@ -1908,11 +1905,17 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   <tr key={s.id} className="table-row-rainbow transition-all cursor-pointer">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <img
-                          src={s.foto || (s.gender === 'putri' ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100' : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100')}
-                          alt={s.nama}
-                          className="w-8 h-8 rounded-full object-cover border border-amber-400/60 shadow-xs shrink-0"
-                        />
+                        {s.foto ? (
+                          <img
+                            src={s.foto}
+                            alt={s.nama}
+                            className="w-8 h-8 rounded-full object-cover border border-amber-400/60 shadow-xs shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-slate-800 border border-amber-400/60 shadow-xs shrink-0 flex items-center justify-center text-amber-400">
+                            <User className="w-4 h-4" />
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <div className="font-bold text-white text-xs truncate max-w-[150px]">{s.nama}</div>
                           <div className="text-[10px] font-mono text-zinc-400">NIS: {s.nis}</div>
@@ -1994,7 +1997,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   noWa: '0812',
                   alamat: 'Komplek Asatidz Al-Maliki',
                   statusKeaktifan: 'Aktif',
-                  foto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+                  foto: '',
                   jadwalPiket: [{ hari: 'Senin', shift: 'Pagi (06.00 - 14.00)', pos: 'Pos Gerbang Utama' }],
                 });
                 setIsDewanModalOpen(true);
@@ -2102,7 +2105,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   divisi: 'Patroli & Intelijen',
                   genderAccess: 'all',
                   noWa: '0812',
-                  avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+                  avatar: '',
                   statusAktif: true,
                 });
                 setIsUserModalOpen(true);
@@ -2133,7 +2136,13 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                     <tr key={u.id} className="table-row-rainbow transition-all cursor-pointer">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img src={u.avatar} alt="" className="w-9 h-9 rounded-full object-cover border border-zinc-700" />
+                          {u.avatar ? (
+                            <img src={u.avatar} alt="" className="w-9 h-9 rounded-full object-cover border border-zinc-700" />
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-slate-800 border border-zinc-700 flex items-center justify-center text-amber-400">
+                              <User className="w-5 h-5" />
+                            </div>
+                          )}
                           <div>
                             <p className="font-bold text-white text-xs">{u.nama}</p>
                             <p className="text-[10px] font-mono text-zinc-400">NRP: {u.nrp || '-'}</p>
@@ -2374,15 +2383,16 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
 
                 <div className="flex items-start gap-3">
                   {/* Photo Preview Box */}
-                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-amber-400/80 shadow-md shrink-0 bg-slate-900 flex items-center justify-center">
-                    <img
-                      src={santriForm.foto || (santriForm.gender === 'putri' ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200' : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200')}
-                      alt="Pratinjau Foto Santri"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200';
-                      }}
-                    />
+                  <div className="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-amber-400/80 shadow-md shrink-0 bg-slate-900 flex items-center justify-center text-amber-400">
+                    {santriForm.foto ? (
+                      <img
+                        src={santriForm.foto}
+                        alt="Pratinjau Foto Santri"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-8 h-8" />
+                    )}
                   </div>
 
                   <div className="flex-1 space-y-2 min-w-0">
@@ -2401,23 +2411,11 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                         <span>Pilih Berkas Foto</span>
                         <input type="file" accept="image/*" onChange={handleUploadSantriFoto} className="hidden" />
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => setSantriForm({ 
-                          ...santriForm, 
-                          foto: santriForm.gender === 'putri' 
-                            ? 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&auto=format&fit=crop&q=80'
-                            : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&auto=format&fit=crop&q=80'
-                        })}
-                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg cursor-pointer transition-colors"
-                      >
-                        Default Avatar
-                      </button>
                       {santriForm.foto && (
                         <button
                           type="button"
                           onClick={() => setSantriForm({ ...santriForm, foto: '' })}
-                          className="px-2 py-1 text-red-400 hover:text-red-300 cursor-pointer"
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-red-400 hover:text-red-300 rounded-lg cursor-pointer transition-colors border border-slate-700"
                         >
                           Hapus Foto
                         </button>

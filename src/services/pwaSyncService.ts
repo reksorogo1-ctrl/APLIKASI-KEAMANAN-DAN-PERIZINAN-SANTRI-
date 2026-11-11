@@ -13,7 +13,8 @@ export function syncPWAIdentity(config: SystemConfig): void {
   const shortName = config.namaPendekAplikasi || 'AL-MALIKI';
   const themeColor = config.themeColor || '#030712';
   const bgColor = config.backgroundColor || '#030712';
-  const appIcon = config.appIconUrl || '/icon.svg';
+  const OFFICIAL_LOGO_URL = 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
+  const appIcon = config.appIconUrl || OFFICIAL_LOGO_URL;
 
   // 1. Update Document Title
   document.title = `${appName} | Pusat Komando & Pengawasan`;
@@ -48,7 +49,7 @@ export function syncPWAIdentity(config: SystemConfig): void {
     appleIconLink.rel = 'apple-touch-icon';
     document.head.appendChild(appleIconLink);
   }
-  appleIconLink.href = appIcon;
+  appleIconLink.href = '/apple-touch-icon.png';
 
   // 5. Generate and inject Dynamic Web App Manifest Blob
   try {
@@ -65,22 +66,40 @@ export function syncPWAIdentity(config: SystemConfig): void {
       background_color: bgColor,
       icons: [
         {
-          src: appIcon,
+          src: '/favicon.png',
+          sizes: '64x64',
+          type: 'image/png',
+          purpose: 'any',
+        },
+        {
+          src: '/apple-touch-icon.png',
+          sizes: '180x180',
+          type: 'image/png',
+          purpose: 'any',
+        },
+        {
+          src: '/pwa-192x192.png',
           sizes: '192x192',
-          type: appIcon.startsWith('data:image/svg') || appIcon.endsWith('.svg') ? 'image/svg+xml' : 'image/png',
+          type: 'image/png',
           purpose: 'any',
         },
         {
-          src: appIcon,
+          src: '/pwa-512x512.png',
           sizes: '512x512',
-          type: appIcon.startsWith('data:image/svg') || appIcon.endsWith('.svg') ? 'image/svg+xml' : 'image/png',
+          type: 'image/png',
           purpose: 'any',
         },
         {
-          src: appIcon,
+          src: '/pwa-maskable-512x512.png',
           sizes: '512x512',
-          type: appIcon.startsWith('data:image/svg') || appIcon.endsWith('.svg') ? 'image/svg+xml' : 'image/png',
+          type: 'image/png',
           purpose: 'maskable',
+        },
+        {
+          src: OFFICIAL_LOGO_URL,
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any',
         },
       ],
     };

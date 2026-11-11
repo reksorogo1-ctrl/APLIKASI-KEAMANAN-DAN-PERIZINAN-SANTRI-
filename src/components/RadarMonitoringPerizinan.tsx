@@ -15,14 +15,15 @@ import {
   AlertOctagon,
   X,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  DoorOpen
 } from 'lucide-react';
 import { Perizinan, UserAccount, Pelanggaran } from '../types';
 import { WhatsAppTemplates, createWhatsAppUrl } from '../services/waService';
 import { storageService } from '../services/storageService';
 import { getWIBDateTime, hitungKeterlambatanWIB, getTanggalPenangguhanWIB } from '../utils/timeUtils';
 
-export type RadarBlipStatus = 'TERLAMBAT' | 'SEGERA KEMBALI' | 'SEDANG KELUAR' | 'DISETUJUI';
+export type RadarBlipStatus = 'TERLAMBAT' | 'SEGERA KEMBALI' | 'SEDANG DI LUAR' | 'MENUNGGU CHECK-OUT';
 
 interface RadarBlip {
   id: string;
@@ -101,24 +102,29 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
       const diffMs = isDeadLineValid ? deadline.getTime() - nowMs : 999999;
       const diffMinutes = Math.floor(diffMs / 60000);
 
-      let statusKamtib: RadarBlipStatus = 'DISETUJUI';
+      let statusKamtib: RadarBlipStatus = 'MENUNGGU CHECK-OUT';
       let isThreat = false;
       let isWarning = false;
       let menitKeterlambatan = 0;
       let sisaMenit = Math.max(0, diffMinutes);
 
+      const hasCheckedOut = Boolean(izin.actualKeluar || izin.status === 'Sedang Keluar');
+
       if (izin.status === 'Terlambat' || diffMinutes < 0) {
         statusKamtib = 'TERLAMBAT';
         isThreat = true;
         menitKeterlambatan = izin.menitKeterlambatan || Math.abs(diffMinutes);
-      } else if (diffMinutes <= 30) {
-        // Ketika waktu hampir habis (<= 30 menit), status berubah menjadi SEGERA KEMBALI
-        statusKamtib = 'SEGERA KEMBALI';
-        isWarning = true;
-      } else if (izin.status === 'Sedang Keluar') {
-        statusKamtib = 'SEDANG KELUAR';
+      } else if (hasCheckedOut) {
+        if (diffMinutes <= 30) {
+          // Ketika waktu hampir habis (<= 30 menit), status berubah menjadi SEGERA KEMBALI
+          statusKamtib = 'SEGERA KEMBALI';
+          isWarning = true;
+        } else {
+          statusKamtib = 'SEDANG DI LUAR';
+        }
       } else {
-        statusKamtib = 'DISETUJUI';
+        // Status awal pada radar saat izin disetujui adalah MENUNGGU CHECK-OUT
+        statusKamtib = 'MENUNGGU CHECK-OUT';
       }
 
       // Hash NIS & ID to deterministic angle and distance for visual stability
@@ -208,6 +214,36 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
       const url = createWhatsAppUrl(izin.noWaPenjemput, text);
       window.open(url, '_blank');
     }
+  };
+
+  // Mutasi Gerbang: Catat Keluar Gerbang (Status Berubah Menjadi 'SEDANG DI LUAR')
+  const handleTandaiKeluar = (izin: Perizinan) => {
+    const currentWIB = getWIBDateTime();
+    const actorName = currentUser ? currentUser.nama : 'Petugas Gerbang';
+    const updated: Perizinan = {
+      ...izin,
+      status: 'Sedang Keluar',
+      actualKeluar: `${currentWIB.dateStr} ${currentWIB.timeStr} WIB`,
+      petugasKeluar: actorName,
+      riwayatPersetujuan: [
+        ...izin.riwayatPersetujuan,
+        {
+          role: 'Pos Gerbang',
+          nama: actorName,
+          tanggal: `${currentWIB.dateStr} ${currentWIB.timeStr} WIB`,
+          status: 'Setuju',
+          catatan: `Santri melintasi pos gerbang (SEDANG DI LUAR) pada ${currentWIB.timeStr} WIB dicatat via Radar Monitoring.`,
+        }
+      ]
+    };
+    storageService.savePerizinan(updated);
+    storageService.addLog('Mutasi Gerbang', `Santri ${izin.santriNama} tercatat keluar gerbang pada ${currentWIB.timeStr} WIB (Status: SEDANG DI LUAR)`, 'gerbang');
+    storageService.addNotification({
+      judul: `Gerbang Keluar: ${izin.santriNama}`,
+      pesan: `Santri ${izin.santriNama} telah melintasi gerbang keluar (${currentWIB.timeStr} WIB). Status di Radar otomatis diperbarui menjadi SEDANG DI LUAR.`,
+      tipe: 'info',
+      linkMenu: 'monitoring',
+    });
   };
 
   // =========================================================================
@@ -668,7 +704,9 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                       ? 'bg-red-500 text-white animate-pulse'
                       : selectedBlip.isWarning
                       ? 'bg-amber-500 text-slate-950 animate-pulse'
-                      : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                      : selectedBlip.statusKamtib === 'SEDANG DI LUAR'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
                   }`}>
                     {selectedBlip.statusKamtib}
                   </span>
@@ -717,6 +755,8 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                         ? `Terlambat ${selectedBlip.menitKeterlambatan} Mnt` 
                         : selectedBlip.isWarning
                         ? `Sisa ${selectedBlip.sisaMenit} Menit`
+                        : selectedBlip.statusKamtib === 'MENUNGGU CHECK-OUT'
+                        ? 'Menunggu Gerbang'
                         : 'Tepat Waktu'}
                     </span>
                   </div>
@@ -753,6 +793,17 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                   <Send className="w-3.5 h-3.5" />
                   <span>Kirim WA</span>
                 </button>
+
+                {/* TOMBOL MUTASI: CATAT KELUAR GERBANG (JIKA MASIH MENUNGGU CHECK-OUT) */}
+                {selectedBlip.statusKamtib === 'MENUNGGU CHECK-OUT' && (
+                  <button
+                    onClick={() => handleTandaiKeluar(selectedBlip.izin)}
+                    className="w-full py-2.5 px-4 rounded-xl font-mono font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white border border-blue-400"
+                  >
+                    <DoorOpen className="w-4 h-4 text-white" />
+                    <span>Catat Keluar Gerbang (Status: SEDANG DI LUAR)</span>
+                  </button>
+                )}
 
                 {/* TOMBOL SELESAI / SANTRI KEMBALI */}
                 <button

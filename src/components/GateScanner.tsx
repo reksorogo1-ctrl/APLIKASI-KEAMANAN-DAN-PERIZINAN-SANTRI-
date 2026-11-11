@@ -184,8 +184,8 @@ export const GateScanner: React.FC<GateScannerProps> = ({
   };
 
   const handleSimulatePhoto = () => {
-    // Simulate real webcam capture at the gate
-    setDocumentationPhoto('https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80');
+    // Neutral simulated camera snapshot at the gate
+    setDocumentationPhoto('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="%23020617"/><circle cx="200" cy="150" r="65" fill="%230f172a" stroke="%2306b6d4" stroke-width="3"/><path d="M160 180c0-22 18-38 40-38s40 16 40 38" fill="none" stroke="%2338bdf8" stroke-width="4"/><circle cx="200" cy="120" r="20" fill="%2338bdf8"/><text x="200" y="245" fill="%2394a3b8" font-family="monospace" font-size="12" text-anchor="middle">KAMERA POS GERBANG UTAMA</text></svg>');
   };
 
   return (

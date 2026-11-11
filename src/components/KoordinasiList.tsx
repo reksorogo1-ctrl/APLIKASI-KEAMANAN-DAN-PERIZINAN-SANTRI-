@@ -460,11 +460,17 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
 
                 {/* Sender & Timestamp Bar */}
                 <div className="flex items-center gap-3 pt-2 border-t border-slate-800/80 text-xs">
-                  <img
-                    src={selectedTicket.pengirimAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"}
-                    alt={selectedTicket.pengirimNama}
-                    className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shadow-xs"
-                  />
+                  {selectedTicket.pengirimAvatar ? (
+                    <img
+                      src={selectedTicket.pengirimAvatar}
+                      alt={selectedTicket.pengirimNama}
+                      className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-amber-400/40 shadow-xs flex items-center justify-center text-amber-400">
+                      <User className="w-5 h-5" />
+                    </div>
+                  )}
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-white font-sans text-sm">{selectedTicket.pengirimNama}</span>

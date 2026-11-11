@@ -44,7 +44,7 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
     divisi: 'Komando Pusat',
     genderAccess: 'all',
     noWa: '081234567800',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     statusAktif: true,
   };
 

@@ -168,6 +168,28 @@ class StorageService {
 
       const k = localStorage.getItem(STORAGE_KEYS.KOORDINASI);
       this.cache.koordinasi = k ? JSON.parse(k) : INITIAL_KOORDINASI;
+
+      // Enforce official logo Ponpes Salaf Al-Maliki & strip dummy photos from cache
+      const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
+      if (!this.cache.systemConfig.logoUrl || this.cache.systemConfig.logoUrl.includes('logo_pesantren_almaliki') || !this.cache.systemConfig.logoUrl.startsWith('http')) {
+        this.cache.systemConfig.logoUrl = OFFICIAL_LOGO;
+      }
+      if (!this.cache.systemConfig.appIconUrl || this.cache.systemConfig.appIconUrl === '/icon.svg') {
+        this.cache.systemConfig.appIconUrl = OFFICIAL_LOGO;
+      }
+
+      this.cache.santri = this.cache.santri.map(s => ({
+        ...s,
+        foto: s.foto && s.foto.includes('unsplash.com') ? '' : (s.foto || ''),
+      }));
+      this.cache.dewan = this.cache.dewan.map(d => ({
+        ...d,
+        foto: d.foto && d.foto.includes('unsplash.com') ? '' : (d.foto || ''),
+      }));
+      this.cache.users = this.cache.users.map(u => ({
+        ...u,
+        avatar: u.avatar && u.avatar.includes('unsplash.com') ? '' : (u.avatar || ''),
+      }));
     } catch (err) {
       console.warn('LocalStorage load warning:', err);
     }

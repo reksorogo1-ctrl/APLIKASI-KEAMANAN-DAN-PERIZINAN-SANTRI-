@@ -10,7 +10,8 @@ import {
   X, 
   Send,
   ShieldCheck,
-  Users
+  Users,
+  User
 } from 'lucide-react';
 import { DewanKeamanan } from '../types';
 import { storageService } from '../services/storageService';
@@ -27,7 +28,7 @@ export const DewanKeamananList: React.FC<DewanKeamananListProps> = ({ dewanList 
 
   const [formData, setFormData] = useState<Partial<DewanKeamanan>>({
     nama: '',
-    foto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+    foto: '',
     jabatan: 'Anggota Keamanan',
     divisi: 'Pos Gerbang Utama',
     noWa: '0812',
@@ -47,7 +48,7 @@ export const DewanKeamananList: React.FC<DewanKeamananListProps> = ({ dewanList 
     setEditingPengurus(null);
     setFormData({
       nama: '',
-      foto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+      foto: '',
       jabatan: 'Anggota Keamanan',
       divisi: 'Pos Gerbang Utama',
       noWa: '0812',
@@ -74,7 +75,7 @@ export const DewanKeamananList: React.FC<DewanKeamananListProps> = ({ dewanList 
       id: editingPengurus ? editingPengurus.id : `dk_${Date.now()}`,
       nrp: formData.nrp || `KAMTIB-${Math.floor(100 + Math.random() * 900)}`,
       nama: formData.nama || '',
-      foto: formData.foto || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+      foto: formData.foto || '',
       jabatan: formData.jabatan || 'Anggota Keamanan',
       divisi: (formData.divisi as any) || 'Pos Gerbang Utama',
       noWa: formData.noWa || '08123456789',
@@ -170,11 +171,17 @@ export const DewanKeamananList: React.FC<DewanKeamananListProps> = ({ dewanList 
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3.5">
                   <div className="relative">
-                    <img
-                      src={pengurus.foto}
-                      alt={pengurus.nama}
-                      className="w-13 h-13 rounded-2xl object-cover border-2 border-amber-400/40 shrink-0 shadow-md"
-                    />
+                    {pengurus.foto ? (
+                      <img
+                        src={pengurus.foto}
+                        alt={pengurus.nama}
+                        className="w-13 h-13 rounded-2xl object-cover border-2 border-amber-400/40 shrink-0 shadow-md"
+                      />
+                    ) : (
+                      <div className="w-13 h-13 rounded-2xl bg-slate-800 border-2 border-amber-400/40 shrink-0 shadow-md flex items-center justify-center text-amber-400">
+                        <User className="w-6 h-6" />
+                      </div>
+                    )}
                     <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center">
                       <ShieldCheck className="w-2.5 h-2.5 text-slate-950" />
                     </span>

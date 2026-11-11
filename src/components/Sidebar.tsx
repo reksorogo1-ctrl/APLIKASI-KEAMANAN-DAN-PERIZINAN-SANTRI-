@@ -16,7 +16,8 @@ import {
   ShieldAlert,
   Radar,
   Radio,
-  LogOut
+  LogOut,
+  User
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -250,11 +251,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="relative shrink-0 group">
               <div className="absolute -inset-1 rounded-xl bg-gradient-to-tr from-cyan-400 via-amber-400 to-blue-500 opacity-70 blur-[2px] group-hover:opacity-100 transition-opacity" />
-              <img
-                src={currentUser?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80"}
-                alt={currentUser?.nama || "Pemilik Akun"}
-                className="relative w-9 h-9 rounded-xl border border-amber-400 object-cover shadow-md"
-              />
+              {currentUser?.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser?.nama || "Pemilik Akun"}
+                  className="relative w-9 h-9 rounded-xl border border-amber-400 object-cover shadow-md"
+                />
+              ) : (
+                <div className="relative w-9 h-9 rounded-xl border border-amber-400/80 bg-slate-900 flex items-center justify-center shadow-md text-amber-400">
+                  <User className="w-5 h-5" />
+                </div>
+              )}
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-slate-950 animate-pulse" />
             </div>
             <div className="min-w-0 flex-1">

@@ -15,7 +15,8 @@ import {
   ChevronUp,
   FileCheck2,
   Calendar,
-  Send
+  Send,
+  User
 } from 'lucide-react';
 import { Santri, UserAccount, Perizinan, Pelanggaran, Gender } from '../types';
 import { createWhatsAppUrl } from '../services/waService';
@@ -90,11 +91,17 @@ export const SantriPerKelas: React.FC<SantriPerKelasProps> = ({
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-cyan-500 via-amber-400 to-blue-600 opacity-60 blur-xs" />
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.nama}
-                className="relative w-20 h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-xl"
-              />
+              {currentUser.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.nama}
+                  className="relative w-20 h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-xl"
+                />
+              ) : (
+                <div className="relative w-20 h-20 rounded-2xl border-2 border-amber-400 bg-slate-900 shadow-xl flex items-center justify-center text-amber-400">
+                  <User className="w-10 h-10" />
+                </div>
+              )}
               <span className="absolute -bottom-1.5 -right-1.5 p-1 rounded-full bg-blue-600 text-white shadow-md border-2 border-slate-950">
                 <ShieldCheck className="w-4 h-4 text-cyan-200" />
               </span>
@@ -254,11 +261,17 @@ export const SantriPerKelas: React.FC<SantriPerKelasProps> = ({
                             className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between space-y-3 shadow-md hover-rainbow-edge"
                           >
                             <div className="flex items-start gap-3">
-                              <img
-                                src={santri.foto}
-                                alt={santri.nama}
-                                className="w-12 h-12 rounded-xl object-cover border border-amber-400/40 shrink-0 shadow-sm"
-                              />
+                              {santri.foto ? (
+                                <img
+                                  src={santri.foto}
+                                  alt={santri.nama}
+                                  className="w-12 h-12 rounded-xl object-cover border border-amber-400/40 shrink-0 shadow-sm"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-xl bg-slate-800 border border-amber-400/40 shrink-0 shadow-sm flex items-center justify-center text-amber-400">
+                                  <User className="w-6 h-6" />
+                                </div>
+                              )}
                               <div className="truncate flex-1">
                                 <h4 className="text-xs font-bold text-white truncate leading-tight">
                                   {santri.nama}

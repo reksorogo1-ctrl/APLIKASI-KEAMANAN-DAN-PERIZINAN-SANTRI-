@@ -1,0 +1,64 @@
+{
+  "id": "/",
+  "name": "KEAMANAN SANTRI AL-MALIKI",
+  "short_name": "AL-MALIKI",
+  "description": "Sistem Informasi Manajemen Keamanan dan Ketertiban Santri Pondok Pesantren Salaf Al-Maliki",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#030712",
+  "background_color": "#030712",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Radar Monitoring",
+      "short_name": "Radar",
+      "description": "Radar Monitoring Perizinan Santri",
+      "url": "/#radar",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Perizinan Santri",
+      "short_name": "Perizinan",
+      "description": "Kelola Perizinan Santri",
+      "url": "/#perizinan",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
