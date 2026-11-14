@@ -130,13 +130,13 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
     <div className="space-y-6">
       
       {/* Title & 3D Command Telemetry Header */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-800/80 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950/60 shadow-2xl metallic-glass-card hover-rainbow-edge p-6">
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-400 via-amber-400 to-blue-600 opacity-70" />
+      <div className="relative rounded-3xl overflow-hidden border border-emerald-800/80 bg-gradient-to-r from-[#02100a] via-[#041d13] to-emerald-950/60 shadow-2xl metallic-glass-card hover-rainbow-edge p-6">
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-400 via-amber-400 to-emerald-600 opacity-70" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-xs glow-cyan uppercase tracking-wider">
-                <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-xs glow-gold uppercase tracking-wider">
+                <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
                 RADAR SECTOR SCAN
               </span>
               <span className="text-slate-600">·</span>
@@ -148,15 +148,15 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
             <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2 font-sans uppercase">
               Monitoring Real-Time Santri di Luar Asrama
             </h1>
-            <p className="text-xs text-slate-400 mt-1 font-sans">
+            <p className="text-xs text-emerald-200/75 mt-1 font-sans">
               Pengawasan aktif batas jam izin, perhitungan mundur keterlambatan otomatis, dan peringatan darurat terintegrasi.
             </p>
           </div>
 
           {/* Live Status indicator */}
-          <div className="flex items-center gap-2.5 bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-xl text-xs shadow-inner font-mono hover-rainbow-edge">
-            <span className="text-cyan-300 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <div className="flex items-center gap-2.5 bg-[#041d13]/90 border border-emerald-800 px-4 py-2 rounded-xl text-xs shadow-inner font-mono hover-rainbow-edge">
+            <span className="text-emerald-300 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               Live Sync
             </span>
             <span className="text-slate-600">·</span>
@@ -167,16 +167,16 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
         </div>
 
         {/* View Mode Switch */}
-        <div className="flex items-center gap-2 pt-4 mt-4 border-t border-slate-800/80 font-mono text-xs overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 pt-4 mt-4 border-t border-emerald-800/80 font-mono text-xs overflow-x-auto no-scrollbar">
           <button
             onClick={() => setViewMode('sentry')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
               viewMode === 'sentry'
-                ? 'bg-gradient-to-r from-blue-900/80 to-slate-900 text-amber-300 border border-amber-400/50 shadow-md rainbow-active-border'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent'
+                ? 'bg-gradient-to-r from-emerald-900/80 to-[#041d13] text-amber-300 border border-amber-400/50 shadow-md rainbow-active-border'
+                : 'text-emerald-200/75 hover:text-white hover:bg-[#041d13]/60 border border-transparent'
             }`}
           >
-            <Clock className="w-4 h-4 text-cyan-400" />
+            <Clock className="w-4 h-4 text-emerald-400" />
             <span>Radar Sentry & Countdown Santri di Luar ({outsideList.length})</span>
           </button>
 
@@ -184,13 +184,13 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
             onClick={() => setViewMode('activity_log')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
               viewMode === 'activity_log'
-                ? 'bg-gradient-to-r from-blue-900/80 to-slate-900 text-amber-300 border border-amber-400/50 shadow-md rainbow-active-border'
-                : 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent'
+                ? 'bg-gradient-to-r from-emerald-900/80 to-[#041d13] text-amber-300 border border-amber-400/50 shadow-md rainbow-active-border'
+                : 'text-emerald-200/75 hover:text-white hover:bg-[#041d13]/60 border border-transparent'
             }`}
           >
             <Activity className="w-4 h-4 text-amber-400" />
             <span>Live Security Activity & Accountability Log</span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-500/40">D3 RADAR</span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40">D3 RADAR</span>
           </button>
         </div>
       </div>
@@ -225,7 +225,7 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-mono font-medium uppercase tracking-wider">Total Santri di Luar</span>
+            <span className="text-xs text-emerald-200/75 font-mono font-medium uppercase tracking-wider">Total Santri di Luar</span>
             <div className="p-2.5 rounded-xl bg-amber-400/10 text-amber-300 border border-amber-400/30 glow-gold">
               <DoorOpen className="w-4 h-4" />
             </div>
@@ -233,7 +233,7 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
           <div className="mt-2 text-3xl font-black font-mono text-white tabular-nums drop-shadow-sm">
             {outsideList.length}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1 font-mono">Belum melakukan check-in</p>
+          <p className="text-[11px] text-emerald-200/75 mt-1 font-mono">Belum melakukan check-in</p>
         </div>
 
         <div 
@@ -273,29 +273,29 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
           <div className="mt-2 text-3xl font-black font-mono text-emerald-400 tabular-nums drop-shadow-sm">
             {safeCount}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1 font-mono">Sisa waktu aman terkendali</p>
+          <p className="text-[11px] text-emerald-200/75 mt-1 font-mono">Sisa waktu aman terkendali</p>
         </div>
 
       </div>
 
       {/* 3D Filter & Search */}
-      <div className="p-4 metallic-glass-card border border-slate-800/80 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl hover-rainbow-edge">
+      <div className="p-4 metallic-glass-card border border-emerald-800/80 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl hover-rainbow-edge">
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-emerald-200/75" />
           <input
             type="text"
             placeholder="Cari santri yang sedang keluar..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 text-xs bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-mono transition-all"
+            className="w-full pl-10 pr-3 py-2 text-xs bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-100 placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 font-mono transition-all"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 w-full sm:w-auto p-1 bg-slate-900/90 rounded-xl border border-slate-800">
+        <div className="flex items-center gap-1.5 w-full sm:w-auto p-1 bg-[#041d13]/90 rounded-xl border border-emerald-800">
           <button
             onClick={() => setFilterType('all')}
             className={`px-3.5 py-1.5 text-xs rounded-lg font-mono font-bold transition-all cursor-pointer ${
-              filterType === 'all' ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              filterType === 'all' ? 'bg-gradient-to-r from-emerald-600 to-emerald-600 text-white shadow-md' : 'text-emerald-200/75 hover:text-white'
             }`}
           >
             Semua ({outsideList.length})
@@ -321,10 +321,10 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
       </div>
 
       {/* 3D Live Monitoring Table */}
-      <div className="metallic-glass-card border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl hover-rainbow-edge track-scroll-box">
+      <div className="metallic-glass-card border border-emerald-800/80 rounded-3xl overflow-hidden shadow-2xl hover-rainbow-edge track-scroll-box">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-200">
-            <thead className="table-header-metallic text-slate-300 uppercase text-[10px] font-mono tracking-wider">
+            <thead className="table-header-metallic text-emerald-100/90 uppercase text-[10px] font-mono tracking-wider">
               <tr>
                 <th className="px-6 py-3.5">Santri</th>
                 <th className="px-4 py-3.5">Jenis & Tujuan</th>
@@ -335,10 +335,10 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
                 <th className="px-6 py-3.5 text-right">Peringatan Cepat</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 bg-slate-950/40 font-mono">
+            <tbody className="divide-y divide-emerald-800/60 bg-[#02100a]/40 font-mono">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-emerald-200/75">
                     <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-60" />
                     Tidak ada santri pada kategori ini.
                   </td>
@@ -348,15 +348,15 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
                   <tr key={item.id} className="table-row-rainbow transition-all cursor-pointer">
                     <td className="px-6 py-4">
                       <div className="font-bold text-white tracking-wide font-sans">{item.santriNama}</div>
-                      <div className="text-[11px] text-slate-400">
-                        NIS: <span className="text-cyan-300">{item.santriNis}</span> · {item.santriKelas}
+                      <div className="text-[11px] text-emerald-200/75">
+                        NIS: <span className="text-emerald-300">{item.santriNis}</span> · {item.santriKelas}
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <span className="font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30 text-[11px]">
                         {item.jenisIzin}
                       </span>
-                      <div className="text-[10px] text-slate-400 truncate max-w-[150px] mt-1">{item.tujuan}</div>
+                      <div className="text-[10px] text-emerald-200/75 truncate max-w-[150px] mt-1">{item.tujuan}</div>
                     </td>
                     <td className="px-4 py-4 tabular-nums text-slate-200">
                       {item.actualKeluar || `${item.tglKeluar} ${item.jamKeluar}`}
@@ -365,7 +365,7 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
                       <div className="font-bold text-red-400 tabular-nums">
                         {item.jamKembali} WIB
                       </div>
-                      <div className="text-[10px] text-slate-400">{item.tglKembali}</div>
+                      <div className="text-[10px] text-emerald-200/75">{item.tglKembali}</div>
                     </td>
                     <td className="px-4 py-4">
                       <span className={`px-2.5 py-1 rounded-lg text-[10px] font-mono tracking-wider ${item.timing.badgeClass}`}>
@@ -382,7 +382,7 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
                           e.stopPropagation();
                           onViewSuratIzin(item);
                         }}
-                        className="p-2 text-slate-300 hover:text-cyan-300 hover:bg-slate-800/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-cyan-500/40"
+                        className="p-2 text-emerald-100/90 hover:text-emerald-300 hover:bg-[#072c1e]/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-emerald-500/40"
                         title="Lihat Surat Izin Digital"
                       >
                         <Eye className="w-4 h-4" />
@@ -392,7 +392,7 @@ export const MonitoringRealtime: React.FC<MonitoringRealtimeProps> = ({
                           e.stopPropagation();
                           handleSendWaWarning(item, item.timing.minutesLeft);
                         }}
-                        className="p-2 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-emerald-500/40"
+                        className="p-2 text-emerald-400 hover:text-emerald-300 hover:bg-[#072c1e]/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-emerald-500/40"
                         title="Kirim Peringatan WA"
                       >
                         <Send className="w-4 h-4" />

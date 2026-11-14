@@ -204,21 +204,21 @@ Wassalamu'alaikum Wr. Wb.`;
     <div className="space-y-6">
       
       {/* 3D Command Header Banner */}
-      <div className="metallic-glass-card rounded-3xl p-6 border border-slate-800/80 shadow-2xl hover-rainbow-edge relative overflow-hidden">
+      <div className="metallic-glass-card rounded-3xl p-6 border border-emerald-800/80 shadow-2xl hover-rainbow-edge relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent"></div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-widest uppercase bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 glow-cyan">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-widest uppercase bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 glow-gold">
                 Takzir Edukatif & Pembinaan Karakter
               </span>
-              <span className="text-[10px] font-mono text-slate-500">· Islamic Educational Sanctions & Auto Letter Engine</span>
+              <span className="text-[10px] font-mono text-emerald-300/60">· Islamic Educational Sanctions & Auto Letter Engine</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-3 font-sans">
               <GraduationCap className="w-6 h-6 text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
               Rekapitulasi Pelanggaran & Sanksi Edukatif Santri
             </h1>
-            <p className="text-xs text-slate-400 mt-1 font-mono">
+            <p className="text-xs text-emerald-200/75 mt-1 font-mono">
               Penetapan takzir mendidik (hafalan nadzom, khidmah ibadah, tilawah Al-Qur'an), bebas kekerasan dan dilengkapi Surat Pelanggaran Otomatis
             </p>
           </div>
@@ -234,13 +234,13 @@ Wassalamu'alaikum Wr. Wb.`;
       </div>
 
       {/* Filter Tabs by Status - 3D Styled */}
-      <div className="metallic-glass-card border border-slate-800/80 p-2 rounded-2xl flex items-center gap-2 overflow-x-auto text-xs shadow-lg font-mono">
+      <div className="metallic-glass-card border border-emerald-800/80 p-2 rounded-2xl flex items-center gap-2 overflow-x-auto text-xs shadow-lg font-mono">
         <button
           onClick={() => setSelectedStatusTab('all')}
           className={`tactile-interactive px-4 py-2 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             selectedStatusTab === 'all'
               ? 'bg-gradient-to-r from-amber-400/20 to-yellow-400/20 text-amber-300 border border-amber-400/40 rainbow-active-border glow-gold'
-              : 'text-slate-400 hover:text-white border border-transparent'
+              : 'text-emerald-200/75 hover:text-white border border-transparent'
           }`}
         >
           <Award className="w-3.5 h-3.5" />
@@ -251,7 +251,7 @@ Wassalamu'alaikum Wr. Wb.`;
           className={`tactile-interactive px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
             selectedStatusTab === 'Belum Dikerjakan'
               ? 'bg-rose-500/20 text-rose-300 border border-rose-400/40 rainbow-active-border glow-red'
-              : 'text-slate-400 hover:text-white border border-transparent'
+              : 'text-emerald-200/75 hover:text-white border border-transparent'
           }`}
         >
           Belum Dikerjakan
@@ -261,7 +261,7 @@ Wassalamu'alaikum Wr. Wb.`;
           className={`tactile-interactive px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
             selectedStatusTab === 'Sedang Berjalan'
               ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40 rainbow-active-border glow-gold'
-              : 'text-slate-400 hover:text-white border border-transparent'
+              : 'text-emerald-200/75 hover:text-white border border-transparent'
           }`}
         >
           Sedang Menjalani
@@ -270,8 +270,8 @@ Wassalamu'alaikum Wr. Wb.`;
           onClick={() => setSelectedStatusTab('Selesai')}
           className={`tactile-interactive px-3.5 py-2 rounded-xl font-semibold transition-all whitespace-nowrap cursor-pointer ${
             selectedStatusTab === 'Selesai'
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 rainbow-active-border glow-cyan'
-              : 'text-slate-400 hover:text-white border border-transparent'
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 rainbow-active-border glow-gold'
+              : 'text-emerald-200/75 hover:text-white border border-transparent'
           }`}
         >
           Tuntas / Selesai
@@ -286,15 +286,15 @@ Wassalamu'alaikum Wr. Wb.`;
           placeholder="Cari nama santri, NIS, kelas, kode sanksi, atau bentuk pembinaan..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-11 pr-4 py-3 text-xs bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-mono shadow-inner transition-all hover-rainbow-edge"
+          className="w-full pl-11 pr-4 py-3 text-xs bg-[#02100a]/90 border border-emerald-800/80 rounded-2xl text-white placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 font-mono shadow-inner transition-all hover-rainbow-edge"
         />
       </div>
 
       {/* SANKSI EDUKATIF RECAPITULATION TABLE (EXACT REQUESTED COLUMNS) */}
-      <div className="metallic-glass-card border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl hover-rainbow-edge track-scroll-box">
+      <div className="metallic-glass-card border border-emerald-800/80 rounded-3xl overflow-hidden shadow-2xl hover-rainbow-edge track-scroll-box">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-200">
-            <thead className="table-header-metallic text-slate-300 uppercase text-[10px] font-mono tracking-wider">
+            <thead className="table-header-metallic text-emerald-100/90 uppercase text-[10px] font-mono tracking-wider">
               <tr>
                 <th className="px-4 py-4 text-center w-12">Nomor</th>
                 <th className="px-5 py-4">Nama Santri</th>
@@ -307,10 +307,10 @@ Wassalamu'alaikum Wr. Wb.`;
                 <th className="px-5 py-4 text-right">Aksi Detail & Cetak Surat</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 bg-slate-950/40 font-mono">
+            <tbody className="divide-y divide-emerald-800/60 bg-[#02100a]/40 font-mono">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-slate-500 font-mono">
+                  <td colSpan={9} className="px-6 py-12 text-center text-emerald-300/60 font-mono">
                     Tidak ada catatan sanksi pembinaan yang sesuai filter.
                   </td>
                 </tr>
@@ -322,9 +322,9 @@ Wassalamu'alaikum Wr. Wb.`;
                   const displayPetugas = item.petugasPencatat || item.petugasPenetap;
 
                   return (
-                    <tr key={item.id} className="table-row-rainbow transition-all hover:bg-slate-900/60">
+                    <tr key={item.id} className="table-row-rainbow transition-all hover:bg-[#041d13]/60">
                       {/* 1. Nomor */}
-                      <td className="px-4 py-4 text-center font-bold text-slate-400">
+                      <td className="px-4 py-4 text-center font-bold text-emerald-200/75">
                         {idx + 1}
                       </td>
 
@@ -333,8 +333,8 @@ Wassalamu'alaikum Wr. Wb.`;
                         <div className="font-bold text-white font-sans text-sm tracking-wide">
                           {item.santriNama}
                         </div>
-                        <div className="text-[11px] text-slate-400 font-mono">
-                          NIS: <span className="text-cyan-300">{item.santriNis}</span>
+                        <div className="text-[11px] text-emerald-200/75 font-mono">
+                          NIS: <span className="text-emerald-300">{item.santriNis}</span>
                         </div>
                         <div className="text-[9px] text-amber-400 font-mono font-bold mt-0.5">
                           {item.customNomorSurat || item.kodeSanksi}
@@ -343,10 +343,10 @@ Wassalamu'alaikum Wr. Wb.`;
 
                       {/* 3. Kelas */}
                       <td className="px-4 py-4">
-                        <span className="px-2 py-0.5 rounded bg-blue-950/70 border border-blue-500/30 text-blue-300 text-[11px] font-semibold">
+                        <span className="px-2 py-0.5 rounded bg-emerald-950/70 border border-emerald-500/30 text-amber-300 text-[11px] font-semibold">
                           {displayKelas}
                         </span>
-                        <div className="text-[10px] text-slate-400 mt-1">
+                        <div className="text-[10px] text-emerald-200/75 mt-1">
                           {item.santriGender === 'putra' ? 'Banin' : 'Banat'}
                         </div>
                       </td>
@@ -357,19 +357,19 @@ Wassalamu'alaikum Wr. Wb.`;
                           {item.jenisPelanggaran}
                         </div>
                         {item.kronologi && (
-                          <div className="text-[10px] text-slate-400 italic line-clamp-1 mt-0.5 font-sans">
+                          <div className="text-[10px] text-emerald-200/75 italic line-clamp-1 mt-0.5 font-sans">
                             {item.kronologi}
                           </div>
                         )}
                       </td>
 
                       {/* 5. Tanggal Pelanggaran */}
-                      <td className="px-4 py-4 whitespace-nowrap text-slate-300">
+                      <td className="px-4 py-4 whitespace-nowrap text-emerald-100/90">
                         <div className="font-bold text-slate-200 flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-amber-400" />
                           <span>{displayTglPelanggaran}</span>
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
+                        <div className="text-[10px] text-emerald-200/75 mt-0.5">
                           {item.pelanggaranHari || 'Senin'}
                         </div>
                       </td>
@@ -379,7 +379,7 @@ Wassalamu'alaikum Wr. Wb.`;
                         <div className="text-amber-300 font-semibold max-w-sm font-sans leading-relaxed">
                           {item.bentukSanksi}
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                        <div className="text-[10px] text-emerald-200/75 mt-1 font-mono">
                           Batas: <span className="text-rose-400 font-bold">{item.batasMaksimal || item.tanggalTargetSelesai}</span>
                         </div>
                       </td>
@@ -387,10 +387,10 @@ Wassalamu'alaikum Wr. Wb.`;
                       {/* 7. Petugas Pencatat */}
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="text-slate-200 font-medium font-sans flex items-center gap-1.5">
-                          <UserCheck className="w-3.5 h-3.5 text-cyan-400" />
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
                           <span>{displayPetugas}</span>
                         </div>
-                        <div className="text-[10px] text-cyan-300/70 font-mono mt-0.5">
+                        <div className="text-[10px] text-emerald-300/70 font-mono mt-0.5">
                           Pembina: {item.ustadzPembina}
                         </div>
                       </td>
@@ -399,7 +399,7 @@ Wassalamu'alaikum Wr. Wb.`;
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className={`inline-block font-bold px-2.5 py-1 rounded-xl border text-[11px] ${
                           item.status === 'Selesai'
-                            ? 'text-emerald-300 bg-emerald-500/15 border-emerald-400/40 glow-cyan'
+                            ? 'text-emerald-300 bg-emerald-500/15 border-emerald-400/40 glow-gold'
                             : item.status === 'Sedang Berjalan'
                             ? 'text-amber-300 bg-amber-500/15 border-amber-400/40 glow-gold'
                             : 'text-rose-300 bg-rose-500/15 border-rose-500/40 glow-red'
@@ -413,10 +413,10 @@ Wassalamu'alaikum Wr. Wb.`;
                         {/* Tombol Cetak / Pratinjau Surat Otomatis */}
                         <button
                           onClick={() => setSelectedSanksiForSurat(item)}
-                          className="tactile-interactive inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition-all cursor-pointer shadow-md border border-blue-400/40"
+                          className="tactile-interactive inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 rounded-xl transition-all cursor-pointer shadow-md border border-amber-400/40"
                           title="Buka Pratinjau, Edit, dan Cetak Surat Pelanggaran & Sanksi Edukatif"
                         >
-                          <Printer className="w-3.5 h-3.5 text-cyan-300" />
+                          <Printer className="w-3.5 h-3.5 text-emerald-300" />
                           <span>Surat & Cetak</span>
                         </button>
 
@@ -432,7 +432,7 @@ Wassalamu'alaikum Wr. Wb.`;
 
                         <button
                           onClick={() => handleSendWA(item)}
-                          className="tactile-interactive p-2 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-emerald-500/30"
+                          className="tactile-interactive p-2 text-emerald-400 hover:text-emerald-300 hover:bg-[#072c1e]/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-emerald-500/30"
                           title="Kirim Surat / Laporan ke WA Wali Santri"
                         >
                           <Share2 className="w-4 h-4" />
@@ -450,8 +450,8 @@ Wassalamu'alaikum Wr. Wb.`;
       {/* Add Sanksi Modal - 3D Styled */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
-          <div className="w-full max-w-xl metallic-glass-card border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden my-8 rainbow-active-border card-3d-floating">
-            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950">
+          <div className="w-full max-w-xl metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden my-8 rainbow-active-border card-3d-floating">
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <GraduationCap className="w-4 h-4 text-amber-400" />
                 Penetapan Sanksi Edukatif & Penerbitan Surat Otomatis
@@ -461,7 +461,7 @@ Wassalamu'alaikum Wr. Wb.`;
                   setIsAddModalOpen(false);
                   if (onClearPreSelectedPelanggaran) onClearPreSelectedPelanggaran();
                 }} 
-                className="w-7 h-7 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-[#072c1e]/80 text-emerald-200/75 hover:text-white flex items-center justify-center transition-all cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -469,14 +469,14 @@ Wassalamu'alaikum Wr. Wb.`;
 
             <form onSubmit={handleSave} className="p-6 space-y-4 text-xs font-mono">
               <div>
-                <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                   Pilih Berkas Pelanggaran Santri
                 </label>
                 <select
                   required
                   value={selectedPelanggaranId}
                   onChange={(e) => setSelectedPelanggaranId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
                 >
                   <option value="">-- Pilih Kasus Pelanggaran Terdaftar --</option>
                   {pelanggaranList.map((p) => (
@@ -488,7 +488,7 @@ Wassalamu'alaikum Wr. Wb.`;
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                   Pilih Preset Sanksi Mendidik
                 </label>
                 <div className="grid grid-cols-1 gap-1.5 mb-2">
@@ -497,7 +497,7 @@ Wassalamu'alaikum Wr. Wb.`;
                       key={idx}
                       type="button"
                       onClick={() => setFormData({ ...formData, bentukSanksi: preset })}
-                      className="tactile-interactive text-left p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-850 border border-slate-700/80 text-slate-300 text-[11px] cursor-pointer hover:border-amber-400/40 transition-colors hover-rainbow-edge"
+                      className="tactile-interactive text-left p-2.5 rounded-xl bg-[#041d13]/90 hover:bg-slate-850 border border-emerald-800/80 text-emerald-100/90 text-[11px] cursor-pointer hover:border-amber-400/40 transition-colors hover-rainbow-edge"
                     >
                       • {preset}
                     </button>
@@ -509,13 +509,13 @@ Wassalamu'alaikum Wr. Wb.`;
                   value={formData.bentukSanksi}
                   onChange={(e) => setFormData({ ...formData, bentukSanksi: e.target.value })}
                   placeholder="Ketik bentuk takzir edukatif secara mendetail..."
-                  className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400 font-sans"
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400 font-sans"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                     Tanggal Penetapan Sanksi
                   </label>
                   <input
@@ -523,11 +523,11 @@ Wassalamu'alaikum Wr. Wb.`;
                     required
                     value={formData.tanggalPenetapan}
                     onChange={(e) => setFormData({ ...formData, tanggalPenetapan: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-mono focus:outline-none focus:border-amber-400"
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-mono focus:outline-none focus:border-amber-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                     Batas Maksimal Pengumpulan
                   </label>
                   <input
@@ -536,14 +536,14 @@ Wassalamu'alaikum Wr. Wb.`;
                     value={formData.batasMaksimal}
                     onChange={(e) => setFormData({ ...formData, batasMaksimal: e.target.value })}
                     placeholder="Contoh: 15 November 2026, 17:00 WIB"
-                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-mono focus:outline-none focus:border-amber-400"
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-mono focus:outline-none focus:border-amber-400"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                     Ustadz Pembina / Penerima Setoran
                   </label>
                   <input
@@ -552,17 +552,17 @@ Wassalamu'alaikum Wr. Wb.`;
                     value={formData.ustadzPembina}
                     onChange={(e) => setFormData({ ...formData, ustadzPembina: e.target.value })}
                     placeholder="Nama ustadz pembina"
-                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400 font-sans"
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400 font-sans"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                     Status Pelaksanaan
                   </label>
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
                   >
                     <option value="Belum Dikerjakan">Belum Dikerjakan</option>
                     <option value="Sedang Berjalan">Sedang Berjalan</option>
@@ -572,7 +572,7 @@ Wassalamu'alaikum Wr. Wb.`;
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                   Catatan Pembinaan / Pesan untuk Santri
                 </label>
                 <textarea
@@ -580,7 +580,7 @@ Wassalamu'alaikum Wr. Wb.`;
                   value={formData.catatanPembinaan}
                   onChange={(e) => setFormData({ ...formData, catatanPembinaan: e.target.value })}
                   placeholder="Catatan perkembangan atau motivasi..."
-                  className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400 font-sans"
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400 font-sans"
                 />
               </div>
 
@@ -591,14 +591,14 @@ Wassalamu'alaikum Wr. Wb.`;
                 </span>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-emerald-800">
                 <button
                   type="button"
                   onClick={() => {
                     setIsAddModalOpen(false);
                     if (onClearPreSelectedPelanggaran) onClearPreSelectedPelanggaran();
                   }}
-                  className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer font-bold transition-colors"
+                  className="px-4 py-2 text-emerald-200/75 hover:text-white cursor-pointer font-bold transition-colors"
                 >
                   Batal
                 </button>

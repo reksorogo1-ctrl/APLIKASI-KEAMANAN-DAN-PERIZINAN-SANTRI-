@@ -67,6 +67,46 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Struktur Organisasi Pengurus Pondok
+    match /struktur_organisasi/{nodeId} {
+      allow read, write: if true;
+    }
+
+    // Agenda Pengurus (Ketua Pondok)
+    match /agenda_pengurus/{agendaId} {
+      allow read, write: if true;
+    }
+
+    // Evaluasi Kepengurusan (Ketua Pondok)
+    match /evaluasi_kepengurusan/{evaluasiId} {
+      allow read, write: if true;
+    }
+
+    // Persetujuan & Pengajuan Divisi (Ketua Pondok)
+    match /pengajuan_divisi/{pengajuanId} {
+      allow read, write: if true;
+    }
+
+    // Arsip & Persuratan Resmi (Sekretaris)
+    match /surat_menyurat/{suratId} {
+      allow read, write: if true;
+    }
+
+    // Administrasi Keuangan Kas Pondok (Bendahara)
+    match /keuangan_transaksi/{transaksiId} {
+      allow read, write: if true;
+    }
+
+    // Inventaris Sarpras (Perlengkapan)
+    match /perlengkapan_inventaris/{barangId} {
+      allow read, write: if true;
+    }
+
+    // Peminjaman Barang (Perlengkapan)
+    match /perlengkapan_peminjaman/{peminjamanId} {
+      allow read, write: if true;
+    }
+
     // Diagnostic & Connection Test
     match /test/{docId} {
       allow read, write: if true;

@@ -1,77 +1,124 @@
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  ShieldCheck, 
-  FileCheck2, 
-  DoorOpen, 
-  BookOpenCheck, 
-  AlertTriangle, 
-  GraduationCap, 
-  BarChart3, 
-  Database,
+import {
+  LayoutDashboard,
+  Network,
+  Crown,
+  FileSignature,
+  Wallet,
+  Package,
+  ShieldCheck,
   Sliders,
-  GraduationCap as ClassIcon,
-  X,
-  ShieldAlert,
-  Radar,
-  Radio,
   LogOut,
-  User
+  X,
+  User,
+  Inbox,
+  CheckCircle2,
+  TrendingUp,
+  ClipboardList,
+  Users,
+  GraduationCap,
+  Calendar,
+  ArrowDownUp,
+  ShoppingCart,
+  BedDouble,
+  Activity,
+  ShieldAlert,
+  Gavel,
+  BookOpen,
+  BarChart3,
+  UserCircle,
+  Edit3,
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
 
-export type ActiveMenu = 
+export type ActiveMenu =
   | 'dashboard'
+  | 'struktur_organisasi'
+  | 'ketua_pondok'
+  | 'sekretaris'
+  | 'bendahara'
+  | 'perlengkapan'
+  | 'keamanan'
+  | 'biodata_profil'
+  | 'admin_options';
+
+export type KeamananSubTab =
+  | 'ringkasan'
   | 'koordinasi'
-  | 'admin_options'
   | 'santri_per_kelas'
   | 'santri'
-  | 'dewan_keamanan'
   | 'perizinan'
   | 'pos_gerbang'
   | 'monitoring'
   | 'tata_tertib'
   | 'pelanggaran'
   | 'sanksi'
+  | 'dewan_keamanan'
   | 'laporan'
+  | 'laporan_mingguan'
+  | 'option_keamanan'
   | 'database';
 
 interface SidebarProps {
   activeMenu: ActiveMenu;
-  onSelectMenu: (menu: ActiveMenu) => void;
+  activeSubTab?: string;
+  onSelectMenu: (menu: ActiveMenu, subTab?: string) => void;
   isOpen: boolean;
   onClose: () => void;
   userRole: UserRole;
-  pendingApprovalsCount: number;
-  lateSantriCount: number;
+  pendingPengajuanCount?: number;
+  pendingSecurityCount?: number;
+  lateSantriCount?: number;
   unreadKoordinasiCount?: number;
-  mendesakKoordinasiCount?: number;
-  logoUrl?: string;
-  namaPondok?: string;
   onLogout?: () => void;
   currentUser?: UserAccount | null;
 }
 
+export function canAccessMainMenu(role: UserRole, menu: ActiveMenu): boolean {
+  if (role === 'admin') return true;
+  if (menu === 'dashboard' || menu === 'struktur_organisasi' || menu === 'biodata_profil') return true;
+  if (role === 'ketua_pondok') {
+    return menu !== 'admin_options';
+  }
+  if (role === 'sekretaris') return menu === 'sekretaris';
+  if (role === 'bendahara') return menu === 'bendahara';
+  if (role === 'perlengkapan') return menu === 'perlengkapan';
+  if (role === 'ketua_keamanan' || role === 'anggota_keamanan' || role === 'petugas_gerbang') {
+    return menu === 'keamanan';
+  }
+  return false;
+}
+
+interface NavItemConfig {
+  key: string;
+  menu: ActiveMenu;
+  subTab?: string;
+  label: string;
+  subtitle: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+  badgeTone?: 'gold' | 'red' | 'caramel';
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({
   activeMenu,
+  activeSubTab,
   onSelectMenu,
   isOpen,
   onClose,
   userRole,
-  pendingApprovalsCount,
-  lateSantriCount,
+  pendingPengajuanCount = 0,
+  pendingSecurityCount = 0,
+  lateSantriCount = 0,
   unreadKoordinasiCount = 0,
-  mendesakKoordinasiCount = 0,
-  logoUrl,
-  namaPondok,
   onLogout,
   currentUser,
 }) => {
   const isAdmin = userRole === 'admin';
+  const isKetuaPondok = userRole === 'ketua_pondok';
 
-  // Airtight mobile scroll lock: Ketika drawer terbuka di HP, kunci scroll latar belakang secara absolut
+  // Mobile background scroll lock when drawer is open
   React.useEffect(() => {
     if (isOpen && typeof window !== 'undefined' && window.innerWidth < 768) {
       const scrollY = window.scrollY;
@@ -95,348 +142,766 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   }, [isOpen]);
 
-  // Navigation structure based on role
-  // PENGURUS: Navigation items (Including Koordinasi, Sentry Gate & Radar Monitoring)
-  const pengurusNavItems = [
-    { 
-      id: 'dashboard', 
-      label: 'Dashboard Utama', 
-      icon: LayoutDashboard,
-      badge: 'OVERVIEW',
-      badgeColor: 'bg-blue-600/20 text-cyan-300 border border-blue-500/40'
-    },
-    { 
-      id: 'koordinasi', 
-      label: 'Koordinasi Dewan & Admin', 
-      icon: Radio,
-      badge: unreadKoordinasiCount > 0 
-        ? (mendesakKoordinasiCount > 0 ? `${mendesakKoordinasiCount} MENDESAK` : `${unreadKoordinasiCount} Pesan`) 
-        : undefined,
-      badgeColor: mendesakKoordinasiCount > 0 
-        ? 'bg-red-600/30 text-red-300 border border-red-500/60 animate-pulse glow-red' 
-        : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-    },
-    { 
-      id: 'perizinan', 
-      label: 'Permohonan Izin Santri', 
-      icon: FileCheck2,
-      badge: pendingApprovalsCount > 0 ? `${pendingApprovalsCount} Antrian` : 'SYNC DB',
-      badgeColor: pendingApprovalsCount > 0 ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 glow-gold' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-    },
-    { 
-      id: 'monitoring', 
-      label: 'Radar Monitoring Real-Time', 
-      icon: Radar,
-      badge: lateSantriCount > 0 ? `${lateSantriCount} ALERT` : 'LIVE',
-      badgeColor: lateSantriCount > 0 ? 'bg-red-600/25 text-red-400 border border-red-500/50 glow-red animate-pulse' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-    },
-    { 
-      id: 'pos_gerbang', 
-      label: 'Sentry Gate Terminal (Scan)', 
-      icon: DoorOpen,
-      badge: 'GATE',
-      badgeColor: 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-    },
-    { 
-      id: 'tata_tertib', 
-      label: 'Qanun Tata Tertib', 
-      icon: BookOpenCheck 
-    },
-    { 
-      id: 'pelanggaran', 
-      label: 'Catatan Insiden Pelanggaran', 
-      icon: AlertTriangle 
-    },
-    { 
-      id: 'sanksi', 
-      label: 'Sanksi Edukatif & Pembinaan', 
-      icon: GraduationCap 
-    },
-  ];
-
-  // ADMIN: full command center sections (Option Panel moved to very bottom below)
-  const adminNavSections = [
-    {
-      group: 'PUSAT KENDALI OPERASIONAL',
-      items: [
-        { id: 'dashboard', label: 'Dashboard Utama', icon: LayoutDashboard },
-        { 
-          id: 'koordinasi', 
-          label: 'Koordinasi Komando & Dewan', 
-          icon: Radio,
-          badge: unreadKoordinasiCount > 0 
-            ? (mendesakKoordinasiCount > 0 ? `${mendesakKoordinasiCount} MENDESAK` : `${unreadKoordinasiCount} Pesan`) 
-            : undefined,
-          badgeColor: mendesakKoordinasiCount > 0 
-            ? 'bg-red-600/30 text-red-300 border border-red-500/60 animate-pulse glow-red' 
-            : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-        },
-      ]
-    },
-    {
-      group: 'SECURITY DATABASE SANTRI',
-      items: [
-        { id: 'santri_per_kelas', label: 'Data Santri Per Divisi / Kelas', icon: ClassIcon },
-        { id: 'santri', label: 'Master Registrasi Santri', icon: Users },
-      ]
-    },
-    {
-      group: 'ACCESS CONTROL & GERBANG',
-      items: [
-        { 
-          id: 'perizinan', 
-          label: 'Permohonan Izin Keluar-Masuk', 
-          icon: FileCheck2,
-          badge: pendingApprovalsCount > 0 ? `${pendingApprovalsCount} Antrian` : undefined,
-          badgeColor: 'bg-blue-600/20 text-cyan-300 border border-blue-500/40 glow-blue'
-        },
-        { 
-          id: 'monitoring', 
-          label: 'Radar Monitoring Real-Time', 
-          icon: Radar,
-          badge: lateSantriCount > 0 ? `${lateSantriCount} ALERT` : 'LIVE',
-          badgeColor: lateSantriCount > 0 ? 'bg-red-600/25 text-red-400 border border-red-500/50 glow-red animate-pulse' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-        },
-        { 
-          id: 'pos_gerbang', 
-          label: 'Sentry Gate Terminal (Scan)', 
-          icon: DoorOpen 
-        },
-      ]
-    },
-    {
-      group: 'KEDISIPLINAN & TATA TERTIB',
-      items: [
-        { id: 'tata_tertib', label: 'Kodifikasi Qanun Ketertiban', icon: BookOpenCheck },
-        { id: 'pelanggaran', label: 'Pencatatan Insiden Pelanggaran', icon: AlertTriangle },
-        { id: 'sanksi', label: 'Sanksi Edukatif & Pembinaan', icon: GraduationCap },
-      ]
-    },
-    {
-      group: 'PERSONIL & AUDIT INTELEJEN',
-      items: [
-        { id: 'dewan_keamanan', label: 'Dewan Keamanan & Piket', icon: ShieldAlert },
-        { id: 'laporan', label: 'Laporan Forensik & Statistik', icon: BarChart3 },
-        { id: 'database', label: 'Enkripsi & Backup Database', icon: Database },
-      ]
+  const roleDisplayLabel = (role: UserRole) => {
+    switch (role) {
+      case 'admin':
+        return 'SUPER ADMIN';
+      case 'ketua_pondok':
+        return 'KETUA PONDOK';
+      case 'sekretaris':
+        return 'SEKRETARIS';
+      case 'bendahara':
+        return 'BENDAHARA';
+      case 'perlengkapan':
+        return 'PERLENGKAPAN';
+      case 'ketua_keamanan':
+        return 'KETUA KEAMANAN';
+      case 'anggota_keamanan':
+        return 'KEAMANAN';
+      case 'petugas_gerbang':
+        return 'POS GERBANG';
+      default:
+        return 'PENGURUS';
     }
-  ];
+  };
+
+  // Build Role-Specific Sidebar Menu Items according to RBAC specification
+  const getRoleMenuItems = (): NavItemConfig[] => {
+    const inboxBadge = unreadKoordinasiCount > 0 ? `${unreadKoordinasiCount}` : undefined;
+
+    if (userRole === 'ketua_pondok') {
+      return [
+        {
+          key: 'kp_dashboard',
+          menu: 'dashboard',
+          label: 'Tab Dashboard Utama',
+          subtitle: 'Indikator Pie Chart & Laporan',
+          icon: LayoutDashboard,
+        },
+        {
+          key: 'kp_kotak_masuk',
+          menu: 'ketua_pondok',
+          subTab: 'kotak_masuk',
+          label: 'Tab Kotak Masuk & Pesan',
+          subtitle: 'SK, Pengumuman & Koordinasi',
+          icon: Inbox,
+          badge: inboxBadge,
+          badgeTone: 'gold',
+        },
+        {
+          key: 'kp_struktur',
+          menu: 'struktur_organisasi',
+          label: 'Tab Struktur Organisasi',
+          subtitle: 'Bagan Jajaran Pengurus',
+          icon: Network,
+        },
+        {
+          key: 'kp_persetujuan',
+          menu: 'ketua_pondok',
+          subTab: 'persetujuan',
+          label: 'Tab Persetujuan',
+          subtitle: 'Izin, Dana, Barang & Grafik Disiplin',
+          icon: CheckCircle2,
+          badge: pendingPengajuanCount > 0 ? `${pendingPengajuanCount}` : undefined,
+          badgeTone: 'gold',
+        },
+        {
+          key: 'kp_evaluasi',
+          menu: 'ketua_pondok',
+          subTab: 'evaluasi',
+          label: 'Tab Evaluasi Kinerja',
+          subtitle: 'Grafik Kinerja & Catatan Rapat',
+          icon: TrendingUp,
+        },
+        {
+          key: 'kp_proker',
+          menu: 'ketua_pondok',
+          subTab: 'proker',
+          label: 'Tab Program Kerja',
+          subtitle: 'Progres & Target Kepengurusan',
+          icon: ClipboardList,
+        },
+        {
+          key: 'kp_biodata',
+          menu: 'biodata_profil',
+          label: 'Tab Biodata dan Profil',
+          subtitle: 'Edit Foto, Nama, Jabatan & WA',
+          icon: UserCircle,
+        },
+      ];
+    }
+
+    if (userRole === 'sekretaris') {
+      return [
+        {
+          key: 'sek_dashboard',
+          menu: 'dashboard',
+          label: 'Tab Dashboard Utama',
+          subtitle: 'Indikator Kinerja & Statistik',
+          icon: LayoutDashboard,
+        },
+        {
+          key: 'sek_kotak_masuk',
+          menu: 'sekretaris',
+          subTab: 'kotak_masuk',
+          label: 'Tab Kotak Masuk & Pesan',
+          subtitle: 'Permintaan Surat dari Pengurus',
+          icon: Inbox,
+          badge: inboxBadge,
+          badgeTone: 'gold',
+        },
+        {
+          key: 'sek_struktur',
+          menu: 'struktur_organisasi',
+          label: 'Tab Struktur Organisasi',
+          subtitle: 'Bagan & Jajaran Pengurus',
+          icon: Network,
+        },
+        {
+          key: 'sek_buat_surat',
+          menu: 'sekretaris',
+          subTab: 'buat_surat',
+          label: 'Tab Terbitkan Surat',
+          subtitle: '15 Jenis Surat Standar Pesantren',
+          icon: FileSignature,
+        },
+        {
+          key: 'sek_data_santri',
+          menu: 'sekretaris',
+          subTab: 'data_santri',
+          label: 'Tab Data Santri',
+          subtitle: 'Biodata Lengkap, Wali & PSB',
+          icon: Users,
+        },
+        {
+          key: 'sek_data_ustadz',
+          menu: 'sekretaris',
+          subTab: 'data_ustadz',
+          label: 'Tab Data Ustadz & Ustadzah',
+          subtitle: 'Status Mukim, Laju & Pengurus',
+          icon: GraduationCap,
+        },
+        {
+          key: 'sek_notulen',
+          menu: 'sekretaris',
+          subTab: 'notulen_agenda',
+          label: 'Tab Notulen Rapat & Agenda',
+          subtitle: 'Sinkron Kalender Kegiatan Pondok',
+          icon: Calendar,
+        },
+        {
+          key: 'sek_format_surat',
+          menu: 'sekretaris',
+          subTab: 'format_surat',
+          label: 'Option Format Pokok Surat',
+          subtitle: 'Edit Kop Surat, Logo & TTD',
+          icon: Sliders,
+        },
+        {
+          key: 'sek_biodata',
+          menu: 'biodata_profil',
+          label: 'Tab Biodata dan Profil',
+          subtitle: 'Edit Foto, Nama, Jabatan & WA',
+          icon: UserCircle,
+        },
+      ];
+    }
+
+    if (userRole === 'bendahara') {
+      return [
+        {
+          key: 'ben_dashboard',
+          menu: 'dashboard',
+          label: 'Tab Dashboard Utama',
+          subtitle: 'Candlestick Kas & Indikator',
+          icon: LayoutDashboard,
+        },
+        {
+          key: 'ben_kotak_masuk',
+          menu: 'bendahara',
+          subTab: 'kotak_masuk',
+          label: 'Tab Kotak Masuk & Pesan',
+          subtitle: 'Permintaan dari Seluruh Pengurus',
+          icon: Inbox,
+          badge: inboxBadge,
+          badgeTone: 'gold',
+        },
+        {
+          key: 'ben_struktur',
+          menu: 'struktur_organisasi',
+          label: 'Tab Struktur Organisasi',
+          subtitle: 'Bagan & Jajaran Pengurus',
+          icon: Network,
+        },
+        {
+          key: 'ben_syahriyah',
+          menu: 'bendahara',
+          subTab: 'syahriyah',
+          label: 'Tab Syahriyah',
+          subtitle: 'Line Chart, Tagihan & Log Audit',
+          icon: Wallet,
+        },
+        {
+          key: 'ben_uang_saku',
+          menu: 'bendahara',
+          subTab: 'uang_saku',
+          label: 'Tab Uang Saku',
+          subtitle: 'Saldo, Setoran, Penarikan & Riwayat',
+          icon: Users,
+        },
+        {
+          key: 'ben_pengajuan_dana',
+          menu: 'bendahara',
+          subTab: 'pengajuan_dana',
+          label: 'Tab Pengajuan Dana',
+          subtitle: 'Kebutuhan Divisi Pengurus',
+          icon: CheckCircle2,
+          badge: pendingPengajuanCount > 0 ? `${pendingPengajuanCount}` : undefined,
+          badgeTone: 'gold',
+        },
+        {
+          key: 'ben_pemasukan_pengeluaran',
+          menu: 'bendahara',
+          subTab: 'pemasukan_pengeluaran',
+          label: 'Tab Pemasukan & Pengeluaran',
+          subtitle: 'Pie Chart, Buku Kas & Anggaran',
+          icon: BarChart3,
+        },
+        {
+          key: 'ben_biodata',
+          menu: 'biodata_profil',
+          label: 'Tab Biodata dan Profil',
+          subtitle: 'Edit Foto, Nama, Jabatan & WA',
+          icon: UserCircle,
+        },
+      ];
+    }
+
+    if (userRole === 'perlengkapan') {
+      return [
+        {
+          key: 'prl_dashboard',
+          menu: 'dashboard',
+          label: 'Tab Dashboard Utama',
+          subtitle: 'Indikator Kinerja & Statistik Aset',
+          icon: LayoutDashboard,
+        },
+        {
+          key: 'prl_kotak_masuk',
+          menu: 'perlengkapan',
+          subTab: 'kotak_masuk',
+          label: 'Tab Kotak Masuk & Pesan',
+          subtitle: 'Permintaan dari Seluruh Pengurus',
+          icon: Inbox,
+          badge: inboxBadge,
+          badgeTone: 'gold',
+        },
+        {
+          key: 'prl_struktur',
+          menu: 'struktur_organisasi',
+          label: 'Tab Struktur Organisasi',
+          subtitle: 'Bagan & Jajaran Pengurus',
+          icon: Network,
+        },
+        {
+          key: 'prl_inventaris',
+          menu: 'perlengkapan',
+          subTab: 'inventaris',
+          label: 'Tab Inventaris',
+          subtitle: 'Daftar Barang, Kondisi & Lokasi',
+          icon: Package,
+        },
+        {
+          key: 'prl_keluar_masuk',
+          menu: 'perlengkapan',
+          subTab: 'barang_masuk_keluar',
+          label: 'Tab Keluar Masuk Barang',
+          subtitle: 'Tanggal, Bulan & Petugas Input',
+          icon: ArrowDownUp,
+        },
+        {
+          key: 'prl_peminjaman',
+          menu: 'perlengkapan',
+          subTab: 'peminjaman',
+          label: 'Tab Peminjaman Barang',
+          subtitle: 'Cetak Surat & Ajukan ke Sekretaris',
+          icon: FileSignature,
+        },
+        {
+          key: 'prl_pembelian',
+          menu: 'perlengkapan',
+          subTab: 'pengajuan_pembelian',
+          label: 'Tab Pengajuan Pembelian',
+          subtitle: 'Stok Minimal & Persetujuan Ketua',
+          icon: ShoppingCart,
+        },
+        {
+          key: 'prl_kamar',
+          menu: 'perlengkapan',
+          subTab: 'kamar_santri',
+          label: 'Tab Data Kamar & Fasilitas',
+          subtitle: 'Input Manual Kamar & Fasilitas',
+          icon: BedDouble,
+        },
+        {
+          key: 'prl_biodata',
+          menu: 'biodata_profil',
+          label: 'Tab Biodata dan Profil',
+          subtitle: 'Edit Foto, Nama, Jabatan & WA',
+          icon: UserCircle,
+        },
+      ];
+    }
+
+    if (
+      userRole === 'ketua_keamanan' ||
+      userRole === 'anggota_keamanan' ||
+      userRole === 'petugas_gerbang'
+    ) {
+      return [
+        {
+          key: 'kam_dashboard',
+          menu: 'keamanan',
+          subTab: 'ringkasan',
+          label: 'Tab Dashboard Utama',
+          subtitle: 'Pie Chart Kinerja, Berita & Kamtib',
+          icon: LayoutDashboard,
+        },
+        {
+          key: 'kam_kotak_masuk',
+          menu: 'keamanan',
+          subTab: 'koordinasi',
+          label: 'Tab Kotak Masuk & Pesan',
+          subtitle: 'Pemberitahuan Seluruh Pengurus',
+          icon: Inbox,
+          badge: inboxBadge,
+          badgeTone: 'gold',
+        },
+        {
+          key: 'kam_perizinan',
+          menu: 'keamanan',
+          subTab: 'perizinan',
+          label: 'Tab Perizinan Santri',
+          subtitle: 'Izin Real-time WIB & Tabel Rekapan',
+          icon: FileSignature,
+          badge: pendingSecurityCount > 0 ? `${pendingSecurityCount}` : undefined,
+          badgeTone: 'caramel',
+        },
+        {
+          key: 'kam_radar',
+          menu: 'keamanan',
+          subTab: 'monitoring',
+          label: 'Tab Radar Monitoring',
+          subtitle: 'Pengawasan Aktif & Hitung Mundur',
+          icon: Activity,
+          badge: lateSantriCount > 0 ? `${lateSantriCount} ALERT` : undefined,
+          badgeTone: 'red',
+        },
+        {
+          key: 'kam_pelanggaran',
+          menu: 'keamanan',
+          subTab: 'pelanggaran',
+          label: 'Tab Pelanggaran',
+          subtitle: 'Pencatatan Ringan, Sedang, Berat',
+          icon: ShieldAlert,
+        },
+        {
+          key: 'kam_sanksi',
+          menu: 'keamanan',
+          subTab: 'sanksi',
+          label: 'Tab Sanksi',
+          subtitle: 'Rekapitulasi & Surat Sanksi',
+          icon: Gavel,
+        },
+        {
+          key: 'kam_santri',
+          menu: 'keamanan',
+          subTab: 'santri',
+          label: 'Tab Data Santri',
+          subtitle: 'Terkonfigurasi Data Sekretaris',
+          icon: Users,
+        },
+        {
+          key: 'kam_tatatertib',
+          menu: 'keamanan',
+          subTab: 'tata_tertib',
+          label: 'Tab Tata Tertib',
+          subtitle: 'Qanun, Jadwal Piket & Absensi',
+          icon: BookOpen,
+        },
+        {
+          key: 'kam_laporan',
+          menu: 'keamanan',
+          subTab: 'laporan',
+          label: 'Tab Laporan',
+          subtitle: 'Harian, Mingguan, Bulanan & Grafik',
+          icon: BarChart3,
+        },
+        {
+          key: 'kam_option',
+          menu: 'keamanan',
+          subTab: 'option_keamanan',
+          label: 'Option Panel Keamanan',
+          subtitle: 'Format Surat Sanksi & Pasal Manual',
+          icon: Sliders,
+        },
+        {
+          key: 'kam_biodata',
+          menu: 'biodata_profil',
+          label: 'Tab Biodata dan Profil',
+          subtitle: 'Edit Foto, Nama, Jabatan & WA',
+          icon: UserCircle,
+        },
+      ];
+    }
+
+    // Default: SUPER ADMIN (Full Access to all Divisions + Option Panel + Biodata)
+    return [
+      {
+        key: 'adm_dashboard',
+        menu: 'dashboard',
+        label: 'Dashboard Utama',
+        subtitle: 'Ringkasan Eksekutif & Grafik',
+        icon: LayoutDashboard,
+      },
+      {
+        key: 'adm_struktur',
+        menu: 'struktur_organisasi',
+        label: 'Struktur Organisasi',
+        subtitle: 'Bagan & Jajaran Pengurus',
+        icon: Network,
+      },
+      {
+        key: 'adm_ketua',
+        menu: 'ketua_pondok',
+        label: 'Ketua Pondok',
+        subtitle: 'Persetujuan, Evaluasi & Proker',
+        icon: Crown,
+        badge: pendingPengajuanCount > 0 ? `${pendingPengajuanCount}` : undefined,
+        badgeTone: 'gold',
+      },
+      {
+        key: 'adm_sekretaris',
+        menu: 'sekretaris',
+        label: 'Sekretaris',
+        subtitle: '15 Jenis Surat, Santri & Ustadz',
+        icon: FileSignature,
+      },
+      {
+        key: 'adm_bendahara',
+        menu: 'bendahara',
+        label: 'Bendahara',
+        subtitle: 'Syahriyah, Uang Saku & Kas',
+        icon: Wallet,
+      },
+      {
+        key: 'adm_perlengkapan',
+        menu: 'perlengkapan',
+        label: 'Perlengkapan',
+        subtitle: 'Inventaris, Pinjam & Kamar',
+        icon: Package,
+      },
+      {
+        key: 'adm_keamanan',
+        menu: 'keamanan',
+        subTab: 'ringkasan',
+        label: 'Keamanan',
+        subtitle: 'Perizinan, Radar & Sanksi',
+        icon: ShieldCheck,
+        badge:
+          lateSantriCount > 0
+            ? `${lateSantriCount} ALERT`
+            : pendingSecurityCount > 0
+              ? `${pendingSecurityCount}`
+              : undefined,
+        badgeTone: lateSantriCount > 0 ? 'red' : 'caramel',
+      },
+      {
+        key: 'adm_biodata',
+        menu: 'biodata_profil',
+        label: 'Tab Biodata dan Profil',
+        subtitle: 'Edit Profil, Foto, WA & Alamat',
+        icon: UserCircle,
+      },
+    ];
+  };
+
+  const navItems = getRoleMenuItems();
 
   return (
     <>
-      {/* Mobile Backdrop (Khusus HP / Tablet Portrait) dengan pembatalan sentuhan agar latar belakang tidak bisa discroll */}
+      {/* Mobile Drawer Backdrop */}
       {isOpen && (
-        <div 
-          onClick={onClose} 
-          onTouchMove={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onWheel={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        <div
+          onClick={onClose}
+          onTouchMove={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onWheel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           className="fixed inset-0 z-40 bg-black/85 backdrop-blur-md md:hidden touch-none overscroll-none"
         />
       )}
 
-      {/* 3D Sidebar Container:
-          - Laptop & PC (md: ke atas): Selalu terbuka (md:sticky md:top-[57px] md:left-0 md:translate-x-0)
-          - HP (< md): Drawer meluncur dari kanan (fixed inset-y-0 right-0 h-[100dvh])
-      */}
+      {/* Luxury 3D Emerald-Gold Sidebar Container */}
       <aside
-        className={`fixed md:relative top-0 md:top-0 right-0 md:right-auto md:left-0 z-50 h-[100dvh] md:h-full md:min-h-full md:max-h-full w-72 sm:w-80 md:w-64 lg:w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-black border-l md:border-l-0 md:border-r border-cyan-500/20 shadow-[0_0_30px_rgba(0,0,0,0.8)] md:shadow-[2px_0_24px_rgba(6,182,212,0.12)] flex flex-col justify-between shrink-0 self-stretch transition-transform duration-300 ease-in-out font-sans ${
+        className={`fixed md:relative top-0 right-0 md:right-auto md:left-0 z-50 h-[100dvh] md:h-full md:min-h-full md:max-h-full w-72 sm:w-80 md:w-64 lg:w-72 bg-gradient-to-b from-[#041f15] via-[#03160f] to-[#010c08] border-l md:border-l-0 md:border-r border-[#d4af37]/30 shadow-[0_0_40px_rgba(0,0,0,0.9)] flex flex-col justify-between shrink-0 self-stretch transition-transform duration-300 ease-in-out font-sans ${
           isOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Sleek Vertical Right Rim Light */}
-        <div className="absolute top-0 right-0 bottom-0 w-[1.5px] bg-gradient-to-b from-cyan-400/60 via-blue-500/30 to-amber-400/40 pointer-events-none" />
+        {/* Subtle Gold Rim Light */}
+        <div className="hidden md:block absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-[#d4af37]/55 via-emerald-500/25 to-[#d4af37]/35 pointer-events-none" />
 
-        {/* Profil Pemilik Akun di Bagian Atas Sidebar (Menggantikan Logo Pondok Sesuai Permintaan) */}
-        <div className="p-3 sm:p-3.5 border-b border-slate-800/90 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="relative shrink-0 group">
-              <div className="absolute -inset-1 rounded-xl bg-gradient-to-tr from-cyan-400 via-amber-400 to-blue-500 opacity-70 blur-[2px] group-hover:opacity-100 transition-opacity" />
-              {currentUser?.avatar ? (
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser?.nama || "Pemilik Akun"}
-                  className="relative w-9 h-9 rounded-xl border border-amber-400 object-cover shadow-md"
-                />
-              ) : (
-                <div className="relative w-9 h-9 rounded-xl border border-amber-400/80 bg-slate-900 flex items-center justify-center shadow-md text-amber-400">
-                  <User className="w-5 h-5" />
-                </div>
-              )}
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-slate-950 animate-pulse" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="text-xs font-black text-white uppercase tracking-tight block truncate leading-tight">
-                {currentUser?.nama || (isAdmin ? 'KOMANDAN ADMIN' : 'PETUGAS PENGURUS')}
-              </span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[9px] font-mono font-bold text-amber-300 tracking-wider block uppercase px-1.5 py-0.5 rounded bg-amber-400/10 border border-amber-400/30 shrink-0">
-                  {isAdmin ? 'SUPER ADMIN' : (currentUser?.role === 'ketua_keamanan' ? 'COMMAND CHIEF' : 'PENGURUS')}
-                </span>
-                <span className="text-[10px] font-mono text-cyan-400 font-bold truncate">
-                  {currentUser?.nrp || 'SECOP-01'}
+        {/* Editable Profile Photo, Name & Jabatan Card at Top of Sidebar */}
+        <div className="p-3.5 border-b border-[#d4af37]/25 bg-[#052318]/90 space-y-2.5">
+          <div className="flex items-center justify-between gap-2.5">
+            <div
+              onClick={() => {
+                onSelectMenu('biodata_profil');
+                onClose();
+              }}
+              className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+              title="Klik untuk mengedit Foto Profil, Nama & Jabatan di Tab Biodata dan Profil"
+            >
+              <div className="relative shrink-0">
+                {currentUser?.avatar ? (
+                  <img
+                    src={currentUser.avatar}
+                    alt={currentUser.nama}
+                    className="w-11 h-11 rounded-xl border-2 border-[#d4af37]/80 object-cover shadow-md group-hover:scale-105 transition-transform"
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-xl border-2 border-[#d4af37]/65 bg-[#083323] flex items-center justify-center shadow-md text-[#e5c158]">
+                    <User className="w-5 h-5" />
+                  </div>
+                )}
+                <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#d4af37] text-[#02100a] flex items-center justify-center shadow">
+                  <Edit3 className="w-2.5 h-2.5" />
                 </span>
               </div>
-              {currentUser?.jabatan && (
-                <span className="text-[9px] text-slate-400 block truncate mt-0.5 font-sans">
-                  {currentUser.jabatan}
-                </span>
-              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-[#f4f9f5] group-hover:text-[#f3d266] truncate leading-snug transition-colors">
+                  {currentUser?.nama || 'Pengurus Pondok'}
+                </p>
+                <p className="text-[10px] font-semibold text-[#e5c158] truncate mt-0.5">
+                  {currentUser?.jabatan || roleDisplayLabel(userRole)}
+                </p>
+                <div className="flex items-center gap-1.5 mt-0.5 text-[9px] font-mono text-emerald-300/80">
+                  <span>{roleDisplayLabel(userRole)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>PIN: {currentUser?.pin || '******'}</span>
+                </div>
+              </div>
             </div>
+
+            <button
+              onClick={onClose}
+              className="md:hidden p-2 text-[#e5c158] hover:text-white rounded-xl hover:bg-[#0a3828] transition-colors cursor-pointer shrink-0 border border-[#d4af37]/35"
+              aria-label="Tutup Menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <button 
-            onClick={onClose} 
-            className="md:hidden p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer shrink-0 border border-slate-800"
-            aria-label="Tutup Menu"
+
+          <button
+            onClick={() => {
+              onSelectMenu('biodata_profil');
+              onClose();
+            }}
+            className={`w-full py-1.5 px-2.5 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+              activeMenu === 'biodata_profil'
+                ? 'bg-[#d4af37] text-[#02120a] border-[#f3d266]'
+                : 'bg-[#03160f]/90 text-[#f3d266] hover:bg-[#072c1e] border-[#d4af37]/35'
+            }`}
           >
-            <X className="w-5 h-5 text-amber-400" />
+            <Edit3 className="w-3 h-3" />
+            <span>Edit Foto, Nama & Jabatan (Biodata)</span>
           </button>
         </div>
 
-        {/* Scrollable Navigation with overscroll-contain */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3.5 py-4 space-y-6">
-          {!isAdmin ? (
-            /* PENGURUS NAVIGATION: ONLY 6 DEDICATED TABS */
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-3">
-                <p className="text-[9px] font-mono font-bold tracking-widest text-cyan-400 uppercase">
-                  MENU OPERASIONAL PENGURUS
-                </p>
-                <div className="w-8 h-[1px] bg-cyan-800/60" />
-              </div>
-              <nav className="space-y-1.5">
-                {pengurusNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeMenu === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        onSelectMenu(item.id as ActiveMenu);
-                        onClose();
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs rounded-xl font-medium transition-all cursor-pointer relative group ${
-                        isActive
-                          ? 'bg-gradient-to-r from-blue-900/60 via-slate-900 to-slate-900 text-amber-300 border border-amber-400/50 shadow-lg shadow-cyan-950/50 font-bold rainbow-active-border'
-                          : 'text-slate-300 hover:text-white hover:bg-slate-900/70 border border-transparent hover:border-slate-800 hover-rainbow-edge'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 truncate">
-                        <div className={`p-1 rounded-lg ${isActive ? 'bg-amber-400/20 text-amber-300' : 'text-slate-400 group-hover:text-cyan-400 group-hover:bg-slate-800/80 transition-colors'}`}>
-                          <Icon className="w-4 h-4 shrink-0" />
-                        </div>
-                        <span className="truncate tracking-wide">{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span className={`px-2 py-0.5 text-[9px] font-mono font-bold rounded-md ${item.badgeColor}`}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
+        {/* Scrollable Primary Navigation */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-3.5 space-y-4">
+          <div>
+            <div className="flex items-center justify-between px-3 mb-2">
+              <p className="text-[10px] font-semibold tracking-wider text-[#e5c158] uppercase">
+                Menu {roleDisplayLabel(userRole)}
+              </p>
+              {isKetuaPondok && (
+                <span className="text-[10px] font-mono text-emerald-300">Pimpinan</span>
+              )}
             </div>
-          ) : (
-            /* ADMIN NAVIGATION: Full command sections */
-            adminNavSections.map((section, idx) => (
-              <div key={idx} className="space-y-1.5">
-                <div className="flex items-center justify-between px-3">
-                  <p className="text-[9px] font-mono font-bold tracking-widest text-slate-400 uppercase">
-                    {section.group}
-                  </p>
-                  <div className="w-8 h-[1px] bg-slate-800" />
-                </div>
-                <nav className="space-y-1">
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeMenu === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          onSelectMenu(item.id as ActiveMenu);
-                          onClose();
-                        }}
-                        className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs rounded-xl font-medium transition-all cursor-pointer relative group ${
+
+            <nav className="space-y-1.5 pb-4">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.subTab
+                  ? activeMenu === item.menu && activeSubTab === item.subTab
+                  : activeMenu === item.menu;
+
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => {
+                      onSelectMenu(item.menu, item.subTab);
+                      onClose();
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer group border ${
+                      isActive
+                        ? 'bg-gradient-to-r from-[#0b422d] via-[#072c1e] to-[#041b12] text-[#f4f9f5] border-[#d4af37]/75 shadow-[0_6px_18px_-4px_rgba(212,175,55,0.32)]'
+                        : 'text-emerald-100/80 hover:text-white hover:bg-[#072b1d]/85 border-transparent hover:border-[#d4af37]/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`p-2 rounded-lg shrink-0 transition-colors ${
                           isActive
-                            ? 'bg-gradient-to-r from-blue-900/60 via-slate-900 to-slate-900 text-amber-300 border border-amber-400/50 shadow-lg shadow-cyan-950/50 font-bold rainbow-active-border'
-                            : 'text-slate-300 hover:text-white hover:bg-slate-900/70 border border-transparent hover:border-slate-800 hover-rainbow-edge'
+                            ? 'bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/50'
+                            : 'bg-[#052318] text-emerald-300 group-hover:text-[#e5c158] border border-emerald-700/35'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5 truncate">
-                          <div className={`p-1 rounded-lg ${isActive ? 'bg-amber-400/20 text-amber-300' : 'text-slate-400 group-hover:text-cyan-400 group-hover:bg-slate-800/80 transition-colors'}`}>
-                            <Icon className="w-4 h-4 shrink-0" />
-                          </div>
-                          <span className="truncate tracking-wide">{item.label}</span>
-                        </div>
-                        {item.badge && (
-                          <span className={`px-2 py-0.5 text-[9px] font-mono font-bold rounded-md ${item.badgeColor}`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </nav>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span
+                          className={`block text-xs truncate whitespace-nowrap ${
+                            isActive ? 'font-bold text-white' : 'font-semibold'
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+                        <span className="block text-[10px] text-emerald-200/65 truncate">
+                          {item.subtitle}
+                        </span>
+                      </div>
+                    </div>
+
+                    {item.badge && (
+                      <span
+                        className={`ml-2 px-2 py-0.5 text-[10px] font-mono font-bold rounded-md shrink-0 whitespace-nowrap ${
+                          item.badgeTone === 'red'
+                            ? 'bg-red-950/90 text-red-300 border border-red-500/50'
+                            : item.badgeTone === 'gold'
+                              ? 'bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/55'
+                              : 'bg-emerald-900/80 text-emerald-200 border border-emerald-500/40'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* Unified Option Panel Admin inside the same Sidebar navigation list */}
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    onSelectMenu('admin_options');
+                    onClose();
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer group border ${
+                    activeMenu === 'admin_options'
+                      ? 'bg-gradient-to-r from-[#0b422d] via-[#072c1e] to-[#041b12] text-[#f4f9f5] border-[#d4af37]/75 shadow-[0_6px_18px_-4px_rgba(212,175,55,0.32)]'
+                      : 'text-emerald-100/80 hover:text-white hover:bg-[#072b1d]/85 border-transparent hover:border-[#d4af37]/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`p-2 rounded-lg shrink-0 transition-colors ${
+                        activeMenu === 'admin_options'
+                          ? 'bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/50'
+                          : 'bg-[#052318] text-[#e5c158] group-hover:text-[#f3d266] border border-[#d4af37]/35'
+                      }`}
+                    >
+                      <Sliders className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span
+                        className={`block text-xs truncate whitespace-nowrap ${
+                          activeMenu === 'admin_options' ? 'font-bold text-white' : 'font-semibold text-[#f3d266]'
+                        }`}
+                      >
+                        Options Panel
+                      </span>
+                      <span className="block text-[10px] text-emerald-200/65 truncate">
+                        Kelola PIN 6 Digit, Berita &amp; Sistem
+                      </span>
+                    </div>
+                  </div>
+                  <span className="ml-2 px-2 py-0.5 text-[10px] font-mono font-bold rounded-md shrink-0 whitespace-nowrap bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/55">
+                    ADMIN
+                  </span>
+                </button>
+              )}
+
+              {/* Unified PWA Install Button inside the same Sidebar navigation list */}
+              <div className="pt-0.5">
+                <PWAInstallButton variant="sidebar" />
               </div>
-            ))
+
+              {/* Unified Tombol Keluar (Logout) inside the same Sidebar navigation list */}
+              {onLogout && (
+                <button
+                  onClick={() => {
+                    onLogout();
+                    onClose();
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer group bg-red-950/35 hover:bg-red-900/60 border border-red-500/35 hover:border-red-400/70"
+                  title="Keluar dari Sistem"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-lg shrink-0 bg-red-950/80 text-red-300 group-hover:text-white border border-red-500/40">
+                      <LogOut className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block text-xs font-bold text-red-200 group-hover:text-white truncate whitespace-nowrap">
+                        Keluar (Logout)
+                      </span>
+                      <span className="block text-[10px] text-red-300/75 truncate">
+                        Akhiri sesi &amp; kunci PIN layar
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              )}
+            </nav>
+          </div>
+
+          {/* Executive Monitoring Shortcuts for Ketua Pondok */}
+          {isKetuaPondok && (
+            <div className="pt-2 pb-4 border-t border-emerald-800/40">
+              <p className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-emerald-300 uppercase">
+                Monitoring Lintas Divisi
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {[
+                  { menu: 'sekretaris' as ActiveMenu, label: 'Sekretaris' },
+                  { menu: 'bendahara' as ActiveMenu, label: 'Bendahara' },
+                  { menu: 'perlengkapan' as ActiveMenu, label: 'Perlengkapan' },
+                  { menu: 'keamanan' as ActiveMenu, label: 'Keamanan' },
+                ].map((div) => (
+                  <button
+                    key={div.menu}
+                    onClick={() => {
+                      onSelectMenu(div.menu);
+                      onClose();
+                    }}
+                    className={`px-2.5 py-2 rounded-xl text-[11px] font-bold border text-center cursor-pointer transition-all ${
+                      activeMenu === div.menu
+                        ? 'bg-[#d4af37]/25 text-[#f3d266] border-[#d4af37]'
+                        : 'bg-[#03160f] text-emerald-200 hover:text-white border-emerald-800/60'
+                    }`}
+                  >
+                    {div.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
-
-        {/* SIDEBAR FOOTER: OPTION PANEL, INSTALL PWA, DAN TOMBOL KELUAR PALING BAWAH SENDIRI */}
-        <div className="mt-auto shrink-0 w-full p-3.5 border-t border-slate-800/90 bg-gradient-to-b from-slate-950 via-slate-950 to-black space-y-2 pb-safe pb-4 sm:pb-3.5">
-          
-          {/* 1. Central Option Panel Tab for Admin */}
-          {isAdmin && (
-            <button
-              onClick={() => {
-                onSelectMenu('admin_options');
-                onClose();
-              }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 text-xs rounded-xl font-bold transition-all cursor-pointer relative ${
-                activeMenu === 'admin_options'
-                  ? 'bg-gradient-to-r from-amber-500/30 via-yellow-500/20 to-slate-900 text-amber-300 border border-amber-400 shadow-lg shadow-amber-950/60 rainbow-active-border'
-                  : 'bg-slate-900/90 text-amber-300 hover:text-yellow-200 border border-amber-400/40 hover:border-amber-400 shadow-md hover-rainbow-edge'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 truncate">
-                <div className="p-1.5 rounded-lg bg-amber-400/20 text-amber-300 shrink-0">
-                  <Sliders className="w-4 h-4" />
-                </div>
-                <div className="text-left truncate">
-                  <span className="block font-bold tracking-wide text-amber-300 text-[11px] leading-tight">
-                    Central Option Panel
-                  </span>
-                  <span className="block text-[9px] font-mono text-slate-400">
-                    Konfigurasi & Database Pusat
-                  </span>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-amber-400/20 text-amber-300 border border-amber-400/50 glow-gold shrink-0">
-                MASTER
-              </span>
-            </button>
-          )}
-
-          {/* 2. PWA App Install Button (Mobile & Desktop) */}
-          <PWAInstallButton variant="sidebar" />
-
-          {/* 3. Tombol Keluar (Logout) - Berada di Paling Bawah Sendiri */}
-          {onLogout && (
-            <button
-              onClick={() => {
-                onLogout();
-                onClose();
-              }}
-              className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs rounded-xl font-mono font-bold text-red-300 hover:text-white bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 hover:border-red-400 transition-all cursor-pointer shadow-md hover:shadow-red-950/50 group"
-              title="Keluar dari Sistem Keamanan"
-            >
-              <LogOut className="w-4 h-4 text-red-400 group-hover:rotate-12 transition-transform" />
-              <span className="tracking-wider uppercase text-[11px]">Keluar dari Sistem</span>
-            </button>
-          )}
-        </div>
-
       </aside>
     </>
   );

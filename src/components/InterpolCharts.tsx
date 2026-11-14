@@ -66,7 +66,7 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
       .attr('id', 'blueAreaGrad')
       .attr('x1', '0%').attr('y1', '0%')
       .attr('x2', '0%').attr('y2', '100%');
-    blueGradient.append('stop').attr('offset', '0%').attr('stop-color', '#3b82f6').attr('stop-opacity', 0.4);
+    blueGradient.append('stop').attr('offset', '0%').attr('stop-color', '#d4af37').attr('stop-opacity', 0.4);
     blueGradient.append('stop').attr('offset', '100%').attr('stop-color', '#1e3a8a').attr('stop-opacity', 0.0);
 
     // Gold Gradient
@@ -148,7 +148,7 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
     svg.append('path')
       .datum(data)
       .attr('fill', 'none')
-      .attr('stroke', '#3b82f6')
+      .attr('stroke', '#d4af37')
       .attr('stroke-width', 2.5)
       .attr('filter', 'url(#glow)')
       .attr('d', lineIzin);
@@ -180,7 +180,7 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
         .attr('cy', yScale(d.perizinan))
         .attr('r', 4)
         .attr('fill', '#ffffff')
-        .attr('stroke', '#3b82f6')
+        .attr('stroke', '#d4af37')
         .attr('stroke-width', 2);
 
       // Red dot
@@ -219,27 +219,27 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
   }, [perizinanList, pelanggaranList, activeRange]);
 
   return (
-    <div className="p-6 rounded-2xl bg-neutral-950 border border-zinc-800 shadow-2xl space-y-4 relative overflow-hidden">
+    <div className="p-6 rounded-2xl bg-neutral-950 border border-emerald-800 shadow-2xl space-y-4 relative overflow-hidden">
       {/* Tactical Glow Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-blue-400" />
+              <TrendingUp className="w-4 h-4 text-amber-400" />
               Statistik Tren Mutasi & Insiden Keamanan (D3.js Line Chart)
             </h3>
           </div>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-emerald-200/75 mt-0.5">
             Interpol Command Analytics: Korelasi izin santri, ketertiban kepulangan, dan kejadian pelanggaran
           </p>
         </div>
 
         {/* Legend & Filter Controls */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-3 text-[11px] font-mono bg-zinc-900/90 px-3 py-1.5 rounded-xl border border-zinc-800">
-            <span className="flex items-center gap-1.5 text-blue-400">
-              <span className="w-2.5 h-0.5 bg-blue-500 inline-block" />
+          <div className="flex items-center gap-3 text-[11px] font-mono bg-[#041d13]/90 px-3 py-1.5 rounded-xl border border-emerald-800">
+            <span className="flex items-center gap-1.5 text-amber-400">
+              <span className="w-2.5 h-0.5 bg-emerald-500 inline-block" />
               Izin Keluar
             </span>
             <span className="flex items-center gap-1.5 text-yellow-400">
@@ -252,11 +252,11 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-xl border border-zinc-800 text-[10px] font-mono">
+          <div className="flex items-center gap-1 bg-[#041d13] p-1 rounded-xl border border-emerald-800 text-[10px] font-mono">
             <button
               onClick={() => setActiveRange('7d')}
               className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeRange === '7d' ? 'bg-blue-600 text-white font-bold' : 'text-zinc-400 hover:text-white'
+                activeRange === '7d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
               }`}
             >
               7 HARI
@@ -264,7 +264,7 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
             <button
               onClick={() => setActiveRange('14d')}
               className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeRange === '14d' ? 'bg-blue-600 text-white font-bold' : 'text-zinc-400 hover:text-white'
+                activeRange === '14d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
               }`}
             >
               14 HARI
@@ -272,7 +272,7 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
             <button
               onClick={() => setActiveRange('30d')}
               className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeRange === '30d' ? 'bg-blue-600 text-white font-bold' : 'text-zinc-400 hover:text-white'
+                activeRange === '30d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
               }`}
             >
               30 HARI
@@ -282,7 +282,7 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
       </div>
 
       {/* D3 Render Target Container */}
-      <div ref={containerRef} className="w-full min-h-[260px] text-zinc-400" />
+      <div ref={containerRef} className="w-full min-h-[260px] text-emerald-200/75" />
     </div>
   );
 };
@@ -312,7 +312,7 @@ export const InterpolStatusDonut: React.FC<InterpolStatusDonutProps> = ({
 
     const data = [
       { label: 'Di Asrama', value: diAsrama, color: '#1e3a8a' },
-      { label: 'Di Luar Izin', value: sedangDiLuar, color: '#3b82f6' },
+      { label: 'Di Luar Izin', value: sedangDiLuar, color: '#d4af37' },
       { label: 'Terlambat', value: terlambat, color: '#ef4444' },
     ];
 
@@ -358,10 +358,10 @@ export const InterpolStatusDonut: React.FC<InterpolStatusDonutProps> = ({
   }, [santriList, perizinanList, diAsrama, sedangDiLuar, terlambat]);
 
   return (
-    <div className="p-5 rounded-2xl bg-neutral-950 border border-zinc-800 shadow-xl flex flex-col justify-between">
+    <div className="p-5 rounded-2xl bg-neutral-950 border border-emerald-800 shadow-xl flex flex-col justify-between">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 text-blue-400" />
+          <Users className="w-3.5 h-3.5 text-amber-400" />
           Status Lokasi Santri Real-time
         </h4>
         <span className="text-[10px] font-mono text-yellow-400">D3 HUD</span>
@@ -370,16 +370,16 @@ export const InterpolStatusDonut: React.FC<InterpolStatusDonutProps> = ({
       <div className="flex items-center justify-center py-2" ref={containerRef} />
 
       <div className="grid grid-cols-3 gap-2 pt-3 border-t border-zinc-850 text-center font-mono text-[10px]">
-        <div className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
-          <p className="text-zinc-400">Asrama</p>
-          <p className="text-sm font-bold text-blue-400 mt-0.5">{diAsrama}</p>
+        <div className="p-1.5 rounded-lg bg-[#041d13] border border-emerald-800">
+          <p className="text-emerald-200/75">Asrama</p>
+          <p className="text-sm font-bold text-amber-400 mt-0.5">{diAsrama}</p>
         </div>
-        <div className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
-          <p className="text-zinc-400">Di Luar</p>
+        <div className="p-1.5 rounded-lg bg-[#041d13] border border-emerald-800">
+          <p className="text-emerald-200/75">Di Luar</p>
           <p className="text-sm font-bold text-yellow-400 mt-0.5">{sedangDiLuar}</p>
         </div>
-        <div className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800">
-          <p className="text-zinc-400">Terlambat</p>
+        <div className="p-1.5 rounded-lg bg-[#041d13] border border-emerald-800">
+          <p className="text-emerald-200/75">Terlambat</p>
           <p className="text-sm font-bold text-red-500 mt-0.5">{terlambat}</p>
         </div>
       </div>
@@ -435,7 +435,7 @@ export const InterpolBarChart: React.FC<InterpolBarChartProps> = ({ pelanggaranL
       .attr('width', x.bandwidth())
       .attr('height', d => (height - margin.bottom) - y(d.count))
       .attr('rx', 4)
-      .attr('fill', (d, i) => i === 1 ? '#ef4444' : i === 0 ? '#3b82f6' : '#d97706');
+      .attr('fill', (d, i) => i === 1 ? '#ef4444' : i === 0 ? '#d4af37' : '#d97706');
 
     // Values labels
     svg.selectAll('.val-label')
@@ -462,18 +462,18 @@ export const InterpolBarChart: React.FC<InterpolBarChartProps> = ({ pelanggaranL
   }, [pelanggaranList]);
 
   return (
-    <div className="p-5 rounded-2xl bg-neutral-950 border border-zinc-800 shadow-xl flex flex-col justify-between">
+    <div className="p-5 rounded-2xl bg-neutral-950 border border-emerald-800 shadow-xl flex flex-col justify-between">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
           <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
           Kategori Kasus Pelanggaran (D3 Bar)
         </h4>
-        <span className="text-[10px] font-mono text-zinc-400">Audit Disiplin</span>
+        <span className="text-[10px] font-mono text-emerald-200/75">Audit Disiplin</span>
       </div>
 
       <div ref={containerRef} className="w-full min-h-[180px] my-1" />
 
-      <p className="text-[10px] text-zinc-500 text-center font-mono border-t border-zinc-850 pt-2">
+      <p className="text-[10px] text-emerald-300/60 text-center font-mono border-t border-zinc-850 pt-2">
         Interpol Threat Spectrum & Santri Behavior Index
       </p>
     </div>
@@ -565,8 +565,8 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
       .attr('id', 'radarCyanArea')
       .attr('x1', '0%').attr('y1', '0%')
       .attr('x2', '100%').attr('y2', '100%');
-    cyanGrad.append('stop').attr('offset', '0%').attr('stop-color', '#06b6d4').attr('stop-opacity', '0.45');
-    cyanGrad.append('stop').attr('offset', '70%').attr('stop-color', '#3b82f6').attr('stop-opacity', '0.25');
+    cyanGrad.append('stop').attr('offset', '0%').attr('stop-color', '#10b981').attr('stop-opacity', '0.45');
+    cyanGrad.append('stop').attr('offset', '70%').attr('stop-color', '#d4af37').attr('stop-opacity', '0.25');
     cyanGrad.append('stop').attr('offset', '100%').attr('stop-color', '#0284c7').attr('stop-opacity', '0.1');
 
     // SOP Gold Area Gradient
@@ -596,7 +596,7 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
 
       g.append('polygon')
         .attr('points', ringPoints.map(p => p.join(',')).join(' '))
-        .attr('stroke', idx === levels.length - 1 ? '#0284c7' : '#1e293b')
+        .attr('stroke', idx === levels.length - 1 ? '#0284c7' : '#06281c')
         .attr('stroke-width', idx === levels.length - 1 ? 1.5 : 1)
         .attr('stroke-dasharray', idx === levels.length - 1 ? 'none' : '3 3')
         .attr('fill', idx % 2 === 0 ? 'rgba(15, 23, 42, 0.35)' : 'none');
@@ -687,7 +687,7 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
 
     g.append('polygon')
       .attr('points', realPoints.map(p => p.join(',')).join(' '))
-      .attr('stroke', '#06b6d4')
+      .attr('stroke', '#10b981')
       .attr('stroke-width', 2)
       .attr('fill', 'url(#radarCyanArea)')
       .attr('filter', 'url(#radarGlow)')
@@ -714,8 +714,8 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
         .attr('cx', vx)
         .attr('cy', vy)
         .attr('r', 4)
-        .attr('fill', '#22d3ee')
-        .attr('stroke', '#0f172a')
+        .attr('fill', '#10b981')
+        .attr('stroke', '#031810')
         .attr('stroke-width', 1.5)
         .attr('class', 'cursor-pointer hover:r-6 transition-all')
         .on('click', () => {
@@ -737,42 +737,42 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
       .attr('cx', 0)
       .attr('cy', 0)
       .attr('r', 4)
-      .attr('fill', '#38bdf8')
+      .attr('fill', '#10b981')
       .attr('stroke', '#0284c7')
       .attr('stroke-width', 1.5);
 
   }, [currentSectors, onSectorSelect]);
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-slate-950 via-slate-900 to-black border border-cyan-500/30 shadow-2xl relative overflow-hidden metallic-glass-card hover-rainbow-edge">
+    <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-[#02100a] via-[#041d13] to-black border border-emerald-500/30 shadow-2xl relative overflow-hidden metallic-glass-card hover-rainbow-edge">
       
       {/* Top Specular Edge Line */}
-      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-400 via-blue-500 to-amber-400 opacity-80" />
+      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-400 via-emerald-500 to-amber-400 opacity-80" />
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-emerald-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1 rounded-lg bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
-              <Radar className="w-4 h-4 text-cyan-400 animate-spin" style={{ animationDuration: '8s' }} />
+            <span className="p-1 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+              <Radar className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: '8s' }} />
             </span>
             <h4 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider font-mono">
               Spatial Security Patrol Distribution (D3 Radar)
             </h4>
           </div>
-          <p className="text-[11px] text-slate-400 font-sans mt-0.5">
+          <p className="text-[11px] text-emerald-200/75 font-sans mt-0.5">
             Pusat Komando Interpol-Style: Distribusi & Cakupan Patroli 6 Sektor Taktis Pesantren
           </p>
         </div>
 
         {/* Shift Mode Toggle */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 self-start sm:self-auto shrink-0 font-mono text-xs">
+        <div className="flex items-center gap-1.5 p-1 bg-[#02100a] rounded-xl border border-emerald-800 self-start sm:self-auto shrink-0 font-mono text-xs">
           <button
             onClick={() => setActiveShift('day')}
             className={`px-3 py-1 rounded-lg font-bold transition-all ${
               activeShift === 'day'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 shadow-xs'
+                : 'text-emerald-200/75 hover:text-white'
             }`}
           >
             Shift Siang
@@ -782,7 +782,7 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
             className={`px-3 py-1 rounded-lg font-bold transition-all ${
               activeShift === 'night'
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40 shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                : 'text-emerald-200/75 hover:text-white'
             }`}
           >
             Shift Malam (Ronda)
@@ -800,8 +800,8 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
           {/* Radar Legend */}
           <div className="flex items-center gap-4 text-xs font-mono mt-2 flex-wrap justify-center">
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-cyan-400 border border-cyan-200 shadow-xs shadow-cyan-400" />
-              <span className="text-cyan-300 font-bold">Realisasi Patroli ({activeShift === 'day' ? 'Siang' : 'Malam'})</span>
+              <span className="w-3 h-3 rounded-full bg-emerald-400 border border-emerald-200 shadow-xs shadow-emerald-400" />
+              <span className="text-emerald-300 font-bold">Realisasi Patroli ({activeShift === 'day' ? 'Siang' : 'Malam'})</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-1.5 border-b-2 border-dashed border-amber-400" />
@@ -812,13 +812,13 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
 
         {/* Right: Sector Inspection Matrix Card */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 shadow-inner">
+          <div className="p-3.5 rounded-2xl bg-[#02100a]/80 border border-emerald-800 shadow-inner">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest font-bold flex items-center gap-1.5">
+              <span className="text-[10px] font-mono text-emerald-200/75 uppercase tracking-widest font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 Matriks Telemetri Sektor
               </span>
-              <span className="text-[10px] font-mono font-bold text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/30">
+              <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
                 LIVE SWEEP
               </span>
             </div>
@@ -836,27 +836,27 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
                     }}
                     className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                       isSelected
-                        ? 'bg-blue-950/60 border-cyan-400 shadow-lg shadow-cyan-950/50 rainbow-active-border'
-                        : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/90'
+                        ? 'bg-emerald-950/60 border-emerald-400 shadow-lg shadow-emerald-950/50 rainbow-active-border'
+                        : 'bg-[#041d13]/60 border-emerald-800/80 hover:border-emerald-800 hover:bg-[#041d13]/90'
                     }`}
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono font-bold text-cyan-400">{sec.code}</span>
+                        <span className="text-[10px] font-mono font-bold text-emerald-400">{sec.code}</span>
                         <span className="text-xs font-bold text-white truncate font-sans">{sec.name}</span>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">
-                        Piket: <span className="text-slate-300 font-medium">{sec.petugasPiket}</span> · {sec.lastChecked}
+                      <p className="text-[10px] text-emerald-200/75 font-mono mt-0.5 truncate">
+                        Piket: <span className="text-emerald-100/90 font-medium">{sec.petugasPiket}</span> · {sec.lastChecked}
                       </p>
                     </div>
 
                     <div className="text-right shrink-0">
                       <span className={`text-xs font-mono font-black ${
-                        sec.coverage >= 90 ? 'text-emerald-400' : sec.coverage >= 80 ? 'text-cyan-300' : 'text-amber-400'
+                        sec.coverage >= 90 ? 'text-emerald-400' : sec.coverage >= 80 ? 'text-emerald-300' : 'text-amber-400'
                       }`}>
                         {sec.coverage}%
                       </span>
-                      <span className="block text-[9px] font-mono text-slate-500">{sec.patroliCount}x sweep</span>
+                      <span className="block text-[9px] font-mono text-emerald-300/60">{sec.patroliCount}x sweep</span>
                     </div>
                   </div>
                 );
@@ -866,14 +866,14 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
 
           {/* Detailed Inspector for Selected Sector */}
           {selectedSector && (
-            <div className="p-3 rounded-xl bg-gradient-to-r from-blue-950/70 via-slate-900 to-slate-950 border border-cyan-500/40 text-xs">
+            <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 via-[#041d13] to-[#02100a] border border-emerald-500/40 text-xs">
               <div className="flex items-center justify-between font-mono">
                 <span className="text-amber-300 font-bold">{selectedSector.code} — {selectedSector.name}</span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                   {selectedSector.status}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300 mt-1 font-sans">
+              <p className="text-[11px] text-emerald-100/90 mt-1 font-sans">
                 Petugas Penanggung Jawab: <span className="text-white font-bold">{selectedSector.petugasPiket}</span>. Cakupan riil {selectedSector.coverage}% (Standar SOP: {selectedSector.sopTarget}%).
               </p>
             </div>
@@ -884,12 +884,12 @@ export const InterpolPatrolRadarChart: React.FC<InterpolPatrolRadarChartProps> =
       </div>
 
       {/* Footer Status Telemetry */}
-      <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-[10px] font-mono text-slate-400 flex-wrap gap-2">
+      <div className="pt-3 border-t border-emerald-800 flex items-center justify-between text-[10px] font-mono text-emerald-200/75 flex-wrap gap-2">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           ENCRYPTED SECTOR TELEMETRY · 6/6 NODES ONLINE
         </span>
-        <span className="text-cyan-400 font-bold">
+        <span className="text-emerald-400 font-bold">
           SISTEM MONITORING KEAMANAN RUANG FISIK & POS JAGA TERPADU
         </span>
       </div>

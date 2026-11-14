@@ -134,7 +134,7 @@ export const GrafikPerizinanSantri: React.FC<{
     if (viewMode === 'status') {
       // Bar Chart: Aktif vs Selesai vs Terlambat
       const statusBars = [
-        { label: 'Izin Aktif', count: izinAktifCount, color: '#06b6d4' },
+        { label: 'Izin Aktif', count: izinAktifCount, color: '#10b981' },
         { label: 'Izin Selesai', count: izinSelesaiCount, color: '#10b981' },
         { label: 'Izin Terlambat', count: izinTerlambatCount, color: '#ef4444' },
       ];
@@ -152,7 +152,7 @@ export const GrafikPerizinanSantri: React.FC<{
 
       // Horizontal grid
       g.append('g')
-        .attr('stroke', '#1e293b')
+        .attr('stroke', '#06281c')
         .attr('stroke-dasharray', '3,3')
         .attr('stroke-opacity', 0.5)
         .call(d3.axisLeft(yScale).tickSize(-innerWidth).tickFormat(() => ''));
@@ -231,7 +231,7 @@ export const GrafikPerizinanSantri: React.FC<{
           .attr('width', barW)
           .attr('height', Math.max(2, barH))
           .attr('rx', 5)
-          .attr('fill', '#38bdf8')
+          .attr('fill', '#10b981')
           .attr('opacity', 0.85);
 
         g.append('text')
@@ -241,7 +241,7 @@ export const GrafikPerizinanSantri: React.FC<{
           .attr('font-size', '11px')
           .attr('font-family', 'monospace')
           .attr('font-weight', 'bold')
-          .attr('fill', '#38bdf8')
+          .attr('fill', '#10b981')
           .text(`${d.count}`);
 
         g.append('text')
@@ -287,7 +287,7 @@ export const GrafikPerizinanSantri: React.FC<{
       g.append('path')
         .datum(timeline)
         .attr('fill', 'none')
-        .attr('stroke', '#06b6d4')
+        .attr('stroke', '#10b981')
         .attr('stroke-width', 2.5)
         .attr('d', line);
 
@@ -300,7 +300,7 @@ export const GrafikPerizinanSantri: React.FC<{
           .attr('cy', cy)
           .attr('r', 4)
           .attr('fill', '#090d16')
-          .attr('stroke', '#22d3ee')
+          .attr('stroke', '#10b981')
           .attr('stroke-width', 2);
 
         g.append('text')
@@ -310,7 +310,7 @@ export const GrafikPerizinanSantri: React.FC<{
           .attr('font-size', '10px')
           .attr('font-family', 'monospace')
           .attr('font-weight', 'bold')
-          .attr('fill', '#22d3ee')
+          .attr('fill', '#10b981')
           .text(`${d.count}`);
 
         g.append('text')
@@ -327,19 +327,19 @@ export const GrafikPerizinanSantri: React.FC<{
   }, [filteredData, viewMode, izinAktifCount, izinSelesaiCount, izinTerlambatCount]);
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-slate-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
-      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-400 via-emerald-400 to-transparent opacity-80" />
+    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
+      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-400 via-emerald-400 to-transparent opacity-80" />
       
       {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+          <div className="p-2 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
             <DoorOpen className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold text-cyan-300 uppercase tracking-wider">MODUL A</span>
-              <span className="text-[10px] font-mono text-slate-400">· REAL-TIME DATABASE</span>
+              <span className="text-[10px] font-mono font-bold text-emerald-300 uppercase tracking-wider">MODUL A</span>
+              <span className="text-[10px] font-mono text-emerald-200/75">· REAL-TIME DATABASE</span>
             </div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase font-sans tracking-tight">
               Grafik Perizinan Santri
@@ -348,22 +348,22 @@ export const GrafikPerizinanSantri: React.FC<{
         </div>
 
         {/* View mode toggle */}
-        <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 text-[10px] font-mono">
+        <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
           <button
             onClick={() => setViewMode('status')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'status' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'status' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             Status
           </button>
           <button
             onClick={() => setViewMode('kelas')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kelas' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kelas' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             Per Kelas
           </button>
           <button
             onClick={() => setViewMode('tren')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'tren' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'tren' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             Tren
           </button>
@@ -372,16 +372,16 @@ export const GrafikPerizinanSantri: React.FC<{
 
       {/* KPI Chips */}
       <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
-        <div className="p-2 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
-          <span className="text-[10px] text-slate-400 block">Izin Aktif:</span>
-          <span className="font-bold text-cyan-300 text-sm">{izinAktifCount}</span>
+        <div className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
+          <span className="text-[10px] text-emerald-200/75 block">Izin Aktif:</span>
+          <span className="font-bold text-emerald-300 text-sm">{izinAktifCount}</span>
         </div>
         <div className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
-          <span className="text-[10px] text-slate-400 block">Izin Selesai:</span>
+          <span className="text-[10px] text-emerald-200/75 block">Izin Selesai:</span>
           <span className="font-bold text-emerald-400 text-sm">{izinSelesaiCount}</span>
         </div>
         <div className="p-2 rounded-xl bg-red-950/40 border border-red-500/30">
-          <span className="text-[10px] text-slate-400 block">Terlambat:</span>
+          <span className="text-[10px] text-emerald-200/75 block">Terlambat:</span>
           <span className="font-bold text-red-400 text-sm">{izinTerlambatCount}</span>
         </div>
       </div>
@@ -389,13 +389,13 @@ export const GrafikPerizinanSantri: React.FC<{
       {/* D3 Render Area */}
       <div 
         ref={containerRef} 
-        className="w-full min-h-[240px] bg-slate-950/60 rounded-2xl border border-slate-800/80 p-2 flex items-center justify-center overflow-x-auto" 
+        className="w-full min-h-[240px] bg-[#02100a]/60 rounded-2xl border border-emerald-800/80 p-2 flex items-center justify-center overflow-x-auto" 
       />
 
       {/* Footer Summary */}
-      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
+      <div className="pt-2 border-t border-emerald-800/80 flex items-center justify-between text-[11px] font-mono text-emerald-200/75">
         <span>Total Terdata: <strong className="text-white">{filteredData.length} Izin</strong></span>
-        <span className="text-cyan-300 font-bold">TERHUBUNG KE RADAR & GERBANG</span>
+        <span className="text-emerald-300 font-bold">TERHUBUNG KE RADAR & GERBANG</span>
       </div>
     </div>
   );
@@ -546,7 +546,7 @@ export const GrafikPelanggaranSantri: React.FC<{
     } else if (viewMode === 'kategori') {
       // Tingkat Pelanggaran: Ringan vs Sedang vs Berat
       const katLevels = [
-        { label: 'Ringan', count: filteredData.filter(p => p.kategori === 'Ringan').length, color: '#06b6d4' },
+        { label: 'Ringan', count: filteredData.filter(p => p.kategori === 'Ringan').length, color: '#10b981' },
         { label: 'Sedang', count: filteredData.filter(p => p.kategori === 'Sedang').length, color: '#f59e0b' },
         { label: 'Berat', count: filteredData.filter(p => p.kategori === 'Berat').length, color: '#ef4444' }
       ];
@@ -636,7 +636,7 @@ export const GrafikPelanggaranSantri: React.FC<{
           .attr('height', barH)
           .attr('rx', 6)
           .attr('fill', '#090d16')
-          .attr('stroke', '#1e293b');
+          .attr('stroke', '#06281c');
 
         g.append('rect')
           .attr('x', 0)
@@ -670,11 +670,11 @@ export const GrafikPelanggaranSantri: React.FC<{
   }, [filteredData, viewMode, countToday, countWeekly, countMonthly]);
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-slate-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
+    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
       <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-red-500 via-amber-500 to-transparent opacity-80" />
       
       {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-red-950/80 border border-red-500/40 text-red-400">
             <AlertTriangle className="w-4 h-4" />
@@ -682,7 +682,7 @@ export const GrafikPelanggaranSantri: React.FC<{
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-wider">MODUL B</span>
-              <span className="text-[10px] font-mono text-slate-400">· INSIDEN & TATA TERTIB</span>
+              <span className="text-[10px] font-mono text-emerald-200/75">· INSIDEN & TATA TERTIB</span>
             </div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase font-sans tracking-tight">
               Grafik Pelanggaran Santri
@@ -691,22 +691,22 @@ export const GrafikPelanggaranSantri: React.FC<{
         </div>
 
         {/* View Mode Toggle */}
-        <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 text-[10px] font-mono">
+        <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
           <button
             onClick={() => setViewMode('periode')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'periode' ? 'bg-red-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'periode' ? 'bg-red-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             Periode
           </button>
           <button
             onClick={() => setViewMode('kategori')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kategori' ? 'bg-red-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kategori' ? 'bg-red-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             Tingkat
           </button>
           <button
             onClick={() => setViewMode('kelas')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kelas' ? 'bg-red-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kelas' ? 'bg-red-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             Kasus Top
           </button>
@@ -716,19 +716,19 @@ export const GrafikPelanggaranSantri: React.FC<{
       {/* KPI Chips & Trend Indicator */}
       <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
         <div className="p-2 rounded-xl bg-amber-950/30 border border-amber-500/30">
-          <span className="text-[9px] text-slate-400 block">Hari Ini:</span>
+          <span className="text-[9px] text-emerald-200/75 block">Hari Ini:</span>
           <span className="font-bold text-amber-300 text-sm">{countToday}</span>
         </div>
         <div className="p-2 rounded-xl bg-orange-950/30 border border-orange-500/30">
-          <span className="text-[9px] text-slate-400 block">7 Hari:</span>
+          <span className="text-[9px] text-emerald-200/75 block">7 Hari:</span>
           <span className="font-bold text-orange-400 text-sm">{countWeekly}</span>
         </div>
         <div className="p-2 rounded-xl bg-red-950/30 border border-red-500/30">
-          <span className="text-[9px] text-slate-400 block">30 Hari:</span>
+          <span className="text-[9px] text-emerald-200/75 block">30 Hari:</span>
           <span className="font-bold text-red-400 text-sm">{countMonthly}</span>
         </div>
-        <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 flex flex-col items-center justify-center">
-          <span className="text-[9px] text-slate-400">Tren 7H:</span>
+        <div className="p-2 rounded-xl bg-[#041d13]/90 border border-emerald-800/80 flex flex-col items-center justify-center">
+          <span className="text-[9px] text-emerald-200/75">Tren 7H:</span>
           <span className={`text-[11px] font-bold flex items-center gap-0.5 ${isTrendUp ? 'text-red-400' : 'text-emerald-400'}`}>
             {isTrendUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             {trendWeeklyDiff >= 0 ? `+${trendWeeklyDiff}` : trendWeeklyDiff}
@@ -739,11 +739,11 @@ export const GrafikPelanggaranSantri: React.FC<{
       {/* D3 Render Area */}
       <div 
         ref={containerRef} 
-        className="w-full min-h-[240px] bg-slate-950/60 rounded-2xl border border-slate-800/80 p-2 flex items-center justify-center overflow-x-auto" 
+        className="w-full min-h-[240px] bg-[#02100a]/60 rounded-2xl border border-emerald-800/80 p-2 flex items-center justify-center overflow-x-auto" 
       />
 
       {/* Footer Summary */}
-      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
+      <div className="pt-2 border-t border-emerald-800/80 flex items-center justify-between text-[11px] font-mono text-emerald-200/75">
         <span>Total Kasus: <strong className="text-red-400">{filteredData.length} Kasus</strong></span>
         <span className="text-amber-300 font-bold">TERKORELASI KEDISIPLINAN REAL-TIME</span>
       </div>
@@ -882,7 +882,7 @@ export const GrafikSanksiSantri: React.FC<{
           .attr('height', barH)
           .attr('rx', 6)
           .attr('fill', '#090d16')
-          .attr('stroke', '#1e293b');
+          .attr('stroke', '#06281c');
 
         g.append('rect')
           .attr('x', 0)
@@ -916,11 +916,11 @@ export const GrafikSanksiSantri: React.FC<{
   }, [sanksiList, viewMode, sanksiAktif, sanksiSelesai, totalSanksi]);
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-slate-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
+    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
       <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-purple-500 via-emerald-500 to-transparent opacity-80" />
       
       {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-purple-950/80 border border-purple-500/40 text-purple-300">
             <ShieldCheck className="w-4 h-4" />
@@ -928,7 +928,7 @@ export const GrafikSanksiSantri: React.FC<{
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono font-bold text-purple-300 uppercase tracking-wider">MODUL C</span>
-              <span className="text-[10px] font-mono text-slate-400">· PEMBINAAN & TAKZIR</span>
+              <span className="text-[10px] font-mono text-emerald-200/75">· PEMBINAAN & TAKZIR</span>
             </div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase font-sans tracking-tight">
               Grafik Sanksi Edukatif
@@ -937,16 +937,16 @@ export const GrafikSanksiSantri: React.FC<{
         </div>
 
         {/* View mode toggle */}
-        <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 text-[10px] font-mono">
+        <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
           <button
             onClick={() => setViewMode('status')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'status' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'status' ? 'bg-purple-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             Status
           </button>
           <button
             onClick={() => setViewMode('jenis')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'jenis' ? 'bg-purple-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'jenis' ? 'bg-purple-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             Bentuk Sanksi
           </button>
@@ -956,15 +956,15 @@ export const GrafikSanksiSantri: React.FC<{
       {/* KPI Chips */}
       <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
         <div className="p-2 rounded-xl bg-amber-950/30 border border-amber-500/30">
-          <span className="text-[10px] text-slate-400 block">Sanksi Aktif:</span>
+          <span className="text-[10px] text-emerald-200/75 block">Sanksi Aktif:</span>
           <span className="font-bold text-amber-300 text-sm">{sanksiAktif.length}</span>
         </div>
         <div className="p-2 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
-          <span className="text-[10px] text-slate-400 block">Sanksi Selesai:</span>
+          <span className="text-[10px] text-emerald-200/75 block">Sanksi Selesai:</span>
           <span className="font-bold text-emerald-400 text-sm">{sanksiSelesai.length}</span>
         </div>
         <div className="p-2 rounded-xl bg-purple-950/30 border border-purple-500/30">
-          <span className="text-[10px] text-slate-400 block">Total Berkas:</span>
+          <span className="text-[10px] text-emerald-200/75 block">Total Berkas:</span>
           <span className="font-bold text-purple-300 text-sm">{totalSanksi}</span>
         </div>
       </div>
@@ -972,11 +972,11 @@ export const GrafikSanksiSantri: React.FC<{
       {/* D3 Render Area */}
       <div 
         ref={containerRef} 
-        className="w-full min-h-[240px] bg-slate-950/60 rounded-2xl border border-slate-800/80 p-2 flex items-center justify-center overflow-x-auto" 
+        className="w-full min-h-[240px] bg-[#02100a]/60 rounded-2xl border border-emerald-800/80 p-2 flex items-center justify-center overflow-x-auto" 
       />
 
       {/* Footer Summary */}
-      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
+      <div className="pt-2 border-t border-emerald-800/80 flex items-center justify-between text-[11px] font-mono text-emerald-200/75">
         <span>Dibina: <strong className="text-amber-300">{sanksiAktif.length} Santri</strong></span>
         <span className="text-emerald-400 font-bold">REKAPITULASI TAKZIR AKTUAL</span>
       </div>
@@ -1053,7 +1053,7 @@ export const GrafikKomparasiBulanan: React.FC<{
 
     // Grid lines
     g.append('g')
-      .attr('stroke', '#1e293b')
+      .attr('stroke', '#06281c')
       .attr('stroke-dasharray', '3,3')
       .attr('stroke-opacity', 0.5)
       .call(d3.axisLeft(yScale).tickSize(-innerWidth).tickFormat(() => ''));
@@ -1070,7 +1070,7 @@ export const GrafikKomparasiBulanan: React.FC<{
         .attr('width', barW)
         .attr('height', Math.max(2, hIzin))
         .attr('rx', 4)
-        .attr('fill', '#06b6d4')
+        .attr('fill', '#10b981')
         .attr('opacity', 0.9);
 
       // Pelanggaran (Red)
@@ -1109,11 +1109,11 @@ export const GrafikKomparasiBulanan: React.FC<{
   }, [monthlyData]);
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-slate-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
-      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-amber-500 via-cyan-500 to-transparent opacity-80" />
+    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
+      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-amber-500 via-emerald-500 to-transparent opacity-80" />
       
       {/* Header Panel */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300">
             <Calendar className="w-4 h-4" />
@@ -1121,7 +1121,7 @@ export const GrafikKomparasiBulanan: React.FC<{
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-wider">MODUL D</span>
-              <span className="text-[10px] font-mono text-slate-400">· KOMPARASI MULTI-BULAN</span>
+              <span className="text-[10px] font-mono text-emerald-200/75">· KOMPARASI MULTI-BULAN</span>
             </div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase font-sans tracking-tight">
               Grafik Komparasi Laporan Bulanan
@@ -1130,16 +1130,16 @@ export const GrafikKomparasiBulanan: React.FC<{
         </div>
 
         {/* Range Selector */}
-        <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 text-[10px] font-mono">
+        <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
           <button
             onClick={() => setRangeMonths(6)}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${rangeMonths === 6 ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${rangeMonths === 6 ? 'bg-amber-500 text-slate-950 font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             6 Bulan
           </button>
           <button
             onClick={() => setRangeMonths(12)}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${rangeMonths === 12 ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer ${rangeMonths === 12 ? 'bg-amber-500 text-slate-950 font-bold' : 'text-emerald-200/75 hover:text-white'}`}
           >
             12 Bulan
           </button>
@@ -1148,8 +1148,8 @@ export const GrafikKomparasiBulanan: React.FC<{
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-4 text-xs font-mono">
-        <span className="flex items-center gap-1.5 text-cyan-300">
-          <span className="w-2.5 h-2.5 rounded-sm bg-cyan-400"></span> Perizinan
+        <span className="flex items-center gap-1.5 text-emerald-300">
+          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span> Perizinan
         </span>
         <span className="flex items-center gap-1.5 text-red-400">
           <span className="w-2.5 h-2.5 rounded-sm bg-red-500"></span> Pelanggaran
@@ -1162,13 +1162,13 @@ export const GrafikKomparasiBulanan: React.FC<{
       {/* D3 Render Area */}
       <div 
         ref={containerRef} 
-        className="w-full min-h-[240px] bg-slate-950/60 rounded-2xl border border-slate-800/80 p-2 flex items-center justify-center overflow-x-auto" 
+        className="w-full min-h-[240px] bg-[#02100a]/60 rounded-2xl border border-emerald-800/80 p-2 flex items-center justify-center overflow-x-auto" 
       />
 
       {/* Footer Summary */}
-      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
+      <div className="pt-2 border-t border-emerald-800/80 flex items-center justify-between text-[11px] font-mono text-emerald-200/75">
         <span>Periode: <strong className="text-amber-300">{rangeMonths} Bulan Terakhir</strong></span>
-        <span className="text-cyan-300 font-bold">REKAPITULASI DUA ARAH REAL-TIME</span>
+        <span className="text-emerald-300 font-bold">REKAPITULASI DUA ARAH REAL-TIME</span>
       </div>
     </div>
   );
@@ -1214,17 +1214,17 @@ export const AdvancedDataVisualization: React.FC<AdvancedDataVisualizationProps>
     <div className="space-y-6">
       
       {/* 1. Master Filter & Live Telemetry Count-Up Bar */}
-      <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-slate-800 shadow-2xl relative overflow-hidden hover-rainbow-edge">
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-500 via-amber-400 to-emerald-500 opacity-80" />
+      <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl relative overflow-hidden hover-rainbow-edge">
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-500 opacity-80" />
         
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-emerald-800/80">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/40 uppercase tracking-wider flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
                 INTEGRATED ANALYTIC GRID & VISUALIZATION
               </span>
-              <span className="text-xs font-mono text-slate-400">· 4 Modul Terhubung</span>
+              <span className="text-xs font-mono text-emerald-200/75">· 4 Modul Terhubung</span>
             </div>
             <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight font-sans mt-1">
               Pusat Analitik Keamanan, Perizinan & Kedisiplinan Santri
@@ -1234,28 +1234,28 @@ export const AdvancedDataVisualization: React.FC<AdvancedDataVisualizationProps>
           {/* Global Interactive Filters */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Periode filter */}
-            <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 text-[10px] font-mono">
+            <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
               <button
                 onClick={() => setPeriodFilter('today')}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === 'today' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === 'today' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
               >
                 Hari Ini
               </button>
               <button
                 onClick={() => setPeriodFilter('7d')}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === '7d' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === '7d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
               >
                 7 Hari
               </button>
               <button
                 onClick={() => setPeriodFilter('30d')}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === '30d' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === '30d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
               >
                 30 Hari
               </button>
               <button
                 onClick={() => setPeriodFilter('all')}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === 'all' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === 'all' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
               >
                 Semua
               </button>
@@ -1265,7 +1265,7 @@ export const AdvancedDataVisualization: React.FC<AdvancedDataVisualizationProps>
             <select
               value={selectedKelas}
               onChange={(e) => setSelectedKelas(e.target.value)}
-              className="bg-slate-900/90 border border-slate-700 text-amber-300 text-[11px] font-mono font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
+              className="bg-[#041d13]/90 border border-emerald-800 text-amber-300 text-[11px] font-mono font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
             >
               <option value="all">Semua Kelas</option>
               {distinctClasses.map(cls => (
@@ -1277,7 +1277,7 @@ export const AdvancedDataVisualization: React.FC<AdvancedDataVisualizationProps>
             <select
               value={selectedKategori}
               onChange={(e) => setSelectedKategori(e.target.value)}
-              className="bg-slate-900/90 border border-slate-700 text-cyan-300 text-[11px] font-mono font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-cyan-400 cursor-pointer"
+              className="bg-[#041d13]/90 border border-emerald-800 text-emerald-300 text-[11px] font-mono font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-400 cursor-pointer"
             >
               <option value="all">Semua Kategori</option>
               <option value="Ringan">Ringan</option>
@@ -1291,62 +1291,62 @@ export const AdvancedDataVisualization: React.FC<AdvancedDataVisualizationProps>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4">
           
           {/* Stat 1: Total Perizinan */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-cyan-500/40 transition-all">
+          <div className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800/80 hover:border-emerald-500/40 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold">Total Perizinan</span>
-              <DoorOpen className="w-4 h-4 text-cyan-400" />
+              <span className="text-[10px] font-mono uppercase text-emerald-200/75 font-bold">Total Perizinan</span>
+              <DoorOpen className="w-4 h-4 text-emerald-400" />
             </div>
             <div className="text-2xl font-black font-mono text-white mt-1">
               <AnimatedCounter value={totalIzin} />
             </div>
-            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-1 pt-1 border-t border-slate-800">
-              <span className="text-cyan-300">{totalIzinAktif} Aktif</span>
+            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-200/75 mt-1 pt-1 border-t border-emerald-800">
+              <span className="text-emerald-300">{totalIzinAktif} Aktif</span>
               <span className="text-emerald-400">{totalIzinSelesai} Selesai</span>
             </div>
           </div>
 
           {/* Stat 2: Total Pelanggaran & Poin */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-red-500/40 transition-all">
+          <div className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800/80 hover:border-red-500/40 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold">Pelanggaran Terdata</span>
+              <span className="text-[10px] font-mono uppercase text-emerald-200/75 font-bold">Pelanggaran Terdata</span>
               <AlertTriangle className="w-4 h-4 text-red-400" />
             </div>
             <div className="text-2xl font-black font-mono text-red-400 mt-1">
               <AnimatedCounter value={totalPelanggaran} />
             </div>
-            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-1 pt-1 border-t border-slate-800">
-              <span className="text-slate-300">{totalPoinPelanggaran} Poin</span>
+            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-200/75 mt-1 pt-1 border-t border-emerald-800">
+              <span className="text-emerald-100/90">{totalPoinPelanggaran} Poin</span>
               <span className="text-red-400">{pelanggaranList.filter(p => p.kategori === 'Berat').length} Berat</span>
             </div>
           </div>
 
           {/* Stat 3: Santri Menjalani Sanksi */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/40 transition-all">
+          <div className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800/80 hover:border-purple-500/40 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold">Sanksi Edukatif</span>
+              <span className="text-[10px] font-mono uppercase text-emerald-200/75 font-bold">Sanksi Edukatif</span>
               <ShieldCheck className="w-4 h-4 text-purple-400" />
             </div>
             <div className="text-2xl font-black font-mono text-amber-300 mt-1">
               <AnimatedCounter value={totalSanksiAktif} />
             </div>
-            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-1 pt-1 border-t border-slate-800">
+            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-200/75 mt-1 pt-1 border-t border-emerald-800">
               <span className="text-amber-300">{totalSanksiAktif} Dibina</span>
               <span className="text-emerald-400">{totalSanksiSelesai} Tuntas</span>
             </div>
           </div>
 
           {/* Stat 4: Keterlambatan Gerbang */}
-          <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-amber-500/40 transition-all">
+          <div className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800/80 hover:border-amber-500/40 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase text-slate-400 font-bold">Santri Terlambat</span>
+              <span className="text-[10px] font-mono uppercase text-emerald-200/75 font-bold">Santri Terlambat</span>
               <Clock className="w-4 h-4 text-amber-400" />
             </div>
             <div className="text-2xl font-black font-mono text-red-400 mt-1">
               <AnimatedCounter value={totalTerlambat} />
             </div>
-            <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-1 pt-1 border-t border-slate-800">
+            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-200/75 mt-1 pt-1 border-t border-emerald-800">
               <span className="text-red-400">{totalTerlambat} Lewat Jadwal</span>
-              <span className="text-slate-400">/ {totalSantri} Santri</span>
+              <span className="text-emerald-200/75">/ {totalSantri} Santri</span>
             </div>
           </div>
 

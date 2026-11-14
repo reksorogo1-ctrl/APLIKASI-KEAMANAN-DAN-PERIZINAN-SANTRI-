@@ -173,6 +173,115 @@
         "status": { "type": "string" }
       },
       "required": ["id", "nomorTiket", "judul", "isi", "status"]
+    },
+    "StrukturOrganisasiNode": {
+      "title": "StrukturOrganisasiNode",
+      "description": "Organizational hierarchy node for Pesantren management",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jabatan": { "type": "string", "maxLength": 120 },
+        "namaPengurus": { "type": "string", "maxLength": 120 },
+        "divisi": { "type": "string" },
+        "level": { "type": "number" },
+        "periode": { "type": "string" },
+        "statusAktif": { "type": "boolean" }
+      },
+      "required": ["id", "jabatan", "namaPengurus", "divisi"]
+    },
+    "AgendaPengurus": {
+      "title": "AgendaPengurus",
+      "description": "Management schedule and activities overseen by Ketua Pondok",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "judul": { "type": "string", "maxLength": 200 },
+        "tanggal": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "judul", "tanggal", "status"]
+    },
+    "EvaluasiKepengurusan": {
+      "title": "EvaluasiKepengurusan",
+      "description": "Board evaluation notes by Ketua Pondok",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "divisi": { "type": "string" },
+        "judul": { "type": "string", "maxLength": 200 },
+        "nilaiKinerja": { "type": "string" }
+      },
+      "required": ["id", "tanggal", "divisi", "judul"]
+    },
+    "PengajuanDivisi": {
+      "title": "PengajuanDivisi",
+      "description": "Division reports and approval requests to Ketua Pondok",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nomorPengajuan": { "type": "string" },
+        "divisi": { "type": "string" },
+        "judul": { "type": "string", "maxLength": 200 },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "nomorPengajuan", "divisi", "judul", "status"]
+    },
+    "ArsipSurat": {
+      "title": "ArsipSurat",
+      "description": "Official correspondence archive (15 letter types) managed by Sekretaris",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "arah": { "type": "string", "enum": ["Keluar", "Masuk"] },
+        "kodeJenis": { "type": "string" },
+        "nomorSurat": { "type": "string", "maxLength": 100 },
+        "tanggalSurat": { "type": "string" },
+        "perihal": { "type": "string", "maxLength": 255 },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "arah", "kodeJenis", "nomorSurat", "perihal"]
+    },
+    "TransaksiKeuangan": {
+      "title": "TransaksiKeuangan",
+      "description": "Income and expense ledger entries managed by Bendahara",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kodeTransaksi": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "tipe": { "type": "string", "enum": ["Pemasukan", "Pengeluaran"] },
+        "kategori": { "type": "string" },
+        "nominal": { "type": "number" }
+      },
+      "required": ["id", "kodeTransaksi", "tanggal", "tipe", "nominal"]
+    },
+    "BarangInventaris": {
+      "title": "BarangInventaris",
+      "description": "Inventory assets managed by Perlengkapan division",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kodeBarang": { "type": "string" },
+        "namaBarang": { "type": "string", "maxLength": 150 },
+        "kategori": { "type": "string" },
+        "jumlah": { "type": "number" },
+        "kondisi": { "type": "string" }
+      },
+      "required": ["id", "kodeBarang", "namaBarang", "jumlah"]
+    },
+    "PeminjamanBarang": {
+      "title": "PeminjamanBarang",
+      "description": "Equipment borrowing and return logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kodePeminjaman": { "type": "string" },
+        "barangId": { "type": "string" },
+        "peminjamNama": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "kodePeminjaman", "barangId", "status"]
     }
   },
   "firestore": {
@@ -219,6 +328,38 @@
     "/koordinasi/{koordinasiId}": {
       "schema": { "$ref": "#/entities/PesanKoordinasi" },
       "description": "Command coordination messages"
+    },
+    "/struktur_organisasi/{nodeId}": {
+      "schema": { "$ref": "#/entities/StrukturOrganisasiNode" },
+      "description": "Pesantren organizational structure nodes"
+    },
+    "/agenda_pengurus/{agendaId}": {
+      "schema": { "$ref": "#/entities/AgendaPengurus" },
+      "description": "Management agendas and activities"
+    },
+    "/evaluasi_kepengurusan/{evaluasiId}": {
+      "schema": { "$ref": "#/entities/EvaluasiKepengurusan" },
+      "description": "Ketua Pondok division evaluations"
+    },
+    "/pengajuan_divisi/{pengajuanId}": {
+      "schema": { "$ref": "#/entities/PengajuanDivisi" },
+      "description": "Division approval requests and periodic reports"
+    },
+    "/surat_menyurat/{suratId}": {
+      "schema": { "$ref": "#/entities/ArsipSurat" },
+      "description": "Official letters and correspondence archive"
+    },
+    "/keuangan_transaksi/{transaksiId}": {
+      "schema": { "$ref": "#/entities/TransaksiKeuangan" },
+      "description": "Financial cashbook income and expense transactions"
+    },
+    "/perlengkapan_inventaris/{barangId}": {
+      "schema": { "$ref": "#/entities/BarangInventaris" },
+      "description": "Pesantren inventory and facility assets"
+    },
+    "/perlengkapan_peminjaman/{peminjamanId}": {
+      "schema": { "$ref": "#/entities/PeminjamanBarang" },
+      "description": "Equipment borrowing records"
     }
   }
 }

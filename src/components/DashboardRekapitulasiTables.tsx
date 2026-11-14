@@ -196,29 +196,29 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
     <div className="space-y-6">
       
       {/* Table Section Header & View Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a] border border-emerald-800 shadow-xl">
         <div className="flex items-center gap-2.5">
-          <div className="p-2.5 rounded-xl bg-blue-950/80 border border-cyan-500/40 text-cyan-300">
+          <div className="p-2.5 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
             <FileSpreadsheet className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase tracking-tight font-sans">
               Pusat Administrasi & Rekapitulasi Keamanan Santri
             </h3>
-            <p className="text-xs text-slate-400 font-mono">
+            <p className="text-xs text-emerald-200/75 font-mono">
               Pemantauan terpusat real-time perizinan santri & buku induk pelanggaran
             </p>
           </div>
         </div>
 
         {/* Tab view selector: Both, Tabel A Only, Tabel B Only */}
-        <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-700/80 text-xs font-mono self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-xs font-mono self-start sm:self-auto">
           <button
             onClick={() => setActiveTableTab('both')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer font-bold ${
               activeTableTab === 'both'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-700 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-xs'
+                : 'text-emerald-200/75 hover:text-white'
             }`}
           >
             Tampilkan Kedua Tabel
@@ -227,19 +227,19 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
             onClick={() => setActiveTableTab('perizinan')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer font-bold flex items-center gap-1.5 ${
               activeTableTab === 'perizinan'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-700 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-xs'
+                : 'text-emerald-200/75 hover:text-white'
             }`}
           >
             <span>Tabel A: Perizinan</span>
-            <span className="px-1.5 py-0.2 rounded-md bg-cyan-950 text-cyan-300 text-[10px] border border-cyan-500/40">{perizinanList.length}</span>
+            <span className="px-1.5 py-0.2 rounded-md bg-emerald-950 text-emerald-300 text-[10px] border border-emerald-500/40">{perizinanList.length}</span>
           </button>
           <button
             onClick={() => setActiveTableTab('pelanggaran')}
             className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer font-bold flex items-center gap-1.5 ${
               activeTableTab === 'pelanggaran'
                 ? 'bg-gradient-to-r from-red-600 to-amber-700 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
+                : 'text-emerald-200/75 hover:text-white'
             }`}
           >
             <span>Tabel B: Pelanggaran</span>
@@ -252,25 +252,25 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
           TABEL A: TABEL REKAPITULASI PERIZINAN SANTRI
          ========================================================================= */}
       {(activeTableTab === 'both' || activeTableTab === 'perizinan') && (
-        <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-slate-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden">
+        <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden">
           
           {/* Glowing Top Specular Line */}
-          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-500 via-blue-500 to-transparent opacity-80" />
+          <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-500 via-emerald-500 to-transparent opacity-80" />
 
           {/* Table Header & Summary */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+              <div className="p-2 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
                 <FileCheck2 className="w-4 h-4" />
               </div>
               <div>
                 <h4 className="text-sm font-black text-white uppercase font-sans flex items-center gap-2">
                   <span>A. Tabel Rekapitulasi Perizinan Santri</span>
-                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-500/30">
                     {filteredPerizinan.length} Data
                   </span>
                 </h4>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                <p className="text-[11px] text-emerald-200/75 font-mono mt-0.5">
                   Rekapitulasi keluar, kembali, otoritas pemroses & status ketertiban waktu
                 </p>
               </div>
@@ -300,7 +300,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
             
             {/* Search Input */}
             <div className="lg:col-span-2 relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+              <Search className="w-3.5 h-3.5 text-emerald-200/75 absolute left-3 top-3" />
               <input
                 type="text"
                 value={searchPerizinan}
@@ -309,7 +309,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                   setCurrentPageIzin(1);
                 }}
                 placeholder="Cari nama santri, NIS, no izin..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-sans"
+                className="w-full pl-9 pr-3 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-white placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 font-sans"
               />
             </div>
 
@@ -321,7 +321,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                   setFilterStatusIzin(e.target.value);
                   setCurrentPageIzin(1);
                 }}
-                className="w-full px-2.5 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"
+                className="w-full px-2.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400 font-mono"
               >
                 <option value="all">Semua Status Izin</option>
                 <option value="Sedang Keluar">Sedang Keluar</option>
@@ -341,7 +341,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                   setFilterKetertiban(e.target.value as any);
                   setCurrentPageIzin(1);
                 }}
-                className="w-full px-2.5 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"
+                className="w-full px-2.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400 font-mono"
               >
                 <option value="all">Semua Ketertiban</option>
                 <option value="tertib">✅ Tertib (Tepat Waktu)</option>
@@ -357,7 +357,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                   setFilterBulanIzin(e.target.value);
                   setCurrentPageIzin(1);
                 }}
-                className="w-full px-2.5 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"
+                className="w-full px-2.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400 font-mono"
               >
                 <option value="all">Semua Bulan</option>
                 {monthsIzin.map(m => (
@@ -369,10 +369,10 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
           </div>
 
           {/* Table Container */}
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 overflow-hidden shadow-inner track-scroll-box">
+          <div className="rounded-2xl border border-emerald-800/80 bg-[#02100a]/80 overflow-hidden shadow-inner track-scroll-box">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-slate-900/90 border-b border-slate-800 text-slate-300 uppercase tracking-wider text-[10px]">
+                <thead className="bg-[#041d13]/90 border-b border-emerald-800 text-emerald-100/90 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="p-3 text-center w-12">No.</th>
                     <th className="p-3 whitespace-nowrap">Nama Santri</th>
@@ -389,10 +389,10 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                 <tbody className="divide-y divide-slate-850 text-slate-200">
                   {paginatedPerizinan.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="p-8 text-center text-slate-500 font-sans">
+                      <td colSpan={10} className="p-8 text-center text-emerald-300/60 font-sans">
                         <FileCheck2 className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
-                        <p className="font-bold text-slate-400 font-mono">TIDAK ADA REKAMAN PERIZINAN YANG SESUAI FILTER</p>
-                        <p className="text-xs text-slate-500 mt-1">Coba sesuaikan kata kunci pencarian atau filter status.</p>
+                        <p className="font-bold text-emerald-200/75 font-mono">TIDAK ADA REKAMAN PERIZINAN YANG SESUAI FILTER</p>
+                        <p className="text-xs text-emerald-300/60 mt-1">Coba sesuaikan kata kunci pencarian atau filter status.</p>
                       </td>
                     </tr>
                   ) : (
@@ -403,19 +403,19 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                       return (
                         <tr 
                           key={izin.id}
-                          className={`hover:bg-slate-900/60 transition-colors ${
+                          className={`hover:bg-[#041d13]/60 transition-colors ${
                             isLate ? 'bg-red-950/15' : ''
                           }`}
                         >
                           {/* 1. Nomor */}
-                          <td className="p-3 text-center font-bold text-slate-400">
+                          <td className="p-3 text-center font-bold text-emerald-200/75">
                             {rowNum}
                           </td>
 
                           {/* 2. Nama Santri */}
                           <td className="p-3 whitespace-nowrap">
                             <strong className="text-white block font-sans text-xs">{izin.santriNama}</strong>
-                            <span className="text-[10px] text-cyan-300 font-mono">
+                            <span className="text-[10px] text-emerald-300 font-mono">
                               NIS: {izin.santriNis} · {izin.santriKelas} ({izin.santriGender === 'putra' ? 'Banin' : 'Banat'})
                             </span>
                           </td>
@@ -425,15 +425,15 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                             <span className="font-bold text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30 text-[11px]">
                               {izin.jenisIzin}
                             </span>
-                            <span className="text-[10px] text-slate-400 block truncate max-w-[130px] mt-0.5 font-sans">
+                            <span className="text-[10px] text-emerald-200/75 block truncate max-w-[130px] mt-0.5 font-sans">
                               {izin.tujuan || izin.alasan}
                             </span>
                           </td>
 
                           {/* 4. Tanggal Pengajuan */}
-                          <td className="p-3 whitespace-nowrap text-slate-300">
+                          <td className="p-3 whitespace-nowrap text-emerald-100/90">
                             <span className="font-semibold block">{izin.tglPengajuan || izin.tglKeluar}</span>
-                            <span className="text-[10px] text-slate-500">{izin.nomorIzin}</span>
+                            <span className="text-[10px] text-emerald-300/60">{izin.nomorIzin}</span>
                           </td>
 
                           {/* 5. Pengurus yang Memproses */}
@@ -450,15 +450,15 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                           <td className="p-3 whitespace-nowrap">
                             <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 border ${
                               izin.status === 'Sedang Keluar'
-                                ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50 glow-cyan'
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-500/50 glow-gold'
                                 : izin.status === 'Sudah Kembali'
                                 ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
                                 : izin.status === 'Terlambat'
                                 ? 'bg-red-950 text-red-300 border-red-500/60 glow-red animate-pulse'
                                 : izin.status === 'Disetujui'
-                                ? 'bg-blue-950 text-blue-300 border-blue-500/40'
+                                ? 'bg-emerald-950 text-amber-300 border-emerald-500/40'
                                 : izin.status === 'Ditolak'
-                                ? 'bg-slate-900 text-slate-400 border-slate-700'
+                                ? 'bg-[#041d13] text-emerald-200/75 border-emerald-800'
                                 : 'bg-amber-950 text-amber-300 border-amber-500/40'
                             }`}>
                               {izin.status}
@@ -467,12 +467,12 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
 
                           {/* 8. Waktu Keluar dan Kembali */}
                           <td className="p-3 whitespace-nowrap text-[11px]">
-                            <div className="text-slate-300">
-                              <span className="text-slate-500 text-[10px]">Keluar: </span>
+                            <div className="text-emerald-100/90">
+                              <span className="text-emerald-300/60 text-[10px]">Keluar: </span>
                               <span className="text-white font-semibold">{izin.actualKeluar || `${izin.tglKeluar} ${izin.jamKeluar}`}</span>
                             </div>
-                            <div className="text-slate-300 mt-0.5">
-                              <span className="text-slate-500 text-[10px]">Kembali: </span>
+                            <div className="text-emerald-100/90 mt-0.5">
+                              <span className="text-emerald-300/60 text-[10px]">Kembali: </span>
                               <span className={isLate ? 'text-red-400 font-bold' : 'text-slate-200'}>
                                 {izin.actualKembali || `${izin.tglKembali} ${izin.jamKembali}`}
                               </span>
@@ -498,7 +498,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                           <td className="p-3 text-center whitespace-nowrap">
                             <button
                               onClick={() => onViewSuratIzin(izin)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-cyan-300 hover:text-white bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 rounded-lg transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:text-white bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 rounded-lg transition-colors cursor-pointer"
                               title="Lihat Surat Izin Digital"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -514,7 +514,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
             </div>
 
             {/* Pagination Controls */}
-            <div className="p-3 bg-slate-900/80 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono text-slate-400">
+            <div className="p-3 bg-[#041d13]/80 border-t border-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono text-emerald-200/75">
               <div className="flex items-center gap-2">
                 <span>Menampilkan {filteredPerizinan.length > 0 ? (currentPageIzin - 1) * itemsPerPageIzin + 1 : 0} - {Math.min(currentPageIzin * itemsPerPageIzin, filteredPerizinan.length)} dari {filteredPerizinan.length} data</span>
                 <span className="text-slate-600">|</span>
@@ -524,7 +524,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                     setItemsPerPageIzin(Number(e.target.value));
                     setCurrentPageIzin(1);
                   }}
-                  className="bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-slate-300"
+                  className="bg-[#02100a] border border-emerald-800 rounded px-2 py-0.5 text-emerald-100/90"
                 >
                   <option value={5}>5 per hal</option>
                   <option value={10}>10 per hal</option>
@@ -536,17 +536,17 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                 <button
                   disabled={currentPageIzin <= 1}
                   onClick={() => setCurrentPageIzin(prev => Math.max(prev - 1, 1))}
-                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  className="p-1.5 rounded-lg border border-emerald-800 bg-[#02100a] text-emerald-100/90 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="px-3 py-1 font-bold text-white bg-slate-950 border border-slate-800 rounded-lg">
+                <span className="px-3 py-1 font-bold text-white bg-[#02100a] border border-emerald-800 rounded-lg">
                   {currentPageIzin} / {totalPagesIzin}
                 </span>
                 <button
                   disabled={currentPageIzin >= totalPagesIzin}
                   onClick={() => setCurrentPageIzin(prev => Math.min(prev + 1, totalPagesIzin))}
-                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  className="p-1.5 rounded-lg border border-emerald-800 bg-[#02100a] text-emerald-100/90 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -562,13 +562,13 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
           TABEL B: TABEL REKAPITULASI PELANGGARAN SANTRI
          ========================================================================= */}
       {(activeTableTab === 'both' || activeTableTab === 'pelanggaran') && (
-        <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-slate-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden">
+        <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden">
           
           {/* Glowing Top Specular Line */}
           <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-red-500 via-amber-500 to-transparent opacity-80" />
 
           {/* Table Header & Summary */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-red-950/80 border border-red-500/40 text-red-300">
                 <AlertTriangle className="w-4 h-4" />
@@ -580,7 +580,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                     {filteredPelanggaran.length} Kasus
                   </span>
                 </h4>
-                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                <p className="text-[11px] text-emerald-200/75 font-mono mt-0.5">
                   Buku induk ketertiban, catatan kronologi insiden & pemantauan status eksekusi takzir
                 </p>
               </div>
@@ -609,7 +609,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
             
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+              <Search className="w-3.5 h-3.5 text-emerald-200/75 absolute left-3 top-3" />
               <input
                 type="text"
                 value={searchPelanggaran}
@@ -618,7 +618,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                   setCurrentPagePelanggaran(1);
                 }}
                 placeholder="Cari nama santri, NIS, jenis pelanggaran..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-400 font-sans"
+                className="w-full pl-9 pr-3 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-white placeholder-emerald-200/40 focus:outline-none focus:border-red-400 font-sans"
               />
             </div>
 
@@ -630,7 +630,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                   setFilterKategoriPelanggaran(e.target.value);
                   setCurrentPagePelanggaran(1);
                 }}
-                className="w-full px-2.5 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-red-400 font-mono"
+                className="w-full px-2.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-red-400 font-mono"
               >
                 <option value="all">Semua Tingkat Pelanggaran</option>
                 <option value="Ringan">Ringan (1-15 Poin)</option>
@@ -647,7 +647,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                   setFilterStatusHukuman(e.target.value);
                   setCurrentPagePelanggaran(1);
                 }}
-                className="w-full px-2.5 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-red-400 font-mono"
+                className="w-full px-2.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-red-400 font-mono"
               >
                 <option value="all">Semua Status Hukuman</option>
                 <option value="Selesai">✅ Selesai</option>
@@ -664,7 +664,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                   setFilterBulanPelanggaran(e.target.value);
                   setCurrentPagePelanggaran(1);
                 }}
-                className="w-full px-2.5 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-red-400 font-mono"
+                className="w-full px-2.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-red-400 font-mono"
               >
                 <option value="all">Semua Bulan</option>
                 {monthsPelanggaran.map(m => (
@@ -676,10 +676,10 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
           </div>
 
           {/* Table Container */}
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-950/80 overflow-hidden shadow-inner track-scroll-box">
+          <div className="rounded-2xl border border-emerald-800/80 bg-[#02100a]/80 overflow-hidden shadow-inner track-scroll-box">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-slate-900/90 border-b border-slate-800 text-slate-300 uppercase tracking-wider text-[10px]">
+                <thead className="bg-[#041d13]/90 border-b border-emerald-800 text-emerald-100/90 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="p-3 text-center w-12">No.</th>
                     <th className="p-3 whitespace-nowrap">Nama Santri</th>
@@ -695,10 +695,10 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                 <tbody className="divide-y divide-slate-850 text-slate-200">
                   {paginatedPelanggaran.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-slate-500 font-sans">
+                      <td colSpan={9} className="p-8 text-center text-emerald-300/60 font-sans">
                         <AlertTriangle className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
-                        <p className="font-bold text-slate-400 font-mono">TIDAK ADA CATATAN PELANGGARAN YANG SESUAI FILTER</p>
-                        <p className="text-xs text-slate-500 mt-1">Gunakan filter lain atau ubah kata kunci pencarian.</p>
+                        <p className="font-bold text-emerald-200/75 font-mono">TIDAK ADA CATATAN PELANGGARAN YANG SESUAI FILTER</p>
+                        <p className="text-xs text-emerald-300/60 mt-1">Gunakan filter lain atau ubah kata kunci pencarian.</p>
                       </td>
                     </tr>
                   ) : (
@@ -710,17 +710,17 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                       return (
                         <tr 
                           key={pel.id}
-                          className="hover:bg-slate-900/60 transition-colors"
+                          className="hover:bg-[#041d13]/60 transition-colors"
                         >
                           {/* 1. Nomor */}
-                          <td className="p-3 text-center font-bold text-slate-400">
+                          <td className="p-3 text-center font-bold text-emerald-200/75">
                             {rowNum}
                           </td>
 
                           {/* 2. Nama Santri */}
                           <td className="p-3 whitespace-nowrap">
                             <strong className="text-white block font-sans text-xs">{pel.santriNama}</strong>
-                            <span className="text-[10px] text-cyan-300 font-mono">
+                            <span className="text-[10px] text-emerald-300 font-mono">
                               NIS: {pel.santriNis} · {pel.santriGender === 'putra' ? 'Banin' : 'Banat'}
                             </span>
                           </td>
@@ -734,7 +734,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                                   ? 'bg-red-950 text-red-300 border border-red-500/50'
                                   : pel.kategori === 'Sedang'
                                   ? 'bg-amber-950 text-amber-300 border border-amber-500/50'
-                                  : 'bg-cyan-950 text-cyan-300 border border-cyan-500/50'
+                                  : 'bg-emerald-950 text-emerald-300 border border-emerald-500/50'
                               }`}>
                                 {pel.kategori}
                               </span>
@@ -745,18 +745,18 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                           </td>
 
                           {/* 4. Tanggal Kejadian */}
-                          <td className="p-3 whitespace-nowrap text-slate-300">
+                          <td className="p-3 whitespace-nowrap text-emerald-100/90">
                             <span className="font-semibold block">{pel.tanggal}</span>
                             <span className="text-[10px] text-amber-400">{pel.waktu || '14:30'} WIB</span>
                           </td>
 
                           {/* 5. Keterangan Pelanggaran */}
                           <td className="p-3">
-                            <p className="text-slate-300 text-xs font-sans leading-relaxed line-clamp-2">
+                            <p className="text-emerald-100/90 text-xs font-sans leading-relaxed line-clamp-2">
                               {pel.kronologi}
                             </p>
                             {pel.lokasi && (
-                              <span className="text-[10px] text-slate-500 block mt-0.5">
+                              <span className="text-[10px] text-emerald-300/60 block mt-0.5">
                                 Lokasi: {pel.lokasi}
                               </span>
                             )}
@@ -768,14 +768,14 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                               {sanksi?.bentukSanksi || 'Pembinaan Adab & Khidmah Mandiri'}
                             </span>
                             {sanksi?.ustadzPembina && (
-                              <span className="text-[10px] text-slate-400 block font-mono">
+                              <span className="text-[10px] text-emerald-200/75 block font-mono">
                                 Pembina: {sanksi.ustadzPembina}
                               </span>
                             )}
                           </td>
 
                           {/* 7. Pengurus yang Mencatat */}
-                          <td className="p-3 whitespace-nowrap text-slate-300 font-semibold text-[11px]">
+                          <td className="p-3 whitespace-nowrap text-emerald-100/90 font-semibold text-[11px]">
                             {pel.namaPetugasPelapor || 'Pengurus Piket'}
                           </td>
 
@@ -808,7 +808,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
             </div>
 
             {/* Pagination Controls */}
-            <div className="p-3 bg-slate-900/80 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono text-slate-400">
+            <div className="p-3 bg-[#041d13]/80 border-t border-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono text-emerald-200/75">
               <div className="flex items-center gap-2">
                 <span>Menampilkan {filteredPelanggaran.length > 0 ? (currentPagePelanggaran - 1) * itemsPerPagePelanggaran + 1 : 0} - {Math.min(currentPagePelanggaran * itemsPerPagePelanggaran, filteredPelanggaran.length)} dari {filteredPelanggaran.length} data</span>
                 <span className="text-slate-600">|</span>
@@ -818,7 +818,7 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                     setItemsPerPagePelanggaran(Number(e.target.value));
                     setCurrentPagePelanggaran(1);
                   }}
-                  className="bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-slate-300"
+                  className="bg-[#02100a] border border-emerald-800 rounded px-2 py-0.5 text-emerald-100/90"
                 >
                   <option value={5}>5 per hal</option>
                   <option value={10}>10 per hal</option>
@@ -830,17 +830,17 @@ export const DashboardRekapitulasiTables: React.FC<DashboardRekapitulasiTablesPr
                 <button
                   disabled={currentPagePelanggaran <= 1}
                   onClick={() => setCurrentPagePelanggaran(prev => Math.max(prev - 1, 1))}
-                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  className="p-1.5 rounded-lg border border-emerald-800 bg-[#02100a] text-emerald-100/90 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="px-3 py-1 font-bold text-white bg-slate-950 border border-slate-800 rounded-lg">
+                <span className="px-3 py-1 font-bold text-white bg-[#02100a] border border-emerald-800 rounded-lg">
                   {currentPagePelanggaran} / {totalPagesPelanggaran}
                 </span>
                 <button
                   disabled={currentPagePelanggaran >= totalPagesPelanggaran}
                   onClick={() => setCurrentPagePelanggaran(prev => Math.min(prev + 1, totalPagesPelanggaran))}
-                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-950 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  className="p-1.5 rounded-lg border border-emerald-800 bg-[#02100a] text-emerald-100/90 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>

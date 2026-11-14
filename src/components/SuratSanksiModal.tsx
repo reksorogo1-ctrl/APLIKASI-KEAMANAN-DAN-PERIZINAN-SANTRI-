@@ -253,18 +253,18 @@ Wassalamu'alaikum Wr. Wb.
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="surat-print-modal relative w-full max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-700/80 overflow-hidden rainbow-active-border card-3d-floating"
+        className="surat-print-modal relative w-full max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-emerald-800/80 overflow-hidden rainbow-active-border card-3d-floating"
       >
         
         {/* Top Control Bar (Hidden when printed, Always Visible & Sticky at Top) */}
-        <div className="no-print shrink-0 flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-slate-100 border-b border-slate-800 gap-2 z-20">
+        <div className="no-print shrink-0 flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a] text-slate-100 border-b border-emerald-800 gap-2 z-20">
           <div className="flex items-center gap-2 min-w-0">
             <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
             <div className="min-w-0">
               <h3 className="text-xs sm:text-sm font-black tracking-wide text-amber-300 font-sans uppercase truncate">
                 Surat Sanksi Edukatif & Pembinaan
               </h3>
-              <p className="text-[9px] sm:text-[10px] text-slate-400 font-mono truncate">
+              <p className="text-[9px] sm:text-[10px] text-emerald-200/75 font-mono truncate">
                 {editedNomor} · Resmi Ponpes Al-Maliki
               </p>
             </div>
@@ -276,7 +276,7 @@ Wassalamu'alaikum Wr. Wb.
               className={`tactile-interactive inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-mono font-bold rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-md ${
                 isEditing 
                   ? 'bg-amber-400 text-slate-950 border border-amber-300' 
-                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                  : 'bg-[#072c1e] hover:bg-[#0b422d] text-slate-200 border border-emerald-800'
               }`}
               title="Edit redaksi atau nama sebelum cetak"
             >
@@ -295,10 +295,10 @@ Wassalamu'alaikum Wr. Wb.
 
             <button
               onClick={handlePrint}
-              className="tactile-interactive inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-mono font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-md border border-blue-400/50"
+              className="tactile-interactive inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-mono font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 rounded-lg sm:rounded-xl transition-all cursor-pointer shadow-md border border-amber-400/50"
               title="Cetak Surat / Simpan PDF"
             >
-              <Printer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-300" />
+              <Printer className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-300" />
               <span className="hidden xs:inline">Cetak / PDF</span>
             </button>
 
@@ -315,76 +315,76 @@ Wassalamu'alaikum Wr. Wb.
 
         {/* Edit Panel Drawer (If isEditing is true) */}
         {isEditing && (
-          <div className="no-print p-4 bg-slate-900 border-b border-slate-800 text-slate-100 space-y-3 font-mono text-xs">
+          <div className="no-print p-4 bg-[#041d13] border-b border-emerald-800 text-slate-100 space-y-3 font-mono text-xs">
             <div className="flex items-center justify-between">
               <span className="font-bold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                 <Edit3 className="w-3.5 h-3.5" />
                 Mode Edit Format Surat Sanksi Edukatif
               </span>
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-emerald-200/75">
                 Perubahan tersimpan langsung pada berkas sanksi ini
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] text-slate-300 font-bold mb-1">Nomor Surat</label>
+                <label className="block text-[10px] text-emerald-100/90 font-bold mb-1">Nomor Surat</label>
                 <input
                   type="text"
                   value={editedNomor}
                   onChange={(e) => setEditedNomor(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-black border border-slate-700 rounded-xl text-white font-mono text-xs"
+                  className="w-full px-3 py-1.5 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-300 font-bold mb-1">Batas Maksimal Pengumpulan</label>
+                <label className="block text-[10px] text-emerald-100/90 font-bold mb-1">Batas Maksimal Pengumpulan</label>
                 <input
                   type="text"
                   value={editedBatasMaksimal}
                   onChange={(e) => setEditedBatasMaksimal(e.target.value)}
                   placeholder="Misal: 09 November 2026, Pukul 17:00 WIB"
-                  className="w-full px-3 py-1.5 bg-black border border-slate-700 rounded-xl text-white font-mono text-xs"
+                  className="w-full px-3 py-1.5 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] text-slate-300 font-bold mb-1">Uraian Bentuk Sanksi / Hukuman Edukatif</label>
+              <label className="block text-[10px] text-emerald-100/90 font-bold mb-1">Uraian Bentuk Sanksi / Hukuman Edukatif</label>
               <textarea
                 rows={2}
                 value={editedBentukSanksi}
                 onChange={(e) => setEditedBentukSanksi(e.target.value)}
-                className="w-full px-3 py-1.5 bg-black border border-slate-700 rounded-xl text-white font-sans text-xs"
+                className="w-full px-3 py-1.5 bg-black border border-emerald-800 rounded-xl text-white font-sans text-xs"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] text-slate-300 font-bold mb-1">Ustadz Pembimbing</label>
+                <label className="block text-[10px] text-emerald-100/90 font-bold mb-1">Ustadz Pembimbing</label>
                 <input
                   type="text"
                   value={editedPembina}
                   onChange={(e) => setEditedPembina(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-black border border-slate-700 rounded-xl text-white font-sans text-xs"
+                  className="w-full px-3 py-1.5 bg-black border border-emerald-800 rounded-xl text-white font-sans text-xs"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-slate-300 font-bold mb-1">Nama Petugas Keamanan</label>
+                <label className="block text-[10px] text-emerald-100/90 font-bold mb-1">Nama Petugas Keamanan</label>
                 <input
                   type="text"
                   value={editedPetugasPenetap}
                   onChange={(e) => setEditedPetugasPenetap(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-black border border-slate-700 rounded-xl text-white font-sans text-xs"
+                  className="w-full px-3 py-1.5 bg-black border border-emerald-800 rounded-xl text-white font-sans text-xs"
                 />
               </div>
               <div>
-                <label className="block text-[10px] text-slate-300 font-bold mb-1">Nama Ketua Pondok / Pihak Berwenang</label>
+                <label className="block text-[10px] text-emerald-100/90 font-bold mb-1">Nama Ketua Pondok / Pihak Berwenang</label>
                 <input
                   type="text"
                   value={editedKetuaPondok}
                   onChange={(e) => setEditedKetuaPondok(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-black border border-slate-700 rounded-xl text-white font-sans text-xs"
+                  className="w-full px-3 py-1.5 bg-black border border-emerald-800 rounded-xl text-white font-sans text-xs"
                 />
               </div>
             </div>
@@ -393,7 +393,7 @@ Wassalamu'alaikum Wr. Wb.
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-[#072c1e] text-emerald-100/90 hover:text-white cursor-pointer"
               >
                 Tutup
               </button>
@@ -684,7 +684,7 @@ Wassalamu'alaikum Wr. Wb.
           <div className="flex items-center gap-2 ml-auto">
             <button
               onClick={handlePrint}
-              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1 font-bold"
+              className="px-3 py-1 bg-[#072c1e] hover:bg-[#0b422d] text-white rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1 font-bold"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak / PDF</span>

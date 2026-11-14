@@ -197,16 +197,16 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
     }
     if (log.tipe === 'izin') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-xs">
-          <FileCheck2 className="w-3 h-3 text-cyan-400" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-xs">
+          <FileCheck2 className="w-3 h-3 text-emerald-400" />
           {log.statusIzin || 'PERIZINAN'}
         </span>
       );
     }
     if (log.tipe === 'gerbang') {
       return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-blue-950/80 text-blue-300 border border-blue-500/40 shadow-xs">
-          <DoorOpen className="w-3 h-3 text-blue-400" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-950/80 text-amber-300 border border-emerald-500/40 shadow-xs">
+          <DoorOpen className="w-3 h-3 text-amber-400" />
           MUTASI GERBANG
         </span>
       );
@@ -228,7 +228,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-slate-900 text-slate-300 border border-slate-700">
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-[#041d13] text-emerald-100/90 border border-emerald-800">
         ADMIN LOG
       </span>
     );
@@ -238,14 +238,14 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
     <div className="space-y-6">
       
       {/* 1. Header Banner & Live Telemetry Engine */}
-      <div className="relative rounded-3xl overflow-hidden border border-cyan-500/40 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950/70 p-6 sm:p-8 shadow-2xl metallic-glass-card hover-rainbow-edge">
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-400 via-amber-400 via-purple-500 to-blue-500 opacity-90" />
+      <div className="relative rounded-3xl overflow-hidden border border-emerald-500/40 bg-gradient-to-r from-[#02100a] via-[#041d13] to-emerald-950/70 p-6 sm:p-8 shadow-2xl metallic-glass-card hover-rainbow-edge">
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-400 via-amber-400 via-purple-500 to-emerald-500 opacity-90" />
         
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-3xl">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-mono font-bold bg-cyan-950/90 text-cyan-300 border border-cyan-500/50 shadow-xs tracking-wider uppercase">
-                <span className={`w-2 h-2 rounded-full bg-cyan-400 ${livePulse ? 'animate-ping' : 'animate-pulse'}`} />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-xs tracking-wider uppercase">
+                <span className={`w-2 h-2 rounded-full bg-emerald-400 ${livePulse ? 'animate-ping' : 'animate-pulse'}`} />
                 LIVE SECURITY ACTIVITY MONITORING & ACCOUNTABILITY
               </span>
               <span className="text-slate-600">·</span>
@@ -262,7 +262,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white uppercase tracking-tight font-sans drop-shadow-md">
               Monitoring Aktivitas & Log Akuntabilitas Keamanan Real-Time
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+            <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-sans">
               Pusat audit digital komando santri: pengawasan kronologis seluruh mutasi perizinan, penetapan dan pelaksanaan takzir, pencatatan personil penanggung jawab, serta riwayat koreksi data terenkripsi.
             </p>
           </div>
@@ -271,16 +271,16 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
           <div className="flex flex-wrap sm:flex-col gap-2.5 shrink-0">
             <button
               onClick={() => setIsRevisionModalOpen(true)}
-              className="tactile-interactive inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 rounded-xl transition-all shadow-lg shadow-purple-950 cursor-pointer whitespace-nowrap font-mono uppercase tracking-wider border border-purple-400/50"
+              className="tactile-interactive inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-purple-700 via-purple-600 to-emerald-700 hover:from-purple-600 hover:to-emerald-600 rounded-xl transition-all shadow-lg shadow-purple-950 cursor-pointer whitespace-nowrap font-mono uppercase tracking-wider border border-purple-400/50"
             >
               <Edit3 className="w-4 h-4 text-purple-200" />
               <span>Buat Koreksi / Revisi Resmi</span>
             </button>
             
-            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[10px] font-mono text-slate-300 flex items-center justify-between gap-4 shadow-inner">
-              <span className="text-slate-400">STATUS LOG:</span>
-              <span className="text-cyan-300 font-bold flex items-center gap-1">
-                <Lock className="w-3 h-3 text-cyan-400" />
+            <div className="p-2.5 rounded-xl bg-[#02100a]/80 border border-emerald-800 text-[10px] font-mono text-emerald-100/90 flex items-center justify-between gap-4 shadow-inner">
+              <span className="text-emerald-200/75">STATUS LOG:</span>
+              <span className="text-emerald-300 font-bold flex items-center gap-1">
+                <Lock className="w-3 h-3 text-emerald-400" />
                 APPEND-ONLY LOCKED
               </span>
             </div>
@@ -288,101 +288,101 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
         </div>
 
         {/* Top 4 KPI Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-800/80">
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80">
-            <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">TOTAL LOG DIAUDIT</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-emerald-800/80">
+          <div className="p-3.5 rounded-2xl bg-[#02100a]/70 border border-emerald-800/80">
+            <p className="text-[10px] font-mono text-emerald-200/75 uppercase tracking-wider">TOTAL LOG DIAUDIT</p>
             <p className="text-xl sm:text-2xl font-black font-mono text-white mt-1">{totalLogsCount}</p>
-            <span className="text-[9px] font-mono text-cyan-400">Riwayat Terenkripsi</span>
+            <span className="text-[9px] font-mono text-emerald-400">Riwayat Terenkripsi</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-cyan-500/20">
-            <p className="text-[10px] font-mono text-cyan-300 uppercase tracking-wider">AKTIVITAS PERIZINAN</p>
-            <p className="text-xl sm:text-2xl font-black font-mono text-cyan-300 mt-1">{izinActivityCount}</p>
-            <span className="text-[9px] font-mono text-slate-400">Pengajuan & Mutasi Gerbang</span>
+          <div className="p-3.5 rounded-2xl bg-[#02100a]/70 border border-emerald-500/20">
+            <p className="text-[10px] font-mono text-emerald-300 uppercase tracking-wider">AKTIVITAS PERIZINAN</p>
+            <p className="text-xl sm:text-2xl font-black font-mono text-emerald-300 mt-1">{izinActivityCount}</p>
+            <span className="text-[9px] font-mono text-emerald-200/75">Pengajuan & Mutasi Gerbang</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-amber-500/20">
+          <div className="p-3.5 rounded-2xl bg-[#02100a]/70 border border-amber-500/20">
             <p className="text-[10px] font-mono text-amber-300 uppercase tracking-wider">AKTIVITAS TAKZIR & SANKSI</p>
             <p className="text-xl sm:text-2xl font-black font-mono text-amber-300 mt-1">{takzirActivityCount}</p>
-            <span className="text-[9px] font-mono text-slate-400">Disiplin & Pembinaan</span>
+            <span className="text-[9px] font-mono text-emerald-200/75">Disiplin & Pembinaan</span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-purple-500/20">
+          <div className="p-3.5 rounded-2xl bg-[#02100a]/70 border border-purple-500/20">
             <p className="text-[10px] font-mono text-purple-300 uppercase tracking-wider">CATATAN KOREKSI / REVISI</p>
             <p className="text-xl sm:text-2xl font-black font-mono text-purple-300 mt-1">{auditRevisionsCount}</p>
-            <span className="text-[9px] font-mono text-slate-400">Transparansi Audit</span>
+            <span className="text-[9px] font-mono text-emerald-200/75">Transparansi Audit</span>
           </div>
         </div>
       </div>
 
       {/* 2. Navigation Segments / Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-3 overflow-x-auto no-scrollbar font-mono text-xs">
+      <div className="flex items-center gap-2 border-b border-emerald-800 pb-3 overflow-x-auto no-scrollbar font-mono text-xs">
         <button
           onClick={() => setActiveTab('timeline')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'timeline'
-              ? 'bg-gradient-to-r from-blue-900/70 to-slate-900 text-amber-300 border border-amber-400/50 shadow-lg shadow-cyan-950 rainbow-active-border'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent'
+              ? 'bg-gradient-to-r from-emerald-900/70 to-[#041d13] text-amber-300 border border-amber-400/50 shadow-lg shadow-emerald-950 rainbow-active-border'
+              : 'text-emerald-200/75 hover:text-white hover:bg-[#041d13]/60 border border-transparent'
           }`}
         >
-          <History className="w-4 h-4 text-cyan-400" />
+          <History className="w-4 h-4 text-emerald-400" />
           <span>Tabel Log Aktivitas Real-Time</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">{filteredLogs.length}</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#072c1e] text-emerald-100/90">{filteredLogs.length}</span>
         </button>
 
         <button
           onClick={() => setActiveTab('perizinan')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'perizinan'
-              ? 'bg-gradient-to-r from-blue-900/70 to-slate-900 text-amber-300 border border-amber-400/50 shadow-lg shadow-cyan-950 rainbow-active-border'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent'
+              ? 'bg-gradient-to-r from-emerald-900/70 to-[#041d13] text-amber-300 border border-amber-400/50 shadow-lg shadow-emerald-950 rainbow-active-border'
+              : 'text-emerald-200/75 hover:text-white hover:bg-[#041d13]/60 border border-transparent'
           }`}
         >
-          <FileCheck2 className="w-4 h-4 text-cyan-400" />
+          <FileCheck2 className="w-4 h-4 text-emerald-400" />
           <span>A. Monitoring Perizinan</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">{perizinanLogs.length}</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#072c1e] text-emerald-100/90">{perizinanLogs.length}</span>
         </button>
 
         <button
           onClick={() => setActiveTab('takzir')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'takzir'
-              ? 'bg-gradient-to-r from-blue-900/70 to-slate-900 text-amber-300 border border-amber-400/50 shadow-lg shadow-cyan-950 rainbow-active-border'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent'
+              ? 'bg-gradient-to-r from-emerald-900/70 to-[#041d13] text-amber-300 border border-amber-400/50 shadow-lg shadow-emerald-950 rainbow-active-border'
+              : 'text-emerald-200/75 hover:text-white hover:bg-[#041d13]/60 border border-transparent'
           }`}
         >
           <Scale className="w-4 h-4 text-amber-400" />
           <span>B. Monitoring Takzir & Hukuman</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">{takzirLogs.length}</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#072c1e] text-emerald-100/90">{takzirLogs.length}</span>
         </button>
 
         <button
           onClick={() => setActiveTab('radar')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all cursor-pointer whitespace-nowrap ${
             activeTab === 'radar'
-              ? 'bg-gradient-to-r from-blue-900/70 to-slate-900 text-amber-300 border border-amber-400/50 shadow-lg shadow-cyan-950 rainbow-active-border'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60 border border-transparent'
+              ? 'bg-gradient-to-r from-emerald-900/70 to-[#041d13] text-amber-300 border border-amber-400/50 shadow-lg shadow-emerald-950 rainbow-active-border'
+              : 'text-emerald-200/75 hover:text-white hover:bg-[#041d13]/60 border border-transparent'
           }`}
         >
-          <Radar className="w-4 h-4 text-cyan-400" />
+          <Radar className="w-4 h-4 text-emerald-400" />
           <span>D3 Spatial Patrol Radar</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-500/40">INTERPOL</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40">INTERPOL</span>
         </button>
       </div>
 
       {/* 3. Filter Bar (D. Sistem Audit Multi-Filter) */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-3 hover-rainbow-edge">
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#02100a]/90 border border-emerald-800/80 space-y-3 hover-rainbow-edge">
         <div className="flex flex-col md:flex-row gap-3">
           
           {/* Search box */}
           <div className="flex-1 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-emerald-200/75 absolute left-3.5 top-3" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari santri, NIS, tindakan, pelanggaran, atau no izin..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-colors font-sans"
+              className="w-full pl-10 pr-4 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-white placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 transition-colors font-sans"
             />
           </div>
 
@@ -391,7 +391,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
             <select
               value={selectedPetugas}
               onChange={(e) => setSelectedPetugas(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"
+              className="w-full px-3 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400 font-mono"
             >
               <option value="all">Semua Pengurus / Petugas</option>
               {officerOptions.map((off, idx) => (
@@ -405,7 +405,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"
+              className="w-full px-3 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400 font-mono"
             >
               <option value="all">Semua Jenis Aktivitas</option>
               <option value="izin">Aktivitas Perizinan</option>
@@ -419,7 +419,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as any)}
-              className="w-full px-3 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-400 font-mono"
+              className="w-full px-3 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-emerald-400 font-mono"
             >
               <option value="all">Semua Rentang Waktu</option>
               <option value="today">Hari Ini (24 Jam)</option>
@@ -431,8 +431,8 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
         </div>
 
         {/* Filter results summary */}
-        <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-2 border-t border-slate-800/80 flex-wrap gap-2">
-          <span>Menampilkan <strong className="text-cyan-300">{filteredLogs.length}</strong> entri aktivitas terverifikasi</span>
+        <div className="flex items-center justify-between text-[11px] font-mono text-emerald-200/75 pt-2 border-t border-emerald-800/80 flex-wrap gap-2">
+          <span>Menampilkan <strong className="text-emerald-300">{filteredLogs.length}</strong> entri aktivitas terverifikasi</span>
           {(searchQuery || selectedPetugas !== 'all' || selectedType !== 'all' || dateRange !== 'all') && (
             <button
               onClick={() => {
@@ -453,18 +453,18 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
       {/* 4. TAB CONTENT 1: Model Tabel Log Aktivitas & Akuntabilitas */}
       {activeTab === 'timeline' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
+          <div className="p-4 rounded-2xl bg-[#02100a]/80 border border-emerald-800 flex flex-wrap items-center justify-between text-xs text-emerald-100/90 gap-2">
             <span className="flex items-center gap-2">
-              <History className="w-4 h-4 text-cyan-400" />
+              <History className="w-4 h-4 text-emerald-400" />
               <span>Model Tabel Sederhana: Menampilkan seluruh riwayat perizinan, takzir, dan koreksi data secara terpusat & kronologis.</span>
             </span>
-            <span className="font-mono text-cyan-300 font-bold">{filteredLogs.length} Aktivitas Terverifikasi</span>
+            <span className="font-mono text-emerald-300 font-bold">{filteredLogs.length} Aktivitas Terverifikasi</span>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden shadow-2xl hover-rainbow-edge">
+          <div className="rounded-2xl border border-emerald-800 bg-[#02100a] overflow-hidden shadow-2xl hover-rainbow-edge">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-slate-900/90 border-b border-slate-800 text-slate-300 uppercase tracking-wider text-[10px]">
+                <thead className="bg-[#041d13]/90 border-b border-emerald-800 text-emerald-100/90 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="p-3.5 whitespace-nowrap">Waktu & Hash</th>
                     <th className="p-3.5 whitespace-nowrap">Status & Kategori</th>
@@ -474,13 +474,13 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                     <th className="p-3.5 text-center whitespace-nowrap">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/80 text-slate-200">
+                <tbody className="divide-y divide-emerald-800/80 text-slate-200">
                   {filteredLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-500 font-sans">
+                      <td colSpan={6} className="p-8 text-center text-emerald-300/60 font-sans">
                         <History className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                        <p className="font-bold text-slate-400 font-mono">TIDAK ADA AKTIVITAS YANG SESUAI FILTER</p>
-                        <p className="text-xs text-slate-500 mt-1">Gunakan kata kunci lain atau reset filter untuk melihat log komando.</p>
+                        <p className="font-bold text-emerald-200/75 font-mono">TIDAK ADA AKTIVITAS YANG SESUAI FILTER</p>
+                        <p className="text-xs text-emerald-300/60 mt-1">Gunakan kata kunci lain atau reset filter untuk melihat log komando.</p>
                       </td>
                     </tr>
                   ) : (
@@ -489,13 +489,13 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                       return (
                         <tr 
                           key={log.id} 
-                          className={`hover:bg-slate-900/70 transition-colors ${
+                          className={`hover:bg-[#041d13]/70 transition-colors ${
                             isCorrection ? 'bg-purple-950/20' : ''
                           }`}
                         >
                           <td className="p-3.5 whitespace-nowrap">
                             <span className="font-bold text-amber-300 block">{log.waktu}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-emerald-200/75 font-mono">
                               {log.hashAudit ? `HASH: ${log.hashAudit}` : 'SEC-VERIFIED'}
                             </span>
                           </td>
@@ -506,19 +506,19 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                             {log.santriNama ? (
                               <div>
                                 <strong className="text-white block font-sans text-xs">{log.santriNama}</strong>
-                                <span className="text-[10px] text-cyan-300 font-mono">
+                                <span className="text-[10px] text-emerald-300 font-mono">
                                   NIS: {log.santriNis || '-'} · {log.santriGender === 'putra' ? 'Banin' : 'Banat'}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-slate-500 italic font-sans">- Sistem Terpusat -</span>
+                              <span className="text-emerald-300/60 italic font-sans">- Sistem Terpusat -</span>
                             )}
                           </td>
                           <td className="p-3.5 max-w-sm">
                             <p className="text-white font-bold font-sans text-xs">{log.aksi}</p>
-                            <p className="text-[11px] text-slate-400 font-sans line-clamp-2 mt-0.5">{log.detail}</p>
+                            <p className="text-[11px] text-emerald-200/75 font-sans line-clamp-2 mt-0.5">{log.detail}</p>
                             {log.jenisIzin && (
-                              <span className="inline-block mt-1 text-[10px] bg-cyan-950/80 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-800/60 font-mono">
+                              <span className="inline-block mt-1 text-[10px] bg-emerald-950/80 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-800/60 font-mono">
                                 Izin: {log.jenisIzin}
                               </span>
                             )}
@@ -536,12 +536,12 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                           <td className="p-3.5 whitespace-nowrap text-[11px]">
                             <div className="space-y-0.5">
                               <div>
-                                <span className="text-slate-500 text-[10px]">Pencatat: </span>
+                                <span className="text-emerald-300/60 text-[10px]">Pencatat: </span>
                                 <strong className="text-amber-300 font-mono">{log.petugasPencatat || log.petugasPelapor || log.user}</strong>
                               </div>
                               {(log.petugasPenyetujui || log.petugasPenetapHukuman) && (
                                 <div>
-                                  <span className="text-slate-500 text-[10px]">Otoritas: </span>
+                                  <span className="text-emerald-300/60 text-[10px]">Otoritas: </span>
                                   <strong className="text-emerald-300 font-mono">{log.petugasPenyetujui || log.petugasPenetapHukuman}</strong>
                                 </div>
                               )}
@@ -550,7 +550,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                           <td className="p-3.5 whitespace-nowrap text-center">
                             <button
                               onClick={() => setSelectedLogForInspection(log)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold font-mono text-cyan-300 hover:text-white bg-cyan-950/70 hover:bg-cyan-900 border border-cyan-500/40 rounded-lg transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold font-mono text-emerald-300 hover:text-white bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/40 rounded-lg transition-colors cursor-pointer"
                               title="Inspeksi Detail & Audit Trail"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -571,18 +571,18 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
       {/* 5. TAB CONTENT 2: A. Monitoring Perizinan Khusus */}
       {activeTab === 'perizinan' && (
         <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-blue-950/40 border border-cyan-500/30 flex items-center justify-between text-xs text-cyan-200">
+          <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs text-emerald-200">
             <span className="flex items-center gap-2">
-              <Info className="w-4 h-4 text-cyan-400" />
+              <Info className="w-4 h-4 text-emerald-400" />
               Menampilkan seluruh rekaman perizinan: waktu pengajuan, pengurus yang memproses, pengurus yang menyetujui, serta mutasi keluar-kembali.
             </span>
             <span className="font-mono font-bold text-amber-300">{perizinanLogs.length} Aktivitas Perizinan</span>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden shadow-xl">
+          <div className="rounded-2xl border border-emerald-800 bg-[#02100a] overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-slate-900 border-b border-slate-800 text-slate-300 uppercase tracking-wider text-[10px]">
+                <thead className="bg-[#041d13] border-b border-emerald-800 text-emerald-100/90 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="p-3.5">Waktu & Hash</th>
                     <th className="p-3.5">Santri (NIS)</th>
@@ -597,19 +597,19 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-850 text-slate-200">
                   {perizinanLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-900/60 transition-colors">
+                    <tr key={log.id} className="hover:bg-[#041d13]/60 transition-colors">
                       <td className="p-3.5 whitespace-nowrap">
                         <span className="font-bold text-amber-300 block">{log.waktu}</span>
-                        <span className="text-[9px] text-slate-500">{log.hashAudit || 'SEC-VERIFIED'}</span>
+                        <span className="text-[9px] text-emerald-300/60">{log.hashAudit || 'SEC-VERIFIED'}</span>
                       </td>
                       <td className="p-3.5 whitespace-nowrap">
                         <strong className="text-white block font-sans">{log.santriNama || '-'}</strong>
-                        <span className="text-[10px] text-cyan-300">NIS: {log.santriNis || '-'}</span>
+                        <span className="text-[10px] text-emerald-300">NIS: {log.santriNis || '-'}</span>
                       </td>
-                      <td className="p-3.5 whitespace-nowrap font-bold text-cyan-200">
+                      <td className="p-3.5 whitespace-nowrap font-bold text-emerald-200">
                         {log.jenisIzin || 'Izin Pondok'}
                       </td>
-                      <td className="p-3.5 whitespace-nowrap text-slate-300">
+                      <td className="p-3.5 whitespace-nowrap text-emerald-100/90">
                         {log.waktuPengajuan || log.waktu}
                       </td>
                       <td className="p-3.5 whitespace-nowrap text-amber-300 font-semibold">
@@ -619,8 +619,8 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                         {log.petugasPenyetujui || 'Dalam Proses'}
                       </td>
                       <td className="p-3.5 whitespace-nowrap text-[11px]">
-                        <span className="block text-slate-300">Keluar: {log.waktuKeluar || '-'}</span>
-                        <span className="block text-slate-400">Kembali: {log.waktuKembali || '-'}</span>
+                        <span className="block text-emerald-100/90">Keluar: {log.waktuKeluar || '-'}</span>
+                        <span className="block text-emerald-200/75">Kembali: {log.waktuKembali || '-'}</span>
                       </td>
                       <td className="p-3.5 whitespace-nowrap">
                         {renderStatusBadge(log)}
@@ -628,7 +628,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                       <td className="p-3.5 whitespace-nowrap text-center">
                         <button
                           onClick={() => setSelectedLogForInspection(log)}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-900 text-cyan-300 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg bg-[#072c1e] hover:bg-emerald-900 text-emerald-300 transition-colors cursor-pointer"
                           title="Inspeksi Audit"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -654,10 +654,10 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
             <span className="font-mono font-bold text-white">{takzirLogs.length} Catatan Takzir</span>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-950 overflow-hidden shadow-xl">
+          <div className="rounded-2xl border border-emerald-800 bg-[#02100a] overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
-                <thead className="bg-slate-900 border-b border-slate-800 text-slate-300 uppercase tracking-wider text-[10px]">
+                <thead className="bg-[#041d13] border-b border-emerald-800 text-emerald-100/90 uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="p-3.5">Waktu & Hash</th>
                     <th className="p-3.5">Santri (NIS)</th>
@@ -671,23 +671,23 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-850 text-slate-200">
                   {takzirLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-900/60 transition-colors">
+                    <tr key={log.id} className="hover:bg-[#041d13]/60 transition-colors">
                       <td className="p-3.5 whitespace-nowrap">
                         <span className="font-bold text-amber-300 block">{log.waktu}</span>
-                        <span className="text-[9px] text-slate-500">{log.hashAudit || 'SEC-VERIFIED'}</span>
+                        <span className="text-[9px] text-emerald-300/60">{log.hashAudit || 'SEC-VERIFIED'}</span>
                       </td>
                       <td className="p-3.5 whitespace-nowrap">
                         <strong className="text-white block font-sans">{log.santriNama || '-'}</strong>
-                        <span className="text-[10px] text-cyan-300">NIS: {log.santriNis || '-'}</span>
+                        <span className="text-[10px] text-emerald-300">NIS: {log.santriNis || '-'}</span>
                       </td>
                       <td className="p-3.5 max-w-xs">
                         <span className="text-red-300 font-bold block">{log.jenisPelanggaran || log.aksi}</span>
-                        <span className="text-[10px] text-slate-400 line-clamp-2 mt-0.5">{log.kronologi || log.detail}</span>
+                        <span className="text-[10px] text-emerald-200/75 line-clamp-2 mt-0.5">{log.kronologi || log.detail}</span>
                       </td>
                       <td className="p-3.5 max-w-xs">
                         <span className="text-amber-300 font-bold block">{log.jenisHukuman || 'Khidmah Edukatif'}</span>
                       </td>
-                      <td className="p-3.5 whitespace-nowrap text-slate-300 font-semibold">
+                      <td className="p-3.5 whitespace-nowrap text-emerald-100/90 font-semibold">
                         {log.petugasPelapor || log.petugasPencatat || log.user}
                       </td>
                       <td className="p-3.5 whitespace-nowrap text-emerald-300 font-bold">
@@ -699,7 +699,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                       <td className="p-3.5 whitespace-nowrap text-center">
                         <button
                           onClick={() => setSelectedLogForInspection(log)}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-900 text-cyan-300 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg bg-[#072c1e] hover:bg-emerald-900 text-emerald-300 transition-colors cursor-pointer"
                           title="Inspeksi Audit"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -730,26 +730,26 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
          ========================================== */}
       {selectedLogForInspection && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl bg-gradient-to-b from-slate-900 via-slate-950 to-black border border-cyan-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-400 via-amber-400 to-purple-500" />
+          <div className="relative w-full max-w-2xl bg-gradient-to-b from-[#041d13] via-[#02100a] to-black border border-emerald-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-amber-400 to-purple-500" />
             
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-emerald-800">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-cyan-950 border border-cyan-500/40 text-cyan-300">
-                  <Fingerprint className="w-5 h-5 text-cyan-400" />
+                <div className="p-2 rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-300">
+                  <Fingerprint className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-white uppercase font-mono">
                     Audit & Accountability Inspector
                   </h3>
-                  <p className="text-[10px] font-mono text-cyan-300">
+                  <p className="text-[10px] font-mono text-emerald-300">
                     HASH VERIFIKASI: {selectedLogForInspection.hashAudit || 'SEC-OFFICIAL-VALID'}
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedLogForInspection(null)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1.5 text-emerald-200/75 hover:text-white rounded-lg hover:bg-[#072c1e] transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -757,21 +757,21 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
 
             {/* Core Snapshot Details */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-bold">Waktu Entri / Timestamp:</span>
+              <div className="p-3 rounded-xl bg-[#02100a] border border-emerald-800">
+                <span className="text-[10px] text-emerald-200/75 block font-bold">Waktu Entri / Timestamp:</span>
                 <span className="text-amber-300 font-bold text-sm block mt-0.5">{selectedLogForInspection.waktu}</span>
-                <span className="text-[10px] text-slate-500 block">ID Log: {selectedLogForInspection.id}</span>
+                <span className="text-[10px] text-emerald-300/60 block">ID Log: {selectedLogForInspection.id}</span>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block font-bold">Pengurus Penanggung Jawab:</span>
+              <div className="p-3 rounded-xl bg-[#02100a] border border-emerald-800">
+                <span className="text-[10px] text-emerald-200/75 block font-bold">Pengurus Penanggung Jawab:</span>
                 <span className="text-white font-bold text-sm block mt-0.5">{selectedLogForInspection.user}</span>
-                <span className="text-[10px] text-cyan-400 block">NRP: {selectedLogForInspection.nrp || 'SECOP-OFFICIAL'} · Role: {selectedLogForInspection.role}</span>
+                <span className="text-[10px] text-emerald-400 block">NRP: {selectedLogForInspection.nrp || 'SECOP-OFFICIAL'} · Role: {selectedLogForInspection.role}</span>
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-              <p className="text-xs font-bold text-cyan-300 font-mono uppercase">Deskripsi Tindakan:</p>
+            <div className="p-4 rounded-xl bg-[#02100a] border border-emerald-800 space-y-2">
+              <p className="text-xs font-bold text-emerald-300 font-mono uppercase">Deskripsi Tindakan:</p>
               <p className="text-xs text-white font-sans leading-relaxed">{selectedLogForInspection.detail}</p>
             </div>
 
@@ -787,20 +787,20 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                     Koreksi Resmi
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-300 font-sans">
+                <p className="text-[11px] text-emerald-100/90 font-sans">
                   Alasan Koreksi: <strong className="text-white">{selectedLogForInspection.alasanRevisi}</strong>
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <div className="p-3 rounded-xl bg-black/60 border border-red-500/30">
                     <span className="text-[10px] text-red-400 font-bold block mb-1">Data Sebelum Koreksi:</span>
-                    <pre className="text-[10px] text-slate-300 overflow-x-auto p-1 bg-slate-950 rounded">
+                    <pre className="text-[10px] text-emerald-100/90 overflow-x-auto p-1 bg-[#02100a] rounded">
                       {JSON.stringify(selectedLogForInspection.dataSebelum, null, 2)}
                     </pre>
                   </div>
                   <div className="p-3 rounded-xl bg-black/60 border border-emerald-500/30">
                     <span className="text-[10px] text-emerald-400 font-bold block mb-1">Data Sesudah Koreksi:</span>
-                    <pre className="text-[10px] text-slate-300 overflow-x-auto p-1 bg-slate-950 rounded">
+                    <pre className="text-[10px] text-emerald-100/90 overflow-x-auto p-1 bg-[#02100a] rounded">
                       {JSON.stringify(selectedLogForInspection.dataSesudah, null, 2)}
                     </pre>
                   </div>
@@ -809,14 +809,14 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
             )}
 
             {/* Immutability Seal */}
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-[10px] font-mono text-slate-400">
+            <div className="p-3 rounded-xl bg-[#02100a] border border-emerald-800 flex items-center justify-between text-[10px] font-mono text-emerald-200/75">
               <span className="flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-cyan-400" />
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
                 IMMUTABLE APPEND-ONLY ARCHIVE · RECORD SEALED
               </span>
               <button
                 onClick={() => setSelectedLogForInspection(null)}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg transition-colors cursor-pointer"
+                className="px-4 py-1.5 bg-[#072c1e] hover:bg-[#0b422d] text-white font-bold rounded-lg transition-colors cursor-pointer"
               >
                 Tutup Inspeksi
               </button>
@@ -831,10 +831,10 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
          ========================================== */}
       {isRevisionModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-xl bg-gradient-to-b from-slate-900 via-slate-950 to-black border border-purple-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-400 via-indigo-500 to-cyan-400" />
+          <div className="relative w-full max-w-xl bg-gradient-to-b from-[#041d13] via-[#02100a] to-black border border-purple-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4">
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-400 via-emerald-500 to-emerald-400" />
 
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-emerald-800">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-purple-950 border border-purple-500/40 text-purple-300">
                   <Edit3 className="w-5 h-5 text-purple-400" />
@@ -843,14 +843,14 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                   <h3 className="text-base font-bold text-white uppercase font-mono">
                     Formulir Koreksi / Revisi Resmi
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-emerald-200/75">
                     Setiap revisi akan dicatat permanen dalam audit trail tanpa menghapus data sebelumnya.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsRevisionModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1.5 text-emerald-200/75 hover:text-white rounded-lg hover:bg-[#072c1e] transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -858,7 +858,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
 
             <form onSubmit={handleSaveOfficialRevision} className="space-y-4 text-xs font-mono">
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Entitas yang Ingin Dikoreksi:</label>
+                <label className="block text-emerald-100/90 font-bold mb-1">Entitas yang Ingin Dikoreksi:</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -866,7 +866,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                     className={`py-2 px-3 rounded-xl border text-center transition-all ${
                       revisionEntity === 'izin'
                         ? 'bg-purple-950/80 border-purple-400 text-purple-200 font-bold shadow-xs'
-                        : 'bg-slate-900 border-slate-800 text-slate-400'
+                        : 'bg-[#041d13] border-emerald-800 text-emerald-200/75'
                     }`}
                   >
                     Data Perizinan Santri
@@ -877,7 +877,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                     className={`py-2 px-3 rounded-xl border text-center transition-all ${
                       revisionEntity === 'takzir'
                         ? 'bg-purple-950/80 border-purple-400 text-purple-200 font-bold shadow-xs'
-                        : 'bg-slate-900 border-slate-800 text-slate-400'
+                        : 'bg-[#041d13] border-emerald-800 text-emerald-200/75'
                     }`}
                   >
                     Data Sanksi / Takzir
@@ -886,12 +886,12 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">Pilih Rekaman Target:</label>
+                <label className="block text-emerald-100/90 font-bold mb-1">Pilih Rekaman Target:</label>
                 <select
                   value={revisionTargetId}
                   onChange={(e) => setRevisionTargetId(e.target.value)}
                   required
-                  className="w-full px-3 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-purple-400"
+                  className="w-full px-3 py-2.5 bg-[#041d13] border border-emerald-800 rounded-xl text-white focus:outline-none focus:border-purple-400"
                 >
                   <option value="">-- Pilih Berkas Target Koreksi --</option>
                   {revisionEntity === 'izin' ? (
@@ -911,7 +911,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">
+                <label className="block text-emerald-100/90 font-bold mb-1">
                   Alasan Koreksi Resmi <span className="text-red-400">* (Wajib Diisi untuk Audit)</span>:
                 </label>
                 <textarea
@@ -920,12 +920,12 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                   required
                   placeholder="Contoh: Klarifikasi jadwal ujian, penyesuaian penjemput resmi oleh wali santri..."
                   rows={3}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-400 font-sans text-xs"
+                  className="w-full px-3 py-2 bg-[#041d13] border border-emerald-800 rounded-xl text-white placeholder-emerald-200/40 focus:outline-none focus:border-purple-400 font-sans text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold mb-1">
+                <label className="block text-emerald-100/90 font-bold mb-1">
                   Catatan Tambahan / Nilai Baru (Opsional):
                 </label>
                 <input
@@ -933,7 +933,7 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                   value={revisionNewNotes}
                   onChange={(e) => setRevisionNewNotes(e.target.value)}
                   placeholder="Rincian catatan penyesuaian berkas..."
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-400 font-sans text-xs"
+                  className="w-full px-3 py-2 bg-[#041d13] border border-emerald-800 rounded-xl text-white placeholder-emerald-200/40 focus:outline-none focus:border-purple-400 font-sans text-xs"
                 />
               </div>
 
@@ -941,17 +941,17 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
                 Catatan: Penanggung jawab koreksi otomatis tersimpan sebagai <strong>{currentUser.nama} (NRP: {currentUser.nrp || 'SECOP'})</strong> beserta timestamp presisi.
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-emerald-800">
                 <button
                   type="button"
                   onClick={() => setIsRevisionModalOpen(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl cursor-pointer"
+                  className="px-4 py-2 bg-[#072c1e] hover:bg-[#0b422d] text-emerald-100/90 rounded-xl cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-purple-950 cursor-pointer"
+                  className="px-5 py-2 bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-500 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-purple-950 cursor-pointer"
                 >
                   Simpan Catatan Koreksi Resmi
                 </button>

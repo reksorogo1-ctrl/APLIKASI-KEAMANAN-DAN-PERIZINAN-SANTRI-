@@ -2,6 +2,10 @@ export type Gender = 'putra' | 'putri';
 
 export type UserRole = 
   | 'admin'
+  | 'ketua_pondok'
+  | 'sekretaris'
+  | 'bendahara'
+  | 'perlengkapan'
   | 'ketua_keamanan'
   | 'anggota_keamanan'
   | 'petugas_gerbang';
@@ -10,6 +14,7 @@ export interface UserAccount {
   id: string;
   username: string;
   password?: string; // Plaintext or hash for authentication simulation
+  pin?: string; // 6-digit iPhone Lock Screen style PIN code (editable via Admin Option Panel)
   nama: string;
   role: UserRole;
   nrp?: string; // Nomor Registrasi Pengurus / Badge ID
@@ -17,6 +22,7 @@ export interface UserAccount {
   divisi: string;
   genderAccess: 'all' | 'putra' | 'putri';
   noWa: string;
+  alamat?: string;
   avatar: string;
   statusAktif: boolean;
   terakhirLogin?: string;
@@ -35,7 +41,8 @@ export interface Santri {
   namaWali: string;
   noWaWali: string;
   jarakRumahKm: number;
-  status: 'Aktif' | 'Cuti' | 'Alumni' | 'Diskors';
+  status: 'Aktif' | 'Cuti' | 'Alumni' | 'Diskors' | 'Sakit';
+  kondisiKesehatan?: 'Sehat' | 'Sakit' | 'Rawat Jalan';
   poinPelanggaran: number;
   tglMasuk: string;
   suspendIzinHingga?: string; // Tanggal akhir suspensi izin keluar (YYYY-MM-DD WIB)
@@ -311,6 +318,7 @@ export interface SystemConfig {
   modeOperasiDarurat: boolean; // Emergency lockdown mode
   suratIzinLayout?: SuratIzinLayoutConfig;
   suratSanksiLayout?: SuratSanksiLayoutConfig;
+  suratSekretarisConfig?: SuratSekretarisConfig;
   // Pengaturan Identitas Aplikasi & PWA
   namaAplikasi?: string;
   namaPendekAplikasi?: string;
@@ -319,6 +327,45 @@ export interface SystemConfig {
   themeColor?: string;
   backgroundColor?: string;
   splashScreenUrl?: string;
+  // Data Terpadu Pengurus & Divisi (Tersinkronisasi Real-Time via SystemConfig)
+  beritaTerkini?: BeritaPondok[];
+  beritaTerkiniList?: BeritaPondok[];
+  ustadzList?: DataUstadz[];
+  dataUstadzList?: DataUstadz[];
+  programKerjaList?: ProgramKerja[];
+  izinPengurusList?: IzinPengurus[];
+  notulenRapatList?: NotulenRapat[];
+  syahriyahList?: SyahriyahSantri[];
+  uangSakuList?: UangSakuMutasi[];
+  anggaranList?: AnggaranPondok[];
+  mutasiBarangList?: MutasiBarang[];
+  jadwalPerbaikanList?: JadwalPerbaikanAset[];
+  kamarSantriList?: DataKamarAsrama[];
+  alamatPondok?: string;
+  namaPimpinan?: string;
+  sekretarisNama?: string;
+  kotaInstansi?: string;
+  kopSuratBaris1?: string;
+  kopSuratBaris2?: string;
+  alamatKopSurat?: string;
+  judulSuratSanksi?: string;
+  pembukaSuratSanksi?: string;
+  penutupSuratSanksi?: string;
+  catatanKakiSuratSanksi?: string;
+  ketuaKeamananPutra?: string;
+  ketuaKeamananPutri?: string;
+  hotlineWa?: string;
+  kinerjaBulananList?: {
+    bulan: string;
+    skorKinerjaPengurus: number;
+    skorKedisiplinanSantri: number;
+  }[];
+  pertumbuhanSantriTahunan?: {
+    tahun: string;
+    putra: number;
+    putri: number;
+    total: number;
+  }[];
 }
 
 // -------------------------------------------------------------
@@ -361,6 +408,7 @@ export interface PesanKoordinasi {
   pengirimAvatar?: string;
   tujuan: 'semua_dewan' | 'admin' | string;
   waktu: string;
+  tanggal?: string;
   status: StatusKoordinasi;
   dibacaOleh: string[]; // List of user IDs who have opened and read this message
   lampiranUrl?: string;
@@ -369,5 +417,363 @@ export interface PesanKoordinasi {
   tindakLanjutCatatan?: string;
   tindakLanjutOleh?: string;
   tindakLanjutWaktu?: string;
+  tindakLanjut?: any[];
   balasan: BalasanKoordinasi[];
 }
+
+// -------------------------------------------------------------
+// 1. STRUKTUR ORGANISASI PONDOK PESANTREN
+// -------------------------------------------------------------
+export type DivisiPondok =
+  | 'Pengasuh & Majelis'
+  | 'Ketua Pondok'
+  | 'Sekretaris'
+  | 'Bendahara'
+  | 'Perlengkapan'
+  | 'Keamanan'
+  | 'Pendidikan & Taklim';
+
+export interface StrukturOrganisasiNode {
+  id: string;
+  jabatan: string;
+  namaPengurus: string;
+  nrp?: string;
+  divisi: DivisiPondok;
+  level: 1 | 2 | 3 | 4; // 1: Pengasuh, 2: Ketua Pondok, 3: Pimpinan Divisi, 4: Anggota/Staff
+  parentId?: string;
+  periode: string;
+  noWa: string;
+  tupoksi: string;
+  statusAktif: boolean;
+  urutan: number;
+}
+
+// -------------------------------------------------------------
+// 2. KETUA PONDOK (AGENDA, EVALUASI, PERSETUJUAN DIVISI)
+// -------------------------------------------------------------
+export interface AgendaPengurus {
+  id: string;
+  judul: string;
+  tanggal: string; // YYYY-MM-DD
+  tanggalHijriah?: string;
+  waktu: string; // HH:mm
+  tempat: string;
+  lokasi?: string;
+  divisiTerkait: DivisiPondok | 'Seluruh Pengurus';
+  penanggungJawab?: string;
+  pimpinanRapat?: string;
+  deskripsi?: string;
+  notulensi?: string;
+  status: 'Terjadwal' | 'Berlangsung' | 'Selesai' | 'Ditunda';
+  catatan?: string;
+  dibuatOleh?: string;
+  createdAt?: string;
+}
+
+export interface EvaluasiKepengurusan {
+  id: string;
+  tanggal: string;
+  divisi: 'Sekretaris' | 'Bendahara' | 'Perlengkapan' | 'Keamanan' | 'Umum';
+  judul: string;
+  catatanEvaluasi: string;
+  tindakLanjut: string;
+  nilaiKinerja: 'Sangat Baik' | 'Baik' | 'Perlu Perbaikan';
+  penulisNama: string;
+  createdAt: string;
+}
+
+export interface PengajuanDivisi {
+  id: string;
+  nomorPengajuan: string;
+  tanggal: string;
+  divisi: 'Sekretaris' | 'Bendahara' | 'Perlengkapan' | 'Keamanan';
+  jenisPengajuan: 'Laporan Berkala' | 'Pengajuan Anggaran' | 'Pengadaan Barang' | 'Surat Resmi' | 'Kebijakan';
+  judul: string;
+  deskripsi: string;
+  nominalEstimasi?: number;
+  pengajuNama: string;
+  status: 'Menunggu Persetujuan' | 'Disetujui' | 'Perlu Revisi' | 'Ditolak';
+  catatanKetua?: string;
+  diputuskanOleh?: string;
+  tanggalKeputusan?: string;
+  lampiranNama?: string;
+  lampiranUrl?: string;
+}
+
+// -------------------------------------------------------------
+// 3. SEKRETARIS (PERSURATAN PROFESIONAL & 15 JENIS SURAT)
+// -------------------------------------------------------------
+export type KodeJenisSurat =
+  | 'SK'
+  | 'SU'
+  | 'SPm'
+  | 'SPb'
+  | 'SPp'
+  | 'SPn'
+  | 'SM'
+  | 'ST'
+  | 'SKet'
+  | 'SR'
+  | 'SB'
+  | 'SPPD'
+  | 'SRT'
+  | 'PK'
+  | 'SPeng';
+
+export interface TemplateSuratConfig {
+  kode: KodeJenisSurat;
+  namaJenis: string;
+  kodeKlasifikasi: string;
+  judulDefault: string;
+  salamPembuka: string;
+  kalimatPembuka: string;
+  isiTemplate: string;
+  kalimatPenutup: string;
+  catatanKaki?: string;
+}
+
+export interface SuratSekretarisConfig {
+  kopNamaYayasan: string;
+  kopNamaPondok: string;
+  kopSubInstansi: string;
+  kopAlamatKontak: string;
+  kopLogoUrl: string;
+  kopLogoKananUrl?: string;
+  formatNomorSurat: string; // Contoh: {NOMOR}/{KODE}/PP-MALIKI/{ROMAN}/{TAHUN}
+  kotaTerbit: string;
+  jabatanPenandatangan: string;
+  namaPenandatangan: string;
+  gelarPenandatangan: string;
+  jabatanPenandatangan2: string;
+  namaPenandatangan2: string;
+  tampilkanPenandatangan2: boolean;
+  tampilkanStempel: boolean;
+  tampilkanBismillah: boolean;
+  templates: Record<KodeJenisSurat, TemplateSuratConfig>;
+}
+
+export interface ArsipSurat {
+  id: string;
+  arah: 'Keluar' | 'Masuk';
+  kodeJenis: KodeJenisSurat;
+  namaJenis: string;
+  nomorSurat: string;
+  tanggalSurat: string; // YYYY-MM-DD
+  lampiran: string;
+  perihal: string;
+  tujuanAtauPengirim: string;
+  alamatTujuan?: string;
+  salamPembuka?: string;
+  kalimatPembuka?: string;
+  isiSurat: string;
+  penutupSurat?: string;
+  kotaTerbit?: string;
+  jabatanPenandatangan?: string;
+  namaPenandatangan?: string;
+  jabatanPenandatangan2?: string;
+  namaPenandatangan2?: string;
+  tampilkanPenandatangan2?: boolean;
+  tembusan?: string;
+  status: 'Draft' | 'Menunggu TTD' | 'Resmi / Terbit' | 'Diarsipkan';
+  fileLampiranUrl?: string;
+  fileLampiranNama?: string;
+  dibuatOleh: string;
+  createdAt: string;
+}
+
+// -------------------------------------------------------------
+// 4. BENDAHARA (ADMINISTRASI KEUANGAN PONDOK)
+// -------------------------------------------------------------
+export type TipeTransaksiKeuangan = 'Pemasukan' | 'Pengeluaran';
+
+export interface TransaksiKeuangan {
+  id: string;
+  kodeTransaksi: string;
+  tanggal: string; // YYYY-MM-DD
+  waktu: string; // HH:mm WIB
+  tipe: TipeTransaksiKeuangan;
+  kategori: string;
+  deskripsi: string;
+  nominal: number;
+  metodePembayaran: 'Tunai' | 'Transfer Bank' | 'QRIS';
+  pihakTerkait: string;
+  buktiUrl?: string;
+  buktiNama?: string;
+  pencatatNama: string;
+  statusVerifikasi: 'Terverifikasi' | 'Menunggu Audit';
+  createdAt: string;
+}
+
+// -------------------------------------------------------------
+// 5. PERLENGKAPAN (INVENTARIS, PEMINJAMAN & PENGADAAN)
+// -------------------------------------------------------------
+export interface BarangInventaris {
+  id: string;
+  kodeBarang: string;
+  namaBarang: string;
+  kategori: 'Elektronik' | 'Meubel & Asrama' | 'Dapur & Konsumsi' | 'Ibadah & Kitab' | 'Keamanan & Pos' | 'Kebersihan & Umum';
+  jumlah: number;
+  stokMinimal?: number;
+  satuan: string;
+  kondisi: 'Baik' | 'Rusak Ringan' | 'Rusak Berat';
+  lokasi: string;
+  penanggungJawab: string;
+  tanggalPerolehan: string;
+  nilaiPerolehan?: number;
+  catatan?: string;
+}
+
+export interface PeminjamanBarang {
+  id: string;
+  kodePeminjaman: string;
+  barangId: string;
+  namaBarang: string;
+  jumlahPinjam: number;
+  peminjamNama: string;
+  peminjamBagian: string;
+  noWaPeminjam: string;
+  tanggalPinjam: string;
+  batasKembali: string;
+  tanggalAktualKembali?: string;
+  status: 'Dipinjam' | 'Dikembalikan' | 'Terlambat';
+  petugasNama: string;
+  keperluan: string;
+}
+
+// -------------------------------------------------------------
+// 6. MODUL TERPADU DASHBOARD, KETUA, SEKRETARIS, BENDAHARA & PERLENGKAPAN
+// -------------------------------------------------------------
+export interface BeritaPondok {
+  id: string;
+  judul: string;
+  isi: string;
+  kategori: 'Maklumat Pengasuh' | 'Agenda Pondok' | 'Akademik & Taklim' | 'Keamanan & Ketertiban' | 'Informasi Wali';
+  tanggal: string;
+  penulis: string;
+  penting: boolean;
+  gambarUrl?: string;
+}
+
+export interface DataUstadz {
+  id: string;
+  nip: string;
+  nama: string;
+  gender: 'ustadz' | 'ustadzah';
+  statusMukim?: 'Mukim' | 'Laju';
+  jabatan: string;
+  divisi: DivisiPondok;
+  bidangKitab: string;
+  noWa: string;
+  jadwalPiket: string;
+  statusAktif: boolean;
+}
+
+export interface ProgramKerja {
+  id: string;
+  divisi: 'Sekretaris' | 'Bendahara' | 'Perlengkapan' | 'Keamanan' | 'Pendidikan & Taklim' | 'Ketua Pondok';
+  namaProgram: string;
+  target: string;
+  progresPersen: number;
+  penanggungJawab: string;
+  tenggat: string;
+  status: 'Berjalan' | 'Tercapai' | 'Evaluasi';
+}
+
+export interface IzinPengurus {
+  id: string;
+  namaPengurus: string;
+  jabatan: string;
+  divisi: string;
+  keperluan: string;
+  tglMulai: string;
+  tglSelesai: string;
+  penggantiPiket: string;
+  status: 'Menunggu' | 'Disetujui' | 'Ditolak';
+  catatanKetua?: string;
+}
+
+export interface NotulenRapat {
+  id: string;
+  judulRapat: string;
+  tanggal: string;
+  waktu: string;
+  tempat: string;
+  pimpinanRapat: string;
+  jumlahPeserta: number;
+  agendaBahasan: string;
+  hasilKeputusan: string;
+  notulis: string;
+}
+
+export interface SyahriyahSantri {
+  id: string;
+  santriId: string;
+  santriNama: string;
+  santriNis: string;
+  kelas: string;
+  bulanTahun: string; // Contoh: "November 2026"
+  nominal: number;
+  status: 'Lunas' | 'Menunggak';
+  tanggalBayar?: string;
+  metodeBayar?: 'Tunai' | 'Transfer Bank' | 'QRIS';
+  noWaWali: string;
+  namaWali: string;
+}
+
+export interface UangSakuMutasi {
+  id: string;
+  santriId: string;
+  santriNama: string;
+  santriNis: string;
+  tanggal: string;
+  tipe: 'Setoran' | 'Penarikan';
+  nominal: number;
+  keterangan: string;
+  petugas: string;
+}
+
+export interface AnggaranPondok {
+  id: string;
+  kategori: string;
+  divisi: 'Sekretaris' | 'Bendahara' | 'Perlengkapan' | 'Keamanan' | 'Dapur & Konsumsi' | 'Pendidikan & Umum';
+  periode: string; // Contoh: "Semester Ganjil 2026/2027"
+  nominalAnggaran: number;
+  keterangan: string;
+}
+
+export interface MutasiBarang {
+  id: string;
+  barangId: string;
+  namaBarang: string;
+  tanggal: string;
+  tipe: 'Masuk' | 'Keluar';
+  jumlah: number;
+  satuan: string;
+  keterangan: string;
+  petugas: string;
+}
+
+export interface JadwalPerbaikanAset {
+  id: string;
+  barangId: string;
+  namaBarang: string;
+  lokasi: string;
+  kerusakan: string;
+  teknisi: string;
+  tanggalJadwal: string;
+  estimasiBiaya: number;
+  status: 'Terjadwal' | 'Sedang Dikerjakan' | 'Selesai';
+}
+
+export interface DataKamarAsrama {
+  id: string;
+  kodeKamar: string;
+  namaKamar: string;
+  asrama: string;
+  gender: Gender;
+  kapasitas: number;
+  musyrif: string;
+  fasilitas: string[];
+  kondisi: 'Baik' | 'Perlu Perbaikan';
+}
+

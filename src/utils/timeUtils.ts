@@ -64,6 +64,14 @@ export function getWIBDateTime(date: Date = new Date()): WIBTimeInfo {
   };
 }
 
+export function getWIBDate(date: Date = new Date()): string {
+  return getWIBDateTime(date).dateStr;
+}
+
+export function getWIBTime(date: Date = new Date()): string {
+  return `${getWIBDateTime(date).timeStr} WIB`;
+}
+
 /**
  * Menghitung selisih keterlambatan dalam menit antara batas waktu kembali dengan waktu kepulangan aktual (WIB).
  * Return isTerlambat = true jika waktu kepulangan melewati deadline.

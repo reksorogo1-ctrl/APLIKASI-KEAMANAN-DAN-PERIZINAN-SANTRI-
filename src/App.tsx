@@ -1,55 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import { storageService } from './services/storageService';
-import { 
-  Santri, 
-  DewanKeamanan, 
-  Perizinan, 
-  TataTertib, 
-  Pelanggaran, 
-  Sanksi, 
-  UserAccount, 
-  LogAktivitas, 
+import {
+  Santri,
+  DewanKeamanan,
+  Perizinan,
+  TataTertib,
+  Pelanggaran,
+  Sanksi,
+  UserAccount,
+  LogAktivitas,
   NotifikasiApp,
   SystemConfig,
-  PesanKoordinasi
+  PesanKoordinasi,
+  StrukturOrganisasiNode,
+  AgendaPengurus,
+  EvaluasiKepengurusan,
+  PengajuanDivisi,
+  ArsipSurat,
+  TransaksiKeuangan,
+  BarangInventaris,
+  PeminjamanBarang,
 } from './types';
 
-import { LoginScreen } from './components/LoginScreen';
 import { Header } from './components/Header';
-import { Sidebar, ActiveMenu } from './components/Sidebar';
-import { Dashboard } from './components/Dashboard';
-import { KoordinasiList } from './components/KoordinasiList';
+import { Sidebar, ActiveMenu, KeamananSubTab, canAccessMainMenu } from './components/Sidebar';
+import { MainDashboard } from './components/MainDashboard';
+import { StrukturOrganisasiPanel } from './components/StrukturOrganisasiPanel';
+import { KetuaPondokDashboard } from './components/KetuaPondokDashboard';
+import { SekretarisPanel } from './components/SekretarisPanel';
+import { BendaharaPanel } from './components/BendaharaPanel';
+import { PerlengkapanPanel, PerlengkapanSubTab } from './components/PerlengkapanPanel';
+import { KeamananModule } from './components/KeamananModule';
 import { AdminOptionPanel } from './components/AdminOptionPanel';
-import { SantriPerKelas } from './components/SantriPerKelas';
-import { SantriList } from './components/SantriList';
-import { DewanKeamananList } from './components/DewanKeamananList';
-import { PerizinanList } from './components/PerizinanList';
-import { GateScanner } from './components/GateScanner';
-import { MonitoringRealtime } from './components/MonitoringRealtime';
-import { TataTertibList } from './components/TataTertibList';
-import { PelanggaranList } from './components/PelanggaranList';
-import { SanksiList } from './components/SanksiList';
-import { LaporanStatistik } from './components/LaporanStatistik';
-import { DatabaseSettings } from './components/DatabaseSettings';
+import { BiodataProfilPanel } from './components/BiodataProfilPanel';
 import { SuratIzinModal } from './components/SuratIzinModal';
 import { NotificationModal } from './components/NotificationModal';
 import { QuickQRScannerModal } from './components/QuickQRScannerModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { syncPWAIdentity } from './services/pwaSyncService';
 
+const KEAMANAN_SUBTABS: KeamananSubTab[] = [
+  'ringkasan',
+  'koordinasi',
+  'santri_per_kelas',
+  'santri',
+  'perizinan',
+  'pos_gerbang',
+  'monitoring',
+  'tata_tertib',
+  'pelanggaran',
+  'sanksi',
+  'dewan_keamanan',
+  'laporan',
+  'laporan_mingguan',
+  'option_keamanan',
+  'database',
+];
+
 export default function App() {
-  // Authentication & Session
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(storageService.getCurrentUser());
+  // Authentication & Session (Masuk langsung ke Administrator tanpa layar login)
+  const [currentUser, setCurrentUser] = useState<UserAccount>(storageService.getCurrentUser());
 
   // Navigation & UI state
   const [activeMenu, setActiveMenu] = useState<ActiveMenu>('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState<string>('');
+  const [keamananSubTab, setKeamananSubTab] = useState<KeamananSubTab>('ringkasan');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isNotifOpen, setIsNotifOpen] = useState<boolean>(false);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState<boolean>(false);
   const [selectedSuratIzin, setSelectedSuratIzin] = useState<Perizinan | null>(null);
   const [preSelectedPelanggaran, setPreSelectedPelanggaran] = useState<Pelanggaran | null>(null);
 
-  // Storage synced state
+  // Storage synced state (Security + Core)
   const [systemConfig, setSystemConfig] = useState<SystemConfig>(storageService.getSystemConfig());
   const [usersList, setUsersList] = useState<UserAccount[]>(storageService.getUsers());
   const [genderScope, setGenderScope] = useState<'all' | 'putra' | 'putri'>(storageService.getGenderScope());
@@ -63,12 +85,30 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotifikasiApp[]>(storageService.getNotifications());
   const [koordinasiList, setKoordinasiList] = useState<PesanKoordinasi[]>(storageService.getKoordinasiList());
 
-  // Subscribe to storage service & automated background tardiness monitoring
+  // Storage synced state (Management Divisions)
+  const [strukturOrganisasi, setStrukturOrganisasi] = useState<StrukturOrganisasiNode[]>(
+    storageService.getStrukturOrganisasi()
+  );
+  const [agendaPengurus, setAgendaPengurus] = useState<AgendaPengurus[]>(storageService.getAgendaPengurus());
+  const [evaluasiKepengurusan, setEvaluasiKepengurusan] = useState<EvaluasiKepengurusan[]>(
+    storageService.getEvaluasiKepengurusan()
+  );
+  const [pengajuanDivisi, setPengajuanDivisi] = useState<PengajuanDivisi[]>(storageService.getPengajuanDivisi());
+  const [arsipSurat, setArsipSurat] = useState<ArsipSurat[]>(storageService.getArsipSurat());
+  const [transaksiKeuangan, setTransaksiKeuangan] = useState<TransaksiKeuangan[]>(
+    storageService.getTransaksiKeuangan()
+  );
+  const [barangInventaris, setBarangInventaris] = useState<BarangInventaris[]>(
+    storageService.getBarangInventaris()
+  );
+  const [peminjamanBarang, setPeminjamanBarang] = useState<PeminjamanBarang[]>(
+    storageService.getPeminjamanBarang()
+  );
+
+  // Subscribe to central Firestore + localStorage sync service
   useEffect(() => {
-    // Force dark tactical theme default
     document.documentElement.classList.add('dark');
 
-    // Run tardiness check on startup and subscribe
     storageService.checkAndDetectLatePermits();
     const lateTimer = setInterval(() => {
       storageService.checkAndDetectLatePermits();
@@ -88,6 +128,14 @@ export default function App() {
       setLogsList(storageService.getLogs());
       setNotifications(storageService.getNotifications());
       setKoordinasiList(storageService.getKoordinasiList());
+      setStrukturOrganisasi(storageService.getStrukturOrganisasi());
+      setAgendaPengurus(storageService.getAgendaPengurus());
+      setEvaluasiKepengurusan(storageService.getEvaluasiKepengurusan());
+      setPengajuanDivisi(storageService.getPengajuanDivisi());
+      setArsipSurat(storageService.getArsipSurat());
+      setTransaksiKeuangan(storageService.getTransaksiKeuangan());
+      setBarangInventaris(storageService.getBarangInventaris());
+      setPeminjamanBarang(storageService.getPeminjamanBarang());
     });
 
     return () => {
@@ -96,39 +144,43 @@ export default function App() {
     };
   }, []);
 
-  // Sync PWA Identity (Title, Favicon, Theme-color, Manifest) whenever systemConfig changes
+  // Sync PWA Identity whenever systemConfig updates
   useEffect(() => {
     syncPWAIdentity(systemConfig);
   }, [systemConfig]);
 
-  // Handle Logout
+  // Handle Reset / Kembali ke Dashboard Utama Administrator
   const handleLogout = () => {
     storageService.logout();
-    setCurrentUser(null);
+    setCurrentUser(storageService.getCurrentUser());
+    setActiveMenu('dashboard');
+    setActiveSubTab('');
   };
 
-  // Enforce RBAC route protection: non-admins cannot access admin_options or database
+  // Enforce RBAC route protection across main menu
   const isAdmin = currentUser?.role === 'admin';
   useEffect(() => {
-    if (currentUser && !isAdmin && (activeMenu === 'admin_options' || activeMenu === 'database')) {
+    if (currentUser && !canAccessMainMenu(currentUser.role, activeMenu)) {
       setActiveMenu('dashboard');
     }
-  }, [currentUser, isAdmin, activeMenu]);
+  }, [currentUser, activeMenu]);
 
-  // If not logged in, render the luxury tactical login screen
-  if (!currentUser) {
-    return (
-      <LoginScreen
-        onLoginSuccess={(user) => {
-          setCurrentUser(user);
-          setActiveMenu('dashboard');
-        }}
-      />
-    );
-  }
+  // Handle Sidebar menu & subTab selection
+  const handleSelectSidebarMenu = (menu: ActiveMenu, subTab?: string) => {
+    setActiveMenu(menu);
+    if (menu === 'keamanan') {
+      const nextSub = (subTab as KeamananSubTab) || 'ringkasan';
+      setKeamananSubTab(nextSub);
+      setActiveSubTab(nextSub);
+    } else if (subTab) {
+      setActiveSubTab(subTab);
+    } else {
+      setActiveSubTab('');
+    }
+  };
 
   // Filter based on gender scope (Otoritas Banin vs Banat)
-  const scopedSantriList = santriList.filter(s => {
+  const scopedSantriList = santriList.filter((s) => {
     if (currentUser.genderAccess !== 'all') {
       return s.gender === currentUser.genderAccess;
     }
@@ -136,7 +188,7 @@ export default function App() {
     return s.gender === genderScope;
   });
 
-  const scopedPerizinanList = perizinanList.filter(p => {
+  const scopedPerizinanList = perizinanList.filter((p) => {
     if (currentUser.genderAccess !== 'all') {
       return p.santriGender === currentUser.genderAccess;
     }
@@ -144,7 +196,7 @@ export default function App() {
     return p.santriGender === genderScope;
   });
 
-  const scopedPelanggaranList = pelanggaranList.filter(p => {
+  const scopedPelanggaranList = pelanggaranList.filter((p) => {
     if (currentUser.genderAccess !== 'all') {
       return p.santriGender === currentUser.genderAccess;
     }
@@ -152,7 +204,7 @@ export default function App() {
     return p.santriGender === genderScope;
   });
 
-  const scopedSanksiList = sanksiList.filter(s => {
+  const scopedSanksiList = sanksiList.filter((s) => {
     if (currentUser.genderAccess !== 'all') {
       return s.santriGender === currentUser.genderAccess;
     }
@@ -161,28 +213,45 @@ export default function App() {
   });
 
   // Badges
+  const pendingPengajuanCount = pengajuanDivisi.filter((p) => p.status === 'Menunggu Persetujuan').length;
   const pendingApprovalsCount = scopedPerizinanList.filter(
-    i => i.status === 'Diajukan' || i.status === 'Diverifikasi'
+    (i) => i.status === 'Diajukan' || i.status === 'Diverifikasi'
   ).length;
-
-  const lateSantriCount = scopedPerizinanList.filter(
-    i => i.status === 'Terlambat'
-  ).length;
-
-  const unreadNotifsCount = notifications.filter(n => !n.dibaca).length;
-
-  const unreadKoordinasiCount = koordinasiList.filter(k => !k.dibacaOleh.includes(currentUser.id)).length;
-  const mendesakKoordinasiCount = koordinasiList.filter(k => k.prioritas === 'Mendesak' && k.status !== 'Ditindaklanjuti').length;
+  const lateSantriCount = scopedPerizinanList.filter((i) => i.status === 'Terlambat').length;
+  const unreadNotifsCount = notifications.filter((n) => !n.dibaca).length;
+  const unreadKoordinasiCount = koordinasiList.filter((k) => !k.dibacaOleh.includes(currentUser.id)).length;
 
   const handleOpenSanksiFromPelanggaran = (pelanggaran: Pelanggaran) => {
     setPreSelectedPelanggaran(pelanggaran);
-    setActiveMenu('sanksi');
+    setActiveMenu('keamanan');
+    setKeamananSubTab('sanksi');
+    setActiveSubTab('sanksi');
+  };
+
+  const handleNavigateFromNotification = (menuId: string) => {
+    if (menuId === 'dashboard_keamanan') {
+      setActiveMenu('keamanan');
+      setKeamananSubTab('ringkasan');
+      setActiveSubTab('ringkasan');
+      return;
+    }
+    if (KEAMANAN_SUBTABS.includes(menuId as KeamananSubTab)) {
+      if (canAccessMainMenu(currentUser.role, 'keamanan')) {
+        setActiveMenu('keamanan');
+        setKeamananSubTab(menuId as KeamananSubTab);
+        setActiveSubTab(menuId);
+      }
+      return;
+    }
+    const mainCandidate = menuId as ActiveMenu;
+    if (canAccessMainMenu(currentUser.role, mainCandidate)) {
+      setActiveMenu(mainCandidate);
+    }
   };
 
   return (
-    <div className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-black text-white flex flex-col font-sans antialiased selection:bg-yellow-400 selection:text-black">
-      
-      {/* Tactical Top Bar Header */}
+    <div className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-[#02100a] text-[#f4f9f5] flex flex-col font-sans antialiased selection:bg-[#d4af37] selection:text-[#02100a]">
+      {/* Luxury Top Header Bar */}
       <Header
         currentUser={currentUser}
         logoUrl={systemConfig.logoUrl}
@@ -197,68 +266,179 @@ export default function App() {
 
       {/* Dynamic Background Scrim from System Config */}
       {systemConfig.bgUrl && (
-        <div 
+        <div
           className="fixed inset-0 pointer-events-none z-0"
-          style={{ opacity: (systemConfig.bgOpacity || 25) / 100 }}
+          style={{ opacity: (systemConfig.bgOpacity || 15) / 100 }}
         >
-          <img 
-            src={systemConfig.bgUrl} 
-            alt="Tactical Background Scrim" 
+          <img
+            src={systemConfig.bgUrl}
+            alt="Latar Belakang Pondok"
             className="w-full h-full object-cover filter contrast-125 brightness-75"
           />
         </div>
       )}
 
-      {/* Main Layout Canvas: Menyesuaikan panjang sidebar dan konten ke bawah layar website secara penuh */}
+      {/* Main Layout Container */}
       <div className="flex-1 flex w-full relative min-h-[calc(100vh-57px)] md:h-[calc(100vh-57px)] md:max-h-[calc(100vh-57px)] md:overflow-hidden items-stretch">
-        
-        {/* Navigation Sidebar: Selalu terbuka di laptop & PC, drawer di HP */}
+        {/* Sidebar Navigation */}
         <Sidebar
           activeMenu={activeMenu}
-          onSelectMenu={(menu) => setActiveMenu(menu)}
+          activeSubTab={activeSubTab}
+          onSelectMenu={handleSelectSidebarMenu}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           userRole={currentUser.role}
-          pendingApprovalsCount={pendingApprovalsCount}
+          pendingPengajuanCount={pendingPengajuanCount}
+          pendingSecurityCount={pendingApprovalsCount + unreadKoordinasiCount}
           lateSantriCount={lateSantriCount}
           unreadKoordinasiCount={unreadKoordinasiCount}
-          mendesakKoordinasiCount={mendesakKoordinasiCount}
-          logoUrl={systemConfig.logoUrl}
-          namaPondok={systemConfig.namaPondok}
           onLogout={handleLogout}
           currentUser={currentUser}
         />
 
-        {/* Viewport Content Area: Responsif penuh layar laptop/PC dan mobile */}
-        <main 
-          className={`flex-1 h-full min-w-0 p-2 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-black transition-all ${
+        {/* Viewport Content Area */}
+        <main
+          className={`flex-1 h-full min-w-0 p-2.5 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-[#02100a] bg-security-grid transition-all ${
             isSidebarOpen ? 'max-md:overflow-hidden max-md:pointer-events-none' : ''
           }`}
         >
           <div className="w-full max-w-full">
-            
-            {/* 1. Dashboard Komando */}
+            {/* 1. Dashboard Utama Pesantren */}
             {activeMenu === 'dashboard' && (
-              <Dashboard
-                santriList={scopedSantriList}
-                perizinanList={scopedPerizinanList}
-                pelanggaranList={scopedPelanggaranList}
-                sanksiList={scopedSanksiList}
+              <MainDashboard
                 currentUser={currentUser}
-                onNavigate={(menu) => setActiveMenu(menu)}
-                onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
-              />
-            )}
-
-            {/* 2. Pusat Koordinasi Admin & Dewan Keamanan */}
-            {activeMenu === 'koordinasi' && (
-              <KoordinasiList
-                currentUser={currentUser}
+                systemConfig={systemConfig}
+                santriList={santriList}
+                perizinanList={perizinanList}
+                pelanggaranList={pelanggaranList}
+                transaksiKeuangan={transaksiKeuangan}
+                arsipSurat={arsipSurat}
+                barangInventaris={barangInventaris}
+                peminjamanBarang={peminjamanBarang}
+                agendaPengurus={agendaPengurus}
+                pengajuanDivisi={pengajuanDivisi}
                 koordinasiList={koordinasiList}
+                onNavigate={(menu) => handleSelectSidebarMenu(menu)}
               />
             )}
 
-            {/* 3. Admin Option Panel & Central Database (Admin Only) */}
+            {/* 2. Struktur Organisasi */}
+            {activeMenu === 'struktur_organisasi' && (
+              <StrukturOrganisasiPanel
+                strukturList={strukturOrganisasi}
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* 3. Ketua Pondok */}
+            {activeMenu === 'ketua_pondok' && canAccessMainMenu(currentUser.role, 'ketua_pondok') && (
+              <KetuaPondokDashboard
+                currentUser={currentUser}
+                systemConfig={systemConfig}
+                santriList={santriList}
+                perizinanList={perizinanList}
+                pelanggaranList={pelanggaranList}
+                arsipSurat={arsipSurat}
+                transaksiKeuangan={transaksiKeuangan}
+                barangInventaris={barangInventaris}
+                agendaPengurus={agendaPengurus}
+                evaluasiKepengurusan={evaluasiKepengurusan}
+                pengajuanDivisi={pengajuanDivisi}
+                strukturList={strukturOrganisasi}
+                dewanList={dewanList}
+                koordinasiList={koordinasiList}
+                initialSubTab={activeSubTab as any}
+              />
+            )}
+
+            {/* 4. Sekretaris (15 Jenis Surat, Data Santri, Data Ustadz Mukim/Laju, Notulen & Format Surat) */}
+            {activeMenu === 'sekretaris' && canAccessMainMenu(currentUser.role, 'sekretaris') && (
+              <SekretarisPanel
+                currentUser={currentUser}
+                systemConfig={systemConfig}
+                arsipSurat={arsipSurat}
+                santriList={santriList}
+                koordinasiList={koordinasiList}
+                agendaPengurus={agendaPengurus}
+                initialSubTab={activeSubTab as any}
+              />
+            )}
+
+            {/* 5. Bendahara (Kotak Masuk, Syahriyah, Uang Saku, Pengajuan Dana, Pemasukan & Pengeluaran) */}
+            {activeMenu === 'bendahara' && canAccessMainMenu(currentUser.role, 'bendahara') && (
+              <BendaharaPanel
+                currentUser={currentUser}
+                systemConfig={systemConfig}
+                transaksiKeuangan={transaksiKeuangan}
+                santriList={santriList}
+                pengajuanDivisi={pengajuanDivisi}
+                koordinasiList={koordinasiList}
+                logsList={logsList}
+                initialSubTab={activeSubTab as any}
+              />
+            )}
+
+            {/* 6. Perlengkapan (Kotak Masuk, Inventaris, Keluar Masuk, Peminjaman, Pembelian, Kamar & Fasilitas) */}
+            {activeMenu === 'perlengkapan' && canAccessMainMenu(currentUser.role, 'perlengkapan') && (
+              <PerlengkapanPanel
+                currentUser={currentUser}
+                systemConfig={systemConfig}
+                santriList={santriList}
+                barangInventaris={barangInventaris}
+                peminjamanBarang={peminjamanBarang}
+                pengajuanDivisi={pengajuanDivisi}
+                koordinasiList={koordinasiList}
+                initialSubTab={(activeSubTab as PerlengkapanSubTab) || undefined}
+              />
+            )}
+
+            {/* 7. Keamanan (Dashboard Utama, Kotak Masuk, Perizinan, Radar, Pelanggaran, Sanksi, Data Santri, Tata Tertib & Piket, Laporan, Option Panel Keamanan) */}
+            {activeMenu === 'keamanan' && canAccessMainMenu(currentUser.role, 'keamanan') && (
+              <KeamananModule
+                subTab={keamananSubTab}
+                onChangeSubTab={(tab) => {
+                  setKeamananSubTab(tab);
+                  setActiveSubTab(tab);
+                }}
+                currentUser={currentUser}
+                systemConfig={systemConfig}
+                agendaPengurus={agendaPengurus}
+                genderScope={genderScope}
+                santriList={santriList}
+                scopedSantriList={scopedSantriList}
+                dewanList={dewanList}
+                perizinanList={perizinanList}
+                scopedPerizinanList={scopedPerizinanList}
+                tataTertibList={tataTertibList}
+                pelanggaranList={pelanggaranList}
+                scopedPelanggaranList={scopedPelanggaranList}
+                sanksiList={sanksiList}
+                scopedSanksiList={scopedSanksiList}
+                logsList={logsList}
+                koordinasiList={koordinasiList}
+                pendingApprovalsCount={pendingApprovalsCount}
+                lateSantriCount={lateSantriCount}
+                unreadKoordinasiCount={unreadKoordinasiCount}
+                preSelectedPelanggaran={preSelectedPelanggaran}
+                onClearPreSelectedPelanggaran={() => setPreSelectedPelanggaran(null)}
+                onOpenSanksiFromPelanggaran={handleOpenSanksiFromPelanggaran}
+                onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
+                onOpenQRScanner={() => setIsQRScannerOpen(true)}
+              />
+            )}
+
+            {/* 8. Tab Biodata dan Profil (Editable Foto Profil, Nama, Jabatan, No WA, Alamat & PIN 6 Digit) */}
+            {activeMenu === 'biodata_profil' && (
+              <BiodataProfilPanel
+                currentUser={currentUser}
+                onProfileUpdated={(updatedUser) => {
+                  setCurrentUser(updatedUser);
+                  setUsersList(storageService.getUsers());
+                }}
+              />
+            )}
+
+            {/* 9. Options Panel (Admin Only — Pengelolaan Sistem Login Seluruh Divisi, PIN 6 Digit, Password, Role) */}
             {activeMenu === 'admin_options' && isAdmin && (
               <AdminOptionPanel
                 systemConfig={systemConfig}
@@ -273,135 +453,14 @@ export default function App() {
                 }}
               />
             )}
-
-            {/* 3. Data Santri Per Kelas (Explicitly for Security Officers & Admin) */}
-            {activeMenu === 'santri_per_kelas' && (
-              <SantriPerKelas
-                santriList={scopedSantriList}
-                perizinanList={scopedPerizinanList}
-                pelanggaranList={scopedPelanggaranList}
-                currentUser={currentUser}
-                onNavigateToPermitWithSantri={(santri) => {
-                  setActiveMenu('perizinan');
-                }}
-                onNavigateToPelanggaranWithSantri={(santri) => {
-                  setActiveMenu('pelanggaran');
-                }}
-              />
-            )}
-
-            {/* 4. Administrasi Santri Induk */}
-            {activeMenu === 'santri' && (
-              <SantriList
-                santriList={scopedSantriList}
-                currentGenderScope={genderScope}
-              />
-            )}
-
-            {/* 5. Dewan Keamanan & Piket */}
-            {activeMenu === 'dewan_keamanan' && (
-              <DewanKeamananList
-                dewanList={dewanList}
-              />
-            )}
-
-            {/* 6. Administrasi Perizinan (Live Sync ke Admin) */}
-            {activeMenu === 'perizinan' && (
-              <PerizinanList
-                perizinanList={scopedPerizinanList}
-                santriList={scopedSantriList}
-                currentUser={currentUser}
-                onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
-              />
-            )}
-
-            {/* 7. Pos Gerbang (Check-In/Out) */}
-            {activeMenu === 'pos_gerbang' && (
-              <GateScanner
-                perizinanList={scopedPerizinanList}
-                santriList={scopedSantriList}
-                currentUser={currentUser}
-                onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
-                onOpenQRScanner={() => setIsQRScannerOpen(true)}
-              />
-            )}
-
-            {/* 8. Monitoring Real-Time */}
-            {activeMenu === 'monitoring' && (
-              <MonitoringRealtime
-                perizinanList={scopedPerizinanList}
-                pelanggaranList={scopedPelanggaranList}
-                sanksiList={scopedSanksiList}
-                currentUser={currentUser}
-                onViewSuratIzin={(izin) => setSelectedSuratIzin(izin)}
-              />
-            )}
-
-            {/* 9. Buku Tata Tertib */}
-            {activeMenu === 'tata_tertib' && (
-              <TataTertibList
-                tataTertibList={tataTertibList}
-              />
-            )}
-
-            {/* 10. Catatan Pelanggaran */}
-            {activeMenu === 'pelanggaran' && (
-              <PelanggaranList
-                pelanggaranList={scopedPelanggaranList}
-                santriList={scopedSantriList}
-                tataTertibList={tataTertibList}
-                currentUser={currentUser}
-                onOpenSanksiModalForPelanggaran={handleOpenSanksiFromPelanggaran}
-              />
-            )}
-
-            {/* 11. Sanksi Edukatif */}
-            {activeMenu === 'sanksi' && (
-              <SanksiList
-                sanksiList={scopedSanksiList}
-                pelanggaranList={scopedPelanggaranList}
-                santriList={scopedSantriList}
-                currentUser={currentUser}
-                preSelectedPelanggaran={preSelectedPelanggaran}
-                onClearPreSelectedPelanggaran={() => setPreSelectedPelanggaran(null)}
-              />
-            )}
-
-            {/* 12. Laporan & Statistik */}
-            {activeMenu === 'laporan' && (
-              <LaporanStatistik
-                santriList={scopedSantriList}
-                perizinanList={scopedPerizinanList}
-                pelanggaranList={scopedPelanggaranList}
-                sanksiList={scopedSanksiList}
-                logsList={logsList}
-              />
-            )}
-
-            {/* 13. Master Database Settings */}
-            {activeMenu === 'database' && (
-              <DatabaseSettings
-                santriList={santriList}
-                perizinanList={perizinanList}
-                pelanggaranList={pelanggaranList}
-                sanksiList={sanksiList}
-                dewanList={dewanList}
-                logsList={logsList}
-              />
-            )}
-
           </div>
         </main>
-
       </div>
 
       {/* Official Surat Izin Digital Modal */}
-      <SuratIzinModal
-        izin={selectedSuratIzin}
-        onClose={() => setSelectedSuratIzin(null)}
-      />
+      <SuratIzinModal izin={selectedSuratIzin} onClose={() => setSelectedSuratIzin(null)} />
 
-      {/* Quick QR Code Scanner Modal (Pos Pengurus & Admin Check-In) */}
+      {/* Quick QR Code Scanner Modal */}
       <QuickQRScannerModal
         isOpen={isQRScannerOpen}
         onClose={() => setIsQRScannerOpen(false)}
@@ -413,12 +472,11 @@ export default function App() {
         isOpen={isNotifOpen}
         onClose={() => setIsNotifOpen(false)}
         notifications={notifications}
-        onNavigate={(menuId) => setActiveMenu(menuId as ActiveMenu)}
+        onNavigate={handleNavigateFromNotification}
       />
 
       {/* Real-time PWA Connectivity Indicator */}
       <OfflineIndicator />
-
     </div>
   );
 }

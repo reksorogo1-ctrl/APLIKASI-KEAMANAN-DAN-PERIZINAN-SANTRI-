@@ -487,19 +487,19 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
     >
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg max-h-[92vh] flex flex-col metallic-glass-card border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating"
+        className="relative w-full max-w-lg max-h-[92vh] flex flex-col metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating"
       >
         {/* Header Bar */}
-        <div className="shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950">
+        <div className="shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-950 border border-cyan-500/40 text-cyan-300 shadow-xs glow-cyan">
-              <QrCode className="w-5 h-5 text-cyan-400" />
+            <div className="p-2 rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-300 shadow-xs glow-gold">
+              <QrCode className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
               <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide flex items-center gap-2">
                 Pemindai QR Real-Time
               </h3>
-              <p className="text-[10px] text-slate-400 font-mono">
+              <p className="text-[10px] text-emerald-200/75 font-mono">
                 Deteksi otomatis cepat · Surat Izin & Sanksi Santri
               </p>
             </div>
@@ -510,14 +510,14 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
             <button
               type="button"
               onClick={handleToggleCamera}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 cursor-pointer transition-colors"
+              className="p-1.5 rounded-lg bg-[#072c1e] hover:bg-[#0b422d] text-emerald-100/90 hover:text-white border border-emerald-800 cursor-pointer transition-colors"
               title={`Ganti kamera (${cameraFacing === 'environment' ? 'Kamera Belakang' : 'Kamera Depan'})`}
             >
-              <SwitchCamera className="w-4 h-4 text-cyan-400" />
+              <SwitchCamera className="w-4 h-4 text-emerald-400" />
             </button>
             <button 
               onClick={onClose} 
-              className="w-7 h-7 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer font-bold"
+              className="w-7 h-7 rounded-lg bg-[#072c1e]/80 text-emerald-200/75 hover:text-white flex items-center justify-center transition-all cursor-pointer font-bold"
             >
               ✕
             </button>
@@ -534,7 +534,7 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
                 ? 'bg-amber-950/80 border-amber-500 text-amber-100 glow-amber'
                 : scannerResult.isLate 
                   ? 'bg-red-950/90 border-red-500 text-red-100 glow-red' 
-                  : 'bg-emerald-950/90 border-emerald-500 text-emerald-100 glow-cyan'
+                  : 'bg-emerald-950/90 border-emerald-500 text-emerald-100 glow-gold'
             }`}>
               
               {/* Header result row */}
@@ -586,8 +586,8 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
 
               {/* Sanksi specific actions */}
               {scannerResult.sanksi && (
-                <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[10px]">
-                  <span className="text-slate-300">
+                <div className="pt-2 border-t border-emerald-800/60 flex items-center justify-between text-[10px]">
+                  <span className="text-emerald-100/90">
                     Batas: <strong className="text-amber-300">{scannerResult.sanksi.batasMaksimal}</strong>
                   </span>
                   {scannerResult.sanksi.status !== 'Selesai' && (
@@ -606,7 +606,7 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
               {/* Izin specific row */}
               {scannerResult.izin && (
                 <div className="flex items-center justify-between pt-1 text-[10px]">
-                  <span className="text-slate-300">
+                  <span className="text-emerald-100/90">
                     Waktu Scan Masuk: <strong className="text-white">{scannerResult.izin.actualKembali}</strong>
                   </span>
                   {scannerResult.izin.noWaPenjemput && (
@@ -633,12 +633,12 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
           )}
 
           {/* High-Performance Real-Time Camera Viewport */}
-          <div className="relative rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 aspect-video flex items-center justify-center shadow-inner">
+          <div className="relative rounded-2xl overflow-hidden border border-emerald-800 bg-[#02100a] aspect-video flex items-center justify-center shadow-inner">
             
             {/* Target Viewport Container for Html5Qrcode */}
             <div 
               id={scannerContainerId} 
-              className={`w-full h-full relative ${scanFlash ? 'ring-4 ring-emerald-400 ring-inset glow-cyan' : ''}`}
+              className={`w-full h-full relative ${scanFlash ? 'ring-4 ring-emerald-400 ring-inset glow-gold' : ''}`}
             />
 
             {/* Tactical Laser & Corner Brackets Overlay (Active while camera is scanning) */}
@@ -649,17 +649,17 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
                 <div className="w-48 h-48 sm:w-56 sm:h-56 relative flex items-center justify-center">
                   
                   {/* 4 Corner L-Brackets */}
-                  <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-cyan-400 rounded-tl-lg shadow-[0_0_8px_#22d3ee]" />
-                  <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-cyan-400 rounded-tr-lg shadow-[0_0_8px_#22d3ee]" />
-                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-cyan-400 rounded-bl-lg shadow-[0_0_8px_#22d3ee]" />
-                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-cyan-400 rounded-br-lg shadow-[0_0_8px_#22d3ee]" />
+                  <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg shadow-[0_0_8px_#10b981]" />
+                  <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg shadow-[0_0_8px_#10b981]" />
+                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg shadow-[0_0_8px_#10b981]" />
+                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-lg shadow-[0_0_8px_#10b981]" />
 
                   {/* High-speed scanning laser line */}
-                  <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-pulse shadow-[0_0_12px_#06b6d4]" />
+                  <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse shadow-[0_0_12px_#10b981]" />
 
                   {/* Realtime Detection Status Badge */}
-                  <div className="absolute -bottom-8 px-3 py-1 rounded-full bg-slate-950/90 border border-cyan-500/50 text-[10px] text-cyan-300 font-mono font-bold tracking-wider shadow-lg flex items-center gap-1.5 whitespace-nowrap">
-                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                  <div className="absolute -bottom-8 px-3 py-1 rounded-full bg-[#02100a]/90 border border-emerald-500/50 text-[10px] text-emerald-300 font-mono font-bold tracking-wider shadow-lg flex items-center gap-1.5 whitespace-nowrap">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                     <span>KAMERA AKTIF · MENUNGGU QR CODE</span>
                   </div>
                 </div>
@@ -679,7 +679,7 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
 
             {/* Camera Error / Fallback State */}
             {cameraError && (
-              <div className="absolute inset-0 p-5 bg-slate-950/95 flex flex-col items-center justify-center text-center space-y-3 z-20">
+              <div className="absolute inset-0 p-5 bg-[#02100a]/95 flex flex-col items-center justify-center text-center space-y-3 z-20">
                 <div className="p-3 rounded-2xl bg-red-950/80 border border-red-500 text-red-400">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
@@ -690,7 +690,7 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
                 <button
                   type="button"
                   onClick={() => startScannerCamera(cameraFacing)}
-                  className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-950 font-bold text-xs cursor-pointer shadow-md"
+                  className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-bold text-xs cursor-pointer shadow-md"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Coba Aktifkan Ulang</span>
@@ -701,8 +701,8 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
           </div>
 
           {/* Manual Input or Barcode Scanner Gun */}
-          <div className="p-3.5 bg-slate-950/90 border border-slate-800 rounded-2xl space-y-2">
-            <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider">
+          <div className="p-3.5 bg-[#02100a]/90 border border-emerald-800 rounded-2xl space-y-2">
+            <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider">
               Input Nomor Izin / Nomor Sanksi / NIS Santri / Barcode Gun:
             </label>
             <div className="flex gap-2">
@@ -717,7 +717,7 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
                     handleDecodedQR(manualInput);
                   }
                 }}
-                className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-cyan-400"
+                className="flex-1 px-3 py-2 bg-[#041d13] border border-emerald-800 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-emerald-400"
               />
               <button
                 type="button"
@@ -732,14 +732,14 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
           {/* Quick Simulation List of Santri Currently Outside */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-200/75">
                 Santri yang Sedang di Luar ({outsideList.length}) · Klik Pindai Cepat:
               </span>
-              <span className="text-[9px] text-cyan-400 font-bold">Simulasi Instan</span>
+              <span className="text-[9px] text-emerald-400 font-bold">Simulasi Instan</span>
             </div>
 
             {outsideList.length === 0 ? (
-              <p className="text-[11px] text-slate-500 py-2.5 text-center bg-slate-900/60 rounded-xl border border-slate-800 font-sans">
+              <p className="text-[11px] text-emerald-300/60 py-2.5 text-center bg-[#041d13]/60 rounded-xl border border-emerald-800 font-sans">
                 Tidak ada santri yang sedang berstatus di luar pondok saat ini.
               </p>
             ) : (
@@ -747,12 +747,12 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
                 {outsideList.map((izin) => (
                   <div
                     key={izin.id}
-                    className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-2 hover:border-slate-700 transition-colors"
+                    className="p-2.5 rounded-xl bg-[#041d13]/90 border border-emerald-800 flex items-center justify-between gap-2 hover:border-emerald-800 transition-colors"
                   >
                     <div className="min-w-0">
                       <p className="font-bold text-white truncate font-sans text-xs">{izin.santriNama}</p>
-                      <p className="text-[10px] text-slate-400 truncate">
-                        NIS: <span className="text-cyan-300">{izin.santriNis}</span> · Batas: <span className="text-amber-300 font-bold">{izin.jamKembali} WIB</span>
+                      <p className="text-[10px] text-emerald-200/75 truncate">
+                        NIS: <span className="text-emerald-300">{izin.santriNis}</span> · Batas: <span className="text-amber-300 font-bold">{izin.jamKembali} WIB</span>
                       </p>
                     </div>
 
@@ -777,12 +777,12 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
         </div>
 
         {/* Footer Bar */}
-        <div className="shrink-0 px-5 py-3 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-[11px] text-slate-400">
+        <div className="shrink-0 px-5 py-3 border-t border-emerald-800 bg-[#02100a] flex items-center justify-between text-[11px] text-emerald-200/75">
           <span>Arahkan kamera ke QR Code surat · Tekan ESC untuk menutup</span>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold cursor-pointer transition-colors"
+            className="px-4 py-1.5 rounded-xl bg-[#072c1e] hover:bg-[#0b422d] text-white font-bold cursor-pointer transition-colors"
           >
             Tutup
           </button>

@@ -9,7 +9,7 @@ export const OfflineIndicator: React.FC = () => {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 sm:right-auto sm:max-w-md z-50 animate-bounce-subtle">
-      <div className="metallic-glass-card rounded-2xl border border-amber-500/50 bg-slate-950/95 p-3.5 shadow-2xl backdrop-blur-xl flex items-start gap-3 glow-gold">
+      <div className="metallic-glass-card rounded-2xl border border-amber-500/50 bg-[#02100a]/95 p-3.5 shadow-2xl backdrop-blur-xl flex items-start gap-3 glow-gold">
         <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 mt-0.5">
           <WifiOff className="w-4 h-4 animate-pulse" />
         </div>
@@ -20,14 +20,14 @@ export const OfflineIndicator: React.FC = () => {
             </span>
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
           </div>
-          <p className="text-[11px] text-slate-300 leading-relaxed">
+          <p className="text-[11px] text-emerald-100/90 leading-relaxed">
             Koneksi internet terputus. Data perizinan dan keamanan tetap tersimpan di penyimpanan lokal dan akan disinkronkan otomatis saat online.
           </p>
         </div>
         <button
           onClick={() => window.location.reload()}
           title="Cek ulang koneksi"
-          className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+          className="p-1.5 rounded-lg bg-[#072c1e]/80 hover:bg-[#0b422d] text-emerald-100/90 hover:text-white transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>

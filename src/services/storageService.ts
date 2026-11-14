@@ -11,7 +11,15 @@ import {
   Gender, 
   SystemConfig,
   PesanKoordinasi,
-  BalasanKoordinasi
+  BalasanKoordinasi,
+  StrukturOrganisasiNode,
+  AgendaPengurus,
+  EvaluasiKepengurusan,
+  PengajuanDivisi,
+  ArsipSurat,
+  TransaksiKeuangan,
+  BarangInventaris,
+  PeminjamanBarang
 } from '../types';
 import { 
   INITIAL_SANTRI, 
@@ -23,7 +31,15 @@ import {
   INITIAL_USERS, 
   INITIAL_SYSTEM_CONFIG, 
   INITIAL_LOGS, 
-  INITIAL_KOORDINASI 
+  INITIAL_KOORDINASI,
+  INITIAL_STRUKTUR_ORGANISASI,
+  INITIAL_AGENDA_PENGURUS,
+  INITIAL_EVALUASI_KEPENGURUSAN,
+  INITIAL_PENGAJUAN_DIVISI,
+  INITIAL_ARSIP_SURAT,
+  INITIAL_TRANSAKSI_KEUANGAN,
+  INITIAL_BARANG_INVENTARIS,
+  INITIAL_PEMINJAMAN_BARANG
 } from '../data/seedData';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { 
@@ -51,6 +67,14 @@ const STORAGE_KEYS = {
   THEME: 'sim_kamtib_theme_v2',
   GENDER_SCOPE: 'sim_kamtib_gender_scope_v2',
   KOORDINASI: 'sim_kamtib_koordinasi_v2',
+  STRUKTUR_ORGANISASI: 'sim_maliki_struktur_v1',
+  AGENDA_PENGURUS: 'sim_maliki_agenda_v1',
+  EVALUASI_KEPENGURUSAN: 'sim_maliki_evaluasi_v1',
+  PENGAJUAN_DIVISI: 'sim_maliki_pengajuan_v1',
+  SURAT_MENYURAT: 'sim_maliki_surat_v1',
+  KEUANGAN_TRANSAKSI: 'sim_maliki_keuangan_v1',
+  PERLENGKAPAN_INVENTARIS: 'sim_maliki_inventaris_v1',
+  PERLENGKAPAN_PEMINJAMAN: 'sim_maliki_peminjaman_v1',
 };
 
 // Firestore collections naming mapping
@@ -66,6 +90,14 @@ const CLOUD_COLLECTIONS = {
   LOGS: 'logs',
   NOTIFIKASI: 'notifikasi',
   KOORDINASI: 'koordinasi',
+  STRUKTUR_ORGANISASI: 'struktur_organisasi',
+  AGENDA_PENGURUS: 'agenda_pengurus',
+  EVALUASI_KEPENGURUSAN: 'evaluasi_kepengurusan',
+  PENGAJUAN_DIVISI: 'pengajuan_divisi',
+  SURAT_MENYURAT: 'surat_menyurat',
+  KEUANGAN_TRANSAKSI: 'keuangan_transaksi',
+  PERLENGKAPAN_INVENTARIS: 'perlengkapan_inventaris',
+  PERLENGKAPAN_PEMINJAMAN: 'perlengkapan_peminjaman',
 };
 
 /**
@@ -117,6 +149,14 @@ class StorageService {
     logs: [] as LogAktivitas[],
     notifikasi: [] as NotifikasiApp[],
     koordinasi: [] as PesanKoordinasi[],
+    strukturOrganisasi: [] as StrukturOrganisasiNode[],
+    agendaPengurus: [] as AgendaPengurus[],
+    evaluasiKepengurusan: [] as EvaluasiKepengurusan[],
+    pengajuanDivisi: [] as PengajuanDivisi[],
+    arsipSurat: [] as ArsipSurat[],
+    transaksiKeuangan: [] as TransaksiKeuangan[],
+    barangInventaris: [] as BarangInventaris[],
+    peminjamanBarang: [] as PeminjamanBarang[],
   };
 
   constructor() {
@@ -155,10 +195,60 @@ class StorageService {
       this.cache.sanksi = snk ? JSON.parse(snk) : INITIAL_SANKSI;
 
       const u = localStorage.getItem(STORAGE_KEYS.USERS);
-      this.cache.users = u ? JSON.parse(u) : INITIAL_USERS;
+      const parsedUsers: UserAccount[] = u ? JSON.parse(u) : INITIAL_USERS;
+      // Ensure newly added management role defaults and default 6-digit PIN codes exist
+      const mergedUsers: UserAccount[] = parsedUsers.map(existing => {
+        const def = INITIAL_USERS.find(d => d.id === existing.id || d.username === existing.username);
+        return {
+          ...existing,
+          pin: existing.pin || def?.pin || '123456',
+          alamat: existing.alamat || def?.alamat || 'Pondok Pesantren Salaf Al-Maliki, Karawang',
+        };
+      });
+      INITIAL_USERS.forEach(defUser => {
+        if (!mergedUsers.some(mu => mu.id === defUser.id)) {
+          mergedUsers.push(defUser);
+        }
+      });
+      this.cache.users = mergedUsers;
 
       const cfg = localStorage.getItem(STORAGE_KEYS.SYSTEM_CONFIG);
-      this.cache.systemConfig = cfg ? { ...INITIAL_SYSTEM_CONFIG, ...JSON.parse(cfg) } : INITIAL_SYSTEM_CONFIG;
+      const parsedCfg = cfg ? JSON.parse(cfg) : {};
+      const mergedBerita = (parsedCfg.beritaTerkini?.length ? parsedCfg.beritaTerkini : INITIAL_SYSTEM_CONFIG.beritaTerkini || []).map((b: any, idx: number) => {
+        const seedItem = INITIAL_SYSTEM_CONFIG.beritaTerkini?.find(s => s.id === b.id) || INITIAL_SYSTEM_CONFIG.beritaTerkini?.[idx % (INITIAL_SYSTEM_CONFIG.beritaTerkini?.length || 1)];
+        return {
+          ...b,
+          gambarUrl: b.gambarUrl || seedItem?.gambarUrl || 'https://images.unsplash.com/photo-1584286595398-a59f21d313f5?auto=format&fit=crop&w=900&q=80',
+        };
+      });
+      this.cache.systemConfig = {
+        ...INITIAL_SYSTEM_CONFIG,
+        ...parsedCfg,
+        beritaTerkini: mergedBerita,
+        ustadzList: parsedCfg.ustadzList?.length ? parsedCfg.ustadzList : INITIAL_SYSTEM_CONFIG.ustadzList,
+        programKerjaList: parsedCfg.programKerjaList?.length ? parsedCfg.programKerjaList : INITIAL_SYSTEM_CONFIG.programKerjaList,
+        izinPengurusList: parsedCfg.izinPengurusList?.length ? parsedCfg.izinPengurusList : INITIAL_SYSTEM_CONFIG.izinPengurusList,
+        notulenRapatList: parsedCfg.notulenRapatList?.length ? parsedCfg.notulenRapatList : INITIAL_SYSTEM_CONFIG.notulenRapatList,
+        syahriyahList: parsedCfg.syahriyahList?.length ? parsedCfg.syahriyahList : INITIAL_SYSTEM_CONFIG.syahriyahList,
+        uangSakuList: parsedCfg.uangSakuList?.length ? parsedCfg.uangSakuList : INITIAL_SYSTEM_CONFIG.uangSakuList,
+        anggaranList: parsedCfg.anggaranList?.length ? parsedCfg.anggaranList : INITIAL_SYSTEM_CONFIG.anggaranList,
+        mutasiBarangList: parsedCfg.mutasiBarangList?.length ? parsedCfg.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
+        jadwalPerbaikanList: parsedCfg.jadwalPerbaikanList?.length ? parsedCfg.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
+        kamarSantriList: parsedCfg.kamarSantriList?.length ? parsedCfg.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
+        suratSekretarisConfig: {
+          ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
+          ...(parsedCfg.suratSekretarisConfig || {}),
+          kopLogoKananUrl:
+            parsedCfg.suratSekretarisConfig?.kopLogoKananUrl ||
+            INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.kopLogoKananUrl ||
+            INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.kopLogoUrl ||
+            '',
+          templates: {
+            ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!.templates,
+            ...(parsedCfg.suratSekretarisConfig?.templates || {}),
+          }
+        }
+      };
 
       const l = localStorage.getItem(STORAGE_KEYS.LOGS);
       this.cache.logs = l ? JSON.parse(l) : INITIAL_LOGS;
@@ -168,6 +258,30 @@ class StorageService {
 
       const k = localStorage.getItem(STORAGE_KEYS.KOORDINASI);
       this.cache.koordinasi = k ? JSON.parse(k) : INITIAL_KOORDINASI;
+
+      const org = localStorage.getItem(STORAGE_KEYS.STRUKTUR_ORGANISASI);
+      this.cache.strukturOrganisasi = org ? JSON.parse(org) : INITIAL_STRUKTUR_ORGANISASI;
+
+      const agd = localStorage.getItem(STORAGE_KEYS.AGENDA_PENGURUS);
+      this.cache.agendaPengurus = agd ? JSON.parse(agd) : INITIAL_AGENDA_PENGURUS;
+
+      const evl = localStorage.getItem(STORAGE_KEYS.EVALUASI_KEPENGURUSAN);
+      this.cache.evaluasiKepengurusan = evl ? JSON.parse(evl) : INITIAL_EVALUASI_KEPENGURUSAN;
+
+      const pgj = localStorage.getItem(STORAGE_KEYS.PENGAJUAN_DIVISI);
+      this.cache.pengajuanDivisi = pgj ? JSON.parse(pgj) : INITIAL_PENGAJUAN_DIVISI;
+
+      const srt = localStorage.getItem(STORAGE_KEYS.SURAT_MENYURAT);
+      this.cache.arsipSurat = srt ? JSON.parse(srt) : INITIAL_ARSIP_SURAT;
+
+      const trx = localStorage.getItem(STORAGE_KEYS.KEUANGAN_TRANSAKSI);
+      this.cache.transaksiKeuangan = trx ? JSON.parse(trx) : INITIAL_TRANSAKSI_KEUANGAN;
+
+      const inv = localStorage.getItem(STORAGE_KEYS.PERLENGKAPAN_INVENTARIS);
+      this.cache.barangInventaris = inv ? JSON.parse(inv) : INITIAL_BARANG_INVENTARIS;
+
+      const pjm = localStorage.getItem(STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN);
+      this.cache.peminjamanBarang = pjm ? JSON.parse(pjm) : INITIAL_PEMINJAMAN_BARANG;
 
       // Enforce official logo Ponpes Salaf Al-Maliki & strip dummy photos from cache
       const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
@@ -407,7 +521,42 @@ class StorageService {
         doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'),
         docSnap => {
           if (docSnap.exists()) {
-            const cfg = { ...INITIAL_SYSTEM_CONFIG, ...docSnap.data() } as SystemConfig;
+            const cloudData = docSnap.data() as Partial<SystemConfig>;
+            const mergedCloudBerita = (cloudData.beritaTerkini?.length ? cloudData.beritaTerkini : INITIAL_SYSTEM_CONFIG.beritaTerkini || []).map((b: any, idx: number) => {
+              const seedItem = INITIAL_SYSTEM_CONFIG.beritaTerkini?.find(s => s.id === b.id) || INITIAL_SYSTEM_CONFIG.beritaTerkini?.[idx % (INITIAL_SYSTEM_CONFIG.beritaTerkini?.length || 1)];
+              return {
+                ...b,
+                gambarUrl: b.gambarUrl || seedItem?.gambarUrl || 'https://images.unsplash.com/photo-1584286595398-a59f21d313f5?auto=format&fit=crop&w=900&q=80',
+              };
+            });
+            const cfg: SystemConfig = {
+              ...INITIAL_SYSTEM_CONFIG,
+              ...cloudData,
+              beritaTerkini: mergedCloudBerita,
+              ustadzList: cloudData.ustadzList?.length ? cloudData.ustadzList : INITIAL_SYSTEM_CONFIG.ustadzList,
+              programKerjaList: cloudData.programKerjaList?.length ? cloudData.programKerjaList : INITIAL_SYSTEM_CONFIG.programKerjaList,
+              izinPengurusList: cloudData.izinPengurusList?.length ? cloudData.izinPengurusList : INITIAL_SYSTEM_CONFIG.izinPengurusList,
+              notulenRapatList: cloudData.notulenRapatList?.length ? cloudData.notulenRapatList : INITIAL_SYSTEM_CONFIG.notulenRapatList,
+              syahriyahList: cloudData.syahriyahList?.length ? cloudData.syahriyahList : INITIAL_SYSTEM_CONFIG.syahriyahList,
+              uangSakuList: cloudData.uangSakuList?.length ? cloudData.uangSakuList : INITIAL_SYSTEM_CONFIG.uangSakuList,
+              anggaranList: cloudData.anggaranList?.length ? cloudData.anggaranList : INITIAL_SYSTEM_CONFIG.anggaranList,
+              mutasiBarangList: cloudData.mutasiBarangList?.length ? cloudData.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
+              jadwalPerbaikanList: cloudData.jadwalPerbaikanList?.length ? cloudData.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
+              kamarSantriList: cloudData.kamarSantriList?.length ? cloudData.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
+              suratSekretarisConfig: {
+                ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
+                ...(cloudData.suratSekretarisConfig || {}),
+                kopLogoKananUrl:
+                  cloudData.suratSekretarisConfig?.kopLogoKananUrl ||
+                  INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.kopLogoKananUrl ||
+                  INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.kopLogoUrl ||
+                  '',
+                templates: {
+                  ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!.templates,
+                  ...(cloudData.suratSekretarisConfig?.templates || {}),
+                }
+              }
+            };
             this.cache.systemConfig = cfg;
             localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(cfg));
             handleSyncUpdate();
@@ -493,6 +642,97 @@ class StorageService {
     } catch (e) {
       console.warn('Sync koordinasi listener warning:', e);
     }
+
+    // Helper for syncing additional Pesantren management collections
+    const attachCollectionListener = <T extends { id: string }>(
+      colName: string,
+      storageKey: string,
+      getList: () => T[],
+      setList: (items: T[]) => void,
+      sorter?: (a: T, b: T) => number
+    ) => {
+      try {
+        const unsub = onSnapshot(
+          collection(db, colName),
+          snapshot => {
+            if (!snapshot.empty) {
+              const list: T[] = [];
+              snapshot.forEach(docSnap => {
+                list.push({ ...docSnap.data(), id: docSnap.id } as T);
+              });
+              const sorted = sorter ? list.sort(sorter) : list;
+              setList(sorted);
+              localStorage.setItem(storageKey, JSON.stringify(sorted));
+              handleSyncUpdate();
+            } else if (getList().length > 0) {
+              this.uploadCollectionBatch(colName, getList());
+            }
+          },
+          error => handleFirestoreError(error, OperationType.GET, colName)
+        );
+        this.unsubscribers.push(unsub);
+      } catch (e) {
+        console.warn(`Sync ${colName} listener warning:`, e);
+      }
+    };
+
+    // 12-19. Management Collections Realtime Listeners
+    attachCollectionListener<StrukturOrganisasiNode>(
+      CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI,
+      STORAGE_KEYS.STRUKTUR_ORGANISASI,
+      () => this.cache.strukturOrganisasi,
+      (items) => { this.cache.strukturOrganisasi = items; },
+      (a, b) => (a.level - b.level) || (a.urutan - b.urutan)
+    );
+    attachCollectionListener<AgendaPengurus>(
+      CLOUD_COLLECTIONS.AGENDA_PENGURUS,
+      STORAGE_KEYS.AGENDA_PENGURUS,
+      () => this.cache.agendaPengurus,
+      (items) => { this.cache.agendaPengurus = items; },
+      (a, b) => (b.tanggal > a.tanggal ? 1 : -1)
+    );
+    attachCollectionListener<EvaluasiKepengurusan>(
+      CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN,
+      STORAGE_KEYS.EVALUASI_KEPENGURUSAN,
+      () => this.cache.evaluasiKepengurusan,
+      (items) => { this.cache.evaluasiKepengurusan = items; },
+      (a, b) => (b.tanggal > a.tanggal ? 1 : -1)
+    );
+    attachCollectionListener<PengajuanDivisi>(
+      CLOUD_COLLECTIONS.PENGAJUAN_DIVISI,
+      STORAGE_KEYS.PENGAJUAN_DIVISI,
+      () => this.cache.pengajuanDivisi,
+      (items) => { this.cache.pengajuanDivisi = items; },
+      (a, b) => (b.tanggal > a.tanggal ? 1 : -1)
+    );
+    attachCollectionListener<ArsipSurat>(
+      CLOUD_COLLECTIONS.SURAT_MENYURAT,
+      STORAGE_KEYS.SURAT_MENYURAT,
+      () => this.cache.arsipSurat,
+      (items) => { this.cache.arsipSurat = items; },
+      (a, b) => (b.tanggalSurat > a.tanggalSurat ? 1 : -1)
+    );
+    attachCollectionListener<TransaksiKeuangan>(
+      CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI,
+      STORAGE_KEYS.KEUANGAN_TRANSAKSI,
+      () => this.cache.transaksiKeuangan,
+      (items) => { this.cache.transaksiKeuangan = items; },
+      (a, b) => (b.tanggal > a.tanggal ? 1 : -1)
+    );
+    attachCollectionListener<BarangInventaris>(
+      CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS,
+      STORAGE_KEYS.PERLENGKAPAN_INVENTARIS,
+      () => this.cache.barangInventaris,
+      (items) => { this.cache.barangInventaris = items; },
+      (a, b) => (a.kodeBarang > b.kodeBarang ? 1 : -1)
+    );
+    attachCollectionListener<PeminjamanBarang>(
+      CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN,
+      STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN,
+      () => this.cache.peminjamanBarang,
+      (items) => { this.cache.peminjamanBarang = items; },
+      (a, b) => (b.tanggalPinjam > a.tanggalPinjam ? 1 : -1)
+    );
   }
 
   private async uploadCollectionBatch<T extends { id: string }>(collectionName: string, items: T[]) {
@@ -514,7 +754,15 @@ class StorageService {
       this.cache.sanksi.length +
       this.cache.users.length +
       this.cache.logs.length +
-      this.cache.koordinasi.length;
+      this.cache.koordinasi.length +
+      this.cache.strukturOrganisasi.length +
+      this.cache.agendaPengurus.length +
+      this.cache.evaluasiKepengurusan.length +
+      this.cache.pengajuanDivisi.length +
+      this.cache.arsipSurat.length +
+      this.cache.transaksiKeuangan.length +
+      this.cache.barangInventaris.length +
+      this.cache.peminjamanBarang.length;
 
     return {
       status: this.cloudConnected ? 'connected' : 'syncing',
@@ -532,47 +780,35 @@ class StorageService {
    */
   public async forcePullFromCloud(): Promise<boolean> {
     try {
-      // 1. Santri
-      const snapSantri = await getDocs(collection(db, CLOUD_COLLECTIONS.SANTRI));
-      if (!snapSantri.empty) {
-        this.cache.santri = snapSantri.docs.map(d => ({ ...d.data(), id: d.id } as Santri));
-        localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(this.cache.santri));
-      }
+      const pullCol = async <T extends { id: string }>(
+        colName: string,
+        storageKey: string,
+        assign: (list: T[]) => void
+      ) => {
+        const snap = await getDocs(collection(db, colName));
+        if (!snap.empty) {
+          const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as T));
+          assign(list);
+          localStorage.setItem(storageKey, JSON.stringify(list));
+        }
+      };
 
-      // 2. Perizinan
-      const snapIzin = await getDocs(collection(db, CLOUD_COLLECTIONS.PERIZINAN));
-      if (!snapIzin.empty) {
-        this.cache.perizinan = snapIzin.docs.map(d => ({ ...d.data(), id: d.id } as Perizinan));
-        localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(this.cache.perizinan));
-      }
-
-      // 3. Pelanggaran
-      const snapPel = await getDocs(collection(db, CLOUD_COLLECTIONS.PELANGGARAN));
-      if (!snapPel.empty) {
-        this.cache.pelanggaran = snapPel.docs.map(d => ({ ...d.data(), id: d.id } as Pelanggaran));
-        localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(this.cache.pelanggaran));
-      }
-
-      // 4. Sanksi
-      const snapSanksi = await getDocs(collection(db, CLOUD_COLLECTIONS.SANKSI));
-      if (!snapSanksi.empty) {
-        this.cache.sanksi = snapSanksi.docs.map(d => ({ ...d.data(), id: d.id } as Sanksi));
-        localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(this.cache.sanksi));
-      }
-
-      // 5. Dewan Keamanan
-      const snapDewan = await getDocs(collection(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN));
-      if (!snapDewan.empty) {
-        this.cache.dewan = snapDewan.docs.map(d => ({ ...d.data(), id: d.id } as DewanKeamanan));
-        localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(this.cache.dewan));
-      }
-
-      // 6. Users
-      const snapUsers = await getDocs(collection(db, CLOUD_COLLECTIONS.USERS));
-      if (!snapUsers.empty) {
-        this.cache.users = snapUsers.docs.map(d => ({ ...d.data(), id: d.id } as UserAccount));
-        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(this.cache.users));
-      }
+      await Promise.all([
+        pullCol<Santri>(CLOUD_COLLECTIONS.SANTRI, STORAGE_KEYS.SANTRI, l => { this.cache.santri = l; }),
+        pullCol<Perizinan>(CLOUD_COLLECTIONS.PERIZINAN, STORAGE_KEYS.PERIZINAN, l => { this.cache.perizinan = l; }),
+        pullCol<Pelanggaran>(CLOUD_COLLECTIONS.PELANGGARAN, STORAGE_KEYS.PELANGGARAN, l => { this.cache.pelanggaran = l; }),
+        pullCol<Sanksi>(CLOUD_COLLECTIONS.SANKSI, STORAGE_KEYS.SANKSI, l => { this.cache.sanksi = l; }),
+        pullCol<DewanKeamanan>(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, STORAGE_KEYS.DEWAN_KEAMANAN, l => { this.cache.dewan = l; }),
+        pullCol<UserAccount>(CLOUD_COLLECTIONS.USERS, STORAGE_KEYS.USERS, l => { this.cache.users = l; }),
+        pullCol<StrukturOrganisasiNode>(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, STORAGE_KEYS.STRUKTUR_ORGANISASI, l => { this.cache.strukturOrganisasi = l; }),
+        pullCol<AgendaPengurus>(CLOUD_COLLECTIONS.AGENDA_PENGURUS, STORAGE_KEYS.AGENDA_PENGURUS, l => { this.cache.agendaPengurus = l; }),
+        pullCol<EvaluasiKepengurusan>(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, STORAGE_KEYS.EVALUASI_KEPENGURUSAN, l => { this.cache.evaluasiKepengurusan = l; }),
+        pullCol<PengajuanDivisi>(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, STORAGE_KEYS.PENGAJUAN_DIVISI, l => { this.cache.pengajuanDivisi = l; }),
+        pullCol<ArsipSurat>(CLOUD_COLLECTIONS.SURAT_MENYURAT, STORAGE_KEYS.SURAT_MENYURAT, l => { this.cache.arsipSurat = l; }),
+        pullCol<TransaksiKeuangan>(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, STORAGE_KEYS.KEUANGAN_TRANSAKSI, l => { this.cache.transaksiKeuangan = l; }),
+        pullCol<BarangInventaris>(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, STORAGE_KEYS.PERLENGKAPAN_INVENTARIS, l => { this.cache.barangInventaris = l; }),
+        pullCol<PeminjamanBarang>(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN, l => { this.cache.peminjamanBarang = l; }),
+      ]);
 
       this.cloudConnected = true;
       this.lastSyncTime = new Date().toLocaleTimeString('id-ID') + ' WIB';
@@ -603,6 +839,15 @@ class StorageService {
     }
     this.cache.users = list;
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(list));
+
+    // Jika yang diupdate adalah akun yang sedang login, perbarui sessionStorage juga agar Sidebar & Header langsung berubah
+    const active = this.getCurrentUser();
+    if (active && active.id === user.id) {
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+      } catch { /* ignore */ }
+    }
+
     this.notify();
 
     // Async sync to central Firestore database
@@ -620,6 +865,36 @@ class StorageService {
     // Async delete from central Firestore database
     deleteDoc(doc(db, CLOUD_COLLECTIONS.USERS, userId))
       .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.USERS}/${userId}`));
+  }
+
+  // Authentication via 6-Digit PIN (iPhone Lock Screen Style)
+  public authenticateByPin(pin: string): { success: boolean; user?: UserAccount; message?: string } {
+    const cleanPin = pin.trim();
+    const users = this.getUsers();
+    const found = users.find(u => {
+      const def = INITIAL_USERS.find(d => d.id === u.id || d.username === u.username);
+      const userPin = u.pin || def?.pin || '';
+      return userPin === cleanPin && u.statusAktif;
+    });
+
+    if (!found) {
+      return { success: false, message: 'Kode PIN 6 Digit tidak sesuai atau akun tidak aktif.' };
+    }
+
+    const timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    found.terakhirLogin = `Hari ini, ${timeNow} WIB`;
+    this.saveUser(found);
+
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    } catch {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(found));
+    }
+    this.addLog('Autentikasi PIN 6 Digit', `Personil ${found.nama} (${found.jabatan}) masuk menggunakan PIN Lock Screen.`, 'admin');
+    this.notify();
+
+    return { success: true, user: found };
   }
 
   // Authentication & Session
@@ -669,16 +944,17 @@ class StorageService {
     this.notify();
   }
 
-  public getCurrentUser(): UserAccount | null {
+  public getCurrentUser(): UserAccount {
     try {
       const sessionData = sessionStorage.getItem(STORAGE_KEYS.CURRENT_USER);
       if (sessionData) {
         return JSON.parse(sessionData);
       }
-      return null;
     } catch {
-      return null;
+      // ignore
     }
+    const users = this.getUsers();
+    return users.find(u => u.role === 'admin') || INITIAL_USERS[0];
   }
 
   // ==========================================
@@ -1497,6 +1773,254 @@ class StorageService {
   }
 
   // ==========================================
+  // 1. Struktur Organisasi Pondok
+  // ==========================================
+  public getStrukturOrganisasi(): StrukturOrganisasiNode[] {
+    return this.cache.strukturOrganisasi.length > 0 ? this.cache.strukturOrganisasi : INITIAL_STRUKTUR_ORGANISASI;
+  }
+
+  public saveStrukturNode(node: StrukturOrganisasiNode) {
+    const list = [...this.getStrukturOrganisasi()];
+    const idx = list.findIndex(n => n.id === node.id);
+    if (idx >= 0) list[idx] = node;
+    else list.push(node);
+    const sorted = list.sort((a, b) => (a.level - b.level) || (a.urutan - b.urutan));
+    this.cache.strukturOrganisasi = sorted;
+    localStorage.setItem(STORAGE_KEYS.STRUKTUR_ORGANISASI, JSON.stringify(sorted));
+    this.addLog('Struktur Organisasi', `Memperbarui jabatan struktur: ${node.jabatan} (${node.namaPengurus})`, 'admin');
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, node.id), sanitizeForFirestore(node), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI}/${node.id}`));
+  }
+
+  public deleteStrukturNode(id: string) {
+    const updated = this.getStrukturOrganisasi().filter(n => n.id !== id);
+    this.cache.strukturOrganisasi = updated;
+    localStorage.setItem(STORAGE_KEYS.STRUKTUR_ORGANISASI, JSON.stringify(updated));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI}/${id}`));
+  }
+
+  // ==========================================
+  // 2. Ketua Pondok (Agenda, Evaluasi, Pengajuan Divisi)
+  // ==========================================
+  public getAgendaPengurus(): AgendaPengurus[] {
+    return this.cache.agendaPengurus.length > 0 ? this.cache.agendaPengurus : INITIAL_AGENDA_PENGURUS;
+  }
+
+  public saveAgendaPengurus(agenda: AgendaPengurus) {
+    const list = [...this.getAgendaPengurus()];
+    const idx = list.findIndex(a => a.id === agenda.id);
+    if (idx >= 0) list[idx] = agenda;
+    else list.unshift(agenda);
+    this.cache.agendaPengurus = list;
+    localStorage.setItem(STORAGE_KEYS.AGENDA_PENGURUS, JSON.stringify(list));
+    this.addLog('Agenda Pengurus', `Menyimpan agenda kepengurusan: ${agenda.judul}`, 'admin');
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, agenda.id), sanitizeForFirestore(agenda), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${agenda.id}`));
+  }
+
+  public deleteAgendaPengurus(id: string) {
+    const updated = this.getAgendaPengurus().filter(a => a.id !== id);
+    this.cache.agendaPengurus = updated;
+    localStorage.setItem(STORAGE_KEYS.AGENDA_PENGURUS, JSON.stringify(updated));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${id}`));
+  }
+
+  public getEvaluasiKepengurusan(): EvaluasiKepengurusan[] {
+    return this.cache.evaluasiKepengurusan.length > 0 ? this.cache.evaluasiKepengurusan : INITIAL_EVALUASI_KEPENGURUSAN;
+  }
+
+  public saveEvaluasiKepengurusan(evaluasi: EvaluasiKepengurusan) {
+    const list = [...this.getEvaluasiKepengurusan()];
+    const idx = list.findIndex(e => e.id === evaluasi.id);
+    if (idx >= 0) list[idx] = evaluasi;
+    else list.unshift(evaluasi);
+    this.cache.evaluasiKepengurusan = list;
+    localStorage.setItem(STORAGE_KEYS.EVALUASI_KEPENGURUSAN, JSON.stringify(list));
+    this.addLog('Evaluasi Kepengurusan', `Ketua Pondok mencatat evaluasi divisi ${evaluasi.divisi}: ${evaluasi.judul}`, 'admin');
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, evaluasi.id), sanitizeForFirestore(evaluasi), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN}/${evaluasi.id}`));
+  }
+
+  public deleteEvaluasiKepengurusan(id: string) {
+    const updated = this.getEvaluasiKepengurusan().filter(e => e.id !== id);
+    this.cache.evaluasiKepengurusan = updated;
+    localStorage.setItem(STORAGE_KEYS.EVALUASI_KEPENGURUSAN, JSON.stringify(updated));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN}/${id}`));
+  }
+
+  public getPengajuanDivisi(): PengajuanDivisi[] {
+    return this.cache.pengajuanDivisi.length > 0 ? this.cache.pengajuanDivisi : INITIAL_PENGAJUAN_DIVISI;
+  }
+
+  public savePengajuanDivisi(pengajuan: PengajuanDivisi) {
+    const list = [...this.getPengajuanDivisi()];
+    const idx = list.findIndex(p => p.id === pengajuan.id);
+    if (idx >= 0) list[idx] = pengajuan;
+    else {
+      list.unshift(pengajuan);
+      this.addNotification({
+        judul: `Pengajuan Baru: Divisi ${pengajuan.divisi}`,
+        pesan: `${pengajuan.pengajuNama} mengajukan "${pengajuan.judul}". Menunggu persetujuan Ketua Pondok.`,
+        tipe: 'info',
+        linkMenu: 'ketua_pondok',
+      });
+    }
+    this.cache.pengajuanDivisi = list;
+    localStorage.setItem(STORAGE_KEYS.PENGAJUAN_DIVISI, JSON.stringify(list));
+    this.addLog('Pengajuan Divisi', `Update pengajuan ${pengajuan.nomorPengajuan} (${pengajuan.status}): ${pengajuan.judul}`, 'admin');
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, pengajuan.id), sanitizeForFirestore(pengajuan), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PENGAJUAN_DIVISI}/${pengajuan.id}`));
+  }
+
+  public deletePengajuanDivisi(id: string) {
+    const updated = this.getPengajuanDivisi().filter(p => p.id !== id);
+    this.cache.pengajuanDivisi = updated;
+    localStorage.setItem(STORAGE_KEYS.PENGAJUAN_DIVISI, JSON.stringify(updated));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PENGAJUAN_DIVISI}/${id}`));
+  }
+
+  // ==========================================
+  // 3. Sekretaris (Persuratan 15 Jenis & Arsip)
+  // ==========================================
+  public getArsipSurat(): ArsipSurat[] {
+    return this.cache.arsipSurat.length > 0 ? this.cache.arsipSurat : INITIAL_ARSIP_SURAT;
+  }
+
+  public saveArsipSurat(surat: ArsipSurat) {
+    const list = [...this.getArsipSurat()];
+    const idx = list.findIndex(s => s.id === surat.id);
+    if (idx >= 0) list[idx] = surat;
+    else list.unshift(surat);
+    this.cache.arsipSurat = list;
+    localStorage.setItem(STORAGE_KEYS.SURAT_MENYURAT, JSON.stringify(list));
+    this.addLog('Administrasi Persuratan', `Menyimpan Surat ${surat.arah} (${surat.kodeJenis}) No. ${surat.nomorSurat}`, 'admin');
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.SURAT_MENYURAT, surat.id), sanitizeForFirestore(surat), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SURAT_MENYURAT}/${surat.id}`));
+  }
+
+  public deleteArsipSurat(id: string) {
+    const updated = this.getArsipSurat().filter(s => s.id !== id);
+    this.cache.arsipSurat = updated;
+    localStorage.setItem(STORAGE_KEYS.SURAT_MENYURAT, JSON.stringify(updated));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.SURAT_MENYURAT, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.SURAT_MENYURAT}/${id}`));
+  }
+
+  // ==========================================
+  // 4. Bendahara (Keuangan Kas Pondok)
+  // ==========================================
+  public getTransaksiKeuangan(): TransaksiKeuangan[] {
+    return this.cache.transaksiKeuangan.length > 0 ? this.cache.transaksiKeuangan : INITIAL_TRANSAKSI_KEUANGAN;
+  }
+
+  public saveTransaksiKeuangan(trx: TransaksiKeuangan) {
+    const list = [...this.getTransaksiKeuangan()];
+    const idx = list.findIndex(t => t.id === trx.id);
+    if (idx >= 0) list[idx] = trx;
+    else list.unshift(trx);
+    this.cache.transaksiKeuangan = list;
+    localStorage.setItem(STORAGE_KEYS.KEUANGAN_TRANSAKSI, JSON.stringify(list));
+    this.addLog('Transaksi Keuangan', `${trx.tipe} Rp ${trx.nominal.toLocaleString('id-ID')} (${trx.kategori}) - ${trx.kodeTransaksi}`, 'admin');
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, trx.id), sanitizeForFirestore(trx), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI}/${trx.id}`));
+  }
+
+  public deleteTransaksiKeuangan(id: string) {
+    const updated = this.getTransaksiKeuangan().filter(t => t.id !== id);
+    this.cache.transaksiKeuangan = updated;
+    localStorage.setItem(STORAGE_KEYS.KEUANGAN_TRANSAKSI, JSON.stringify(updated));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI}/${id}`));
+  }
+
+  // ==========================================
+  // 5. Perlengkapan (Inventaris & Peminjaman)
+  // ==========================================
+  public getBarangInventaris(): BarangInventaris[] {
+    return this.cache.barangInventaris.length > 0 ? this.cache.barangInventaris : INITIAL_BARANG_INVENTARIS;
+  }
+
+  public saveBarangInventaris(barang: BarangInventaris) {
+    const list = [...this.getBarangInventaris()];
+    const idx = list.findIndex(b => b.id === barang.id);
+    if (idx >= 0) list[idx] = barang;
+    else list.unshift(barang);
+    this.cache.barangInventaris = list;
+    localStorage.setItem(STORAGE_KEYS.PERLENGKAPAN_INVENTARIS, JSON.stringify(list));
+    this.addLog('Inventaris Sarpras', `Memperbarui aset ${barang.kodeBarang}: ${barang.namaBarang} (${barang.jumlah} ${barang.satuan})`, 'admin');
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, barang.id), sanitizeForFirestore(barang), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS}/${barang.id}`));
+  }
+
+  public deleteBarangInventaris(id: string) {
+    const updated = this.getBarangInventaris().filter(b => b.id !== id);
+    this.cache.barangInventaris = updated;
+    localStorage.setItem(STORAGE_KEYS.PERLENGKAPAN_INVENTARIS, JSON.stringify(updated));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS}/${id}`));
+  }
+
+  public getPeminjamanBarang(): PeminjamanBarang[] {
+    return this.cache.peminjamanBarang.length > 0 ? this.cache.peminjamanBarang : INITIAL_PEMINJAMAN_BARANG;
+  }
+
+  public savePeminjamanBarang(pjm: PeminjamanBarang) {
+    const list = [...this.getPeminjamanBarang()];
+    const idx = list.findIndex(p => p.id === pjm.id);
+    if (idx >= 0) list[idx] = pjm;
+    else list.unshift(pjm);
+    this.cache.peminjamanBarang = list;
+    localStorage.setItem(STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN, JSON.stringify(list));
+    this.addLog('Peminjaman Perlengkapan', `${pjm.kodePeminjaman}: ${pjm.namaBarang} oleh ${pjm.peminjamNama} (${pjm.status})`, 'admin');
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, pjm.id), sanitizeForFirestore(pjm), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN}/${pjm.id}`));
+  }
+
+  public deletePeminjamanBarang(id: string) {
+    const updated = this.getPeminjamanBarang().filter(p => p.id !== id);
+    this.cache.peminjamanBarang = updated;
+    localStorage.setItem(STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN, JSON.stringify(updated));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, id))
+      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN}/${id}`));
+  }
+
+  // ==========================================
   // Backup & Restore
   // ==========================================
   public exportFullBackup(): string {
@@ -1513,6 +2037,14 @@ class StorageService {
       pelanggaran: this.getPelanggaranList(),
       sanksi: this.getSanksiList(),
       logs: this.getLogs(),
+      strukturOrganisasi: this.getStrukturOrganisasi(),
+      agendaPengurus: this.getAgendaPengurus(),
+      evaluasiKepengurusan: this.getEvaluasiKepengurusan(),
+      pengajuanDivisi: this.getPengajuanDivisi(),
+      arsipSurat: this.getArsipSurat(),
+      transaksiKeuangan: this.getTransaksiKeuangan(),
+      barangInventaris: this.getBarangInventaris(),
+      peminjamanBarang: this.getPeminjamanBarang(),
     };
     return JSON.stringify(backup, null, 2);
   }
@@ -1554,6 +2086,46 @@ class StorageService {
         this.cache.users = parsed.users;
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(parsed.users));
         await this.uploadCollectionBatch(CLOUD_COLLECTIONS.USERS, parsed.users);
+      }
+      if (parsed.strukturOrganisasi) {
+        this.cache.strukturOrganisasi = parsed.strukturOrganisasi;
+        localStorage.setItem(STORAGE_KEYS.STRUKTUR_ORGANISASI, JSON.stringify(parsed.strukturOrganisasi));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, parsed.strukturOrganisasi);
+      }
+      if (parsed.agendaPengurus) {
+        this.cache.agendaPengurus = parsed.agendaPengurus;
+        localStorage.setItem(STORAGE_KEYS.AGENDA_PENGURUS, JSON.stringify(parsed.agendaPengurus));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.AGENDA_PENGURUS, parsed.agendaPengurus);
+      }
+      if (parsed.evaluasiKepengurusan) {
+        this.cache.evaluasiKepengurusan = parsed.evaluasiKepengurusan;
+        localStorage.setItem(STORAGE_KEYS.EVALUASI_KEPENGURUSAN, JSON.stringify(parsed.evaluasiKepengurusan));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, parsed.evaluasiKepengurusan);
+      }
+      if (parsed.pengajuanDivisi) {
+        this.cache.pengajuanDivisi = parsed.pengajuanDivisi;
+        localStorage.setItem(STORAGE_KEYS.PENGAJUAN_DIVISI, JSON.stringify(parsed.pengajuanDivisi));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, parsed.pengajuanDivisi);
+      }
+      if (parsed.arsipSurat) {
+        this.cache.arsipSurat = parsed.arsipSurat;
+        localStorage.setItem(STORAGE_KEYS.SURAT_MENYURAT, JSON.stringify(parsed.arsipSurat));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.SURAT_MENYURAT, parsed.arsipSurat);
+      }
+      if (parsed.transaksiKeuangan) {
+        this.cache.transaksiKeuangan = parsed.transaksiKeuangan;
+        localStorage.setItem(STORAGE_KEYS.KEUANGAN_TRANSAKSI, JSON.stringify(parsed.transaksiKeuangan));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, parsed.transaksiKeuangan);
+      }
+      if (parsed.barangInventaris) {
+        this.cache.barangInventaris = parsed.barangInventaris;
+        localStorage.setItem(STORAGE_KEYS.PERLENGKAPAN_INVENTARIS, JSON.stringify(parsed.barangInventaris));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, parsed.barangInventaris);
+      }
+      if (parsed.peminjamanBarang) {
+        this.cache.peminjamanBarang = parsed.peminjamanBarang;
+        localStorage.setItem(STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN, JSON.stringify(parsed.peminjamanBarang));
+        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, parsed.peminjamanBarang);
       }
       if (parsed.config) {
         this.cache.systemConfig = parsed.config;

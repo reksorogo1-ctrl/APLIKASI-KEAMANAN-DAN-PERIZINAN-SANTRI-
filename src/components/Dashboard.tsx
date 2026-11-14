@@ -18,7 +18,7 @@ import {
   AlertOctagon
 } from 'lucide-react';
 import { Santri, Perizinan, Pelanggaran, Sanksi, UserAccount } from '../types';
-import { ActiveMenu } from './Sidebar';
+import { KeamananSubTab } from './Sidebar';
 import { WhatsAppTemplates, createWhatsAppUrl } from '../services/waService';
 import { RadarMonitoringPerizinan } from './RadarMonitoringPerizinan';
 import { AdvancedDataVisualization, AnimatedCounter } from './AdvancedDataVisualization';
@@ -32,7 +32,7 @@ interface DashboardProps {
   pelanggaranList: Pelanggaran[];
   sanksiList: Sanksi[];
   currentUser: UserAccount;
-  onNavigate: (menu: ActiveMenu) => void;
+  onNavigate: (menu: KeamananSubTab) => void;
   onViewSuratIzin: (izin: Perizinan) => void;
   onOpenQRScanner?: () => void;
 }
@@ -88,39 +88,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="space-y-6">
       
       {/* 3D International Security Command Center Hero Banner */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-800/80 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950/60 shadow-2xl metallic-glass-card hover-rainbow-edge">
+      <div className="relative rounded-3xl overflow-hidden border border-emerald-800/80 bg-gradient-to-r from-[#02100a] via-[#041d13] to-emerald-950/60 shadow-2xl metallic-glass-card hover-rainbow-edge">
         <img
           src="/src/assets/images/tactical_hq_background_1794052517484.jpg"
           alt="International Command Room"
           className="absolute inset-0 w-full h-full object-cover opacity-20 filter contrast-150 brightness-75"
         />
         {/* Specular Top Line */}
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-500 via-amber-400 to-blue-600 opacity-70" />
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-600 opacity-70" />
         
         {/* Glow Scrim & 3D Lighting */}
-        <div className="relative z-10 p-5 sm:p-7 md:p-8 bg-gradient-to-r from-slate-950/95 via-slate-950/85 to-blue-950/40">
+        <div className="relative z-10 p-5 sm:p-7 md:p-8 bg-gradient-to-r from-[#02100a]/95 via-[#02100a]/85 to-emerald-950/40">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 max-w-3xl min-w-0">
               
               {/* Logo Berlaku Resmi Pesantren Salaf Al-Maliki (Admin & Pengurus) - Ukuran Lebih Besar & Jelas */}
               <div className="relative shrink-0 group self-center sm:self-start">
-                <div className="absolute -inset-1.5 rounded-3xl bg-gradient-to-tr from-cyan-400 via-amber-400 to-emerald-400 opacity-90 blur-[5px] group-hover:opacity-100 transition-opacity" />
-                <div className="relative p-2 sm:p-2.5 rounded-3xl bg-slate-950/95 border-2 border-amber-400 shadow-2xl overflow-hidden glow-gold">
+                <div className="absolute -inset-1.5 rounded-3xl bg-gradient-to-tr from-emerald-400 via-amber-400 to-emerald-400 opacity-90 blur-[5px] group-hover:opacity-100 transition-opacity" />
+                <div className="relative p-2 sm:p-2.5 rounded-3xl bg-[#02100a]/95 border-2 border-amber-400 shadow-2xl overflow-hidden glow-gold">
                   <img
                     src={logoBerlaku}
                     alt="Logo Pondok Pesantren Salaf Al-Maliki"
                     className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-2xl object-cover filter contrast-125 brightness-110 shadow-2xl"
                   />
-                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full border-2 border-slate-950 animate-ping" />
-                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full border-2 border-slate-950 shadow-md shadow-cyan-400/80" />
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-slate-950 animate-ping" />
+                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-slate-950 shadow-md shadow-emerald-400/80" />
                 </div>
               </div>
 
               {/* Detail Identitas Pusat Komando & Otoritas */}
               <div className="space-y-2.5 min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-xs glow-cyan uppercase tracking-wider">
-                    <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                  <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-xs glow-gold uppercase tracking-wider">
+                    <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
                     {isAdmin ? 'CENTRAL SECURITY COMMAND GRID' : 'TACTICAL SECTOR DISPATCH'}
                   </span>
                   <span className="text-slate-600">·</span>
@@ -137,7 +137,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight uppercase font-sans drop-shadow-md">
                   {isAdmin ? 'Pusat Komando Keamanan Terpadu Al-Maliki' : `Sektor Operasional Keamanan - ${currentUser.nama}`}
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-sans">
+                <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-sans">
                   {isAdmin
                     ? 'Pengawasan terpusat mutasi gerbang, penegakan tata tertib qanun, audit izin real-time, dan manajemen hak akses sistem terenkripsi.'
                     : 'Sistem operasional keamanan santri per kelas, pencatatan perizinan terkonfigurasi langsung ke database pusat, dan pengawasan gerbang.'}
@@ -147,26 +147,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             {/* Real-time Synced WIB Clock & Quick Perizinan Access */}
             <div className="shrink-0 flex flex-col items-stretch sm:items-end gap-2.5">
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-950/90 border border-cyan-500/40 shadow-xl flex flex-col items-start sm:items-end">
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-[#02100a]/90 border border-emerald-500/40 shadow-xl flex flex-col items-start sm:items-end">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span className="text-[10px] font-mono font-bold tracking-wider text-cyan-300 uppercase">
+                  <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-300 uppercase">
                     WAKTU RESMI KAMTIB (WIB / UTC+7)
                   </span>
                 </div>
                 <div className="text-xl sm:text-2xl font-black font-mono tracking-wider text-amber-300 tabular-nums drop-shadow-md">
-                  {wibTime.timeWithSeconds} <span className="text-xs text-cyan-400 font-sans font-bold">WIB</span>
+                  {wibTime.timeWithSeconds} <span className="text-xs text-emerald-400 font-sans font-bold">WIB</span>
                 </div>
-                <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                <div className="text-[10px] font-mono text-emerald-200/75 mt-0.5">
                   {wibTime.dateStr} · Asia/Jakarta Real-Time
                 </div>
               </div>
 
               <button
                 onClick={() => onNavigate('perizinan')}
-                className="tactile-interactive flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-600/30 hover:from-cyan-500/30 hover:to-blue-600/40 text-cyan-200 hover:text-white font-bold text-xs font-mono tracking-wider border border-cyan-400/40 cursor-pointer glow-cyan transition-transform active:scale-95"
+                className="tactile-interactive flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/30 hover:from-emerald-500/30 hover:to-emerald-600/40 text-emerald-200 hover:text-white font-bold text-xs font-mono tracking-wider border border-emerald-400/40 cursor-pointer glow-gold transition-transform active:scale-95"
               >
-                <Clock className="w-3.5 h-3.5 text-cyan-300" />
+                <Clock className="w-3.5 h-3.5 text-emerald-300" />
                 <span>Administrasi Perizinan Santri</span>
               </button>
             </div>
@@ -176,7 +176,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* REAL-TIME KOORDINASI NOTIFICATION ALERT (MENDESAK OR UNREAD) */}
       {mendesakKoordinasi && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950 via-slate-900 to-red-950/80 border-2 border-red-500 text-red-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xl hover-rainbow-edge animate-pulse glow-red">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950 via-[#041d13] to-red-950/80 border-2 border-red-500 text-red-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xl hover-rainbow-edge animate-pulse glow-red">
           <div className="flex items-center gap-3.5">
             <div className="p-2.5 rounded-xl bg-red-600 text-white shrink-0 shadow-lg shadow-red-600/50">
               <Radio className="w-6 h-6 animate-spin" />
@@ -208,34 +208,34 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Unread Regular Dispatches Notice */}
       {!mendesakKoordinasi && unreadKoordinasi.length > 0 && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-950/80 via-slate-900 to-slate-950 border border-cyan-500/50 text-cyan-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl hover-rainbow-edge">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-[#041d13] to-[#02100a] border border-emerald-500/50 text-emerald-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl hover-rainbow-edge">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-cyan-950 border border-cyan-500/40 text-cyan-300 shrink-0 glow-cyan">
-              <Radio className="w-5 h-5 text-cyan-400" />
+            <div className="p-2.5 rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-300 shrink-0 glow-gold">
+              <Radio className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
               <p className="text-xs font-bold text-white uppercase tracking-wide flex items-center gap-2">
                 <span>PEMBERITAHUAN KOORDINASI: {unreadKoordinasi.length} PESAN / DISPOSISI BARU</span>
-                <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">REAL-TIME SYNC</span>
+                <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">REAL-TIME SYNC</span>
               </p>
-              <p className="text-xs text-slate-300 mt-0.5 font-sans">
+              <p className="text-xs text-emerald-100/90 mt-0.5 font-sans">
                 Terbaru dari {unreadKoordinasi[0]?.pengirimNama}: "{unreadKoordinasi[0]?.judul}"
               </p>
             </div>
           </div>
           <button
             onClick={() => onNavigate('koordinasi')}
-            className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-white bg-slate-800 hover:bg-slate-700 border border-cyan-500/40 rounded-xl transition-colors cursor-pointer shrink-0 shadow-md"
+            className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-white bg-[#072c1e] hover:bg-[#0b422d] border border-emerald-500/40 rounded-xl transition-colors cursor-pointer shrink-0 shadow-md"
           >
             <span>Buka Tab Koordinasi</span>
-            <ChevronRight className="w-3.5 h-3.5 text-cyan-400" />
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
           </button>
         </div>
       )}
 
       {/* Urgent Warning if any Santri is Late - 3D Alert Card */}
       {terlambatList.length > 0 && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/90 via-red-900/40 to-slate-950 border border-red-500/70 text-red-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xl hover-rainbow-edge">
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/90 via-red-900/40 to-[#02100a] border border-red-500/70 text-red-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xl hover-rainbow-edge">
           <div className="flex items-center gap-3.5">
             <div className="p-2.5 rounded-xl bg-red-900/80 border border-red-500/50 text-red-200 shrink-0 shadow-inner glow-red">
               <AlertOctagon className="w-6 h-6 text-red-400 animate-pulse" />
@@ -270,7 +270,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider">Sedang di Luar</span>
+            <span className="text-xs font-mono font-semibold text-emerald-200/75 uppercase tracking-wider">Sedang di Luar</span>
             <div className="p-2.5 rounded-xl bg-amber-400/10 text-amber-300 border border-amber-400/30 group-hover:bg-amber-400/20 group-hover:scale-110 transition-all glow-gold">
               <DoorOpen className="w-4 h-4" />
             </div>
@@ -279,9 +279,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-3xl font-black font-mono tabular-nums text-white drop-shadow-sm">
               <AnimatedCounter value={sedangDiLuar.length} />
             </span>
-            <span className="text-xs text-slate-400 font-mono">santri aktif</span>
+            <span className="text-xs text-emerald-200/75 font-mono">santri aktif</span>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-amber-300 font-bold font-mono">
+          <div className="mt-3 pt-3 border-t border-emerald-800/80 flex items-center justify-between text-[11px] text-amber-300 font-bold font-mono">
             <span>LIVE MONITORING</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -295,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider">Santri Terlambat</span>
+            <span className="text-xs font-mono font-semibold text-emerald-200/75 uppercase tracking-wider">Santri Terlambat</span>
             <div className="p-2.5 rounded-xl bg-red-600/15 text-red-400 border border-red-500/30 group-hover:bg-red-600/25 group-hover:scale-110 transition-all glow-red">
               <Clock className="w-4 h-4" />
             </div>
@@ -304,9 +304,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-3xl font-black font-mono tabular-nums text-red-400 drop-shadow-sm">
               <AnimatedCounter value={terlambatList.length} />
             </span>
-            <span className="text-xs text-slate-400 font-mono">lewat jadwal</span>
+            <span className="text-xs text-emerald-200/75 font-mono">lewat jadwal</span>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-red-400 font-bold font-mono">
+          <div className="mt-3 pt-3 border-t border-emerald-800/80 flex items-center justify-between text-[11px] text-red-400 font-bold font-mono">
             <span>DISPATCH PROTOKOL</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -320,8 +320,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider">Verifikasi Izin</span>
-            <div className="p-2.5 rounded-xl bg-cyan-600/15 text-cyan-300 border border-cyan-500/30 group-hover:bg-cyan-600/25 group-hover:scale-110 transition-all glow-cyan">
+            <span className="text-xs font-mono font-semibold text-emerald-200/75 uppercase tracking-wider">Verifikasi Izin</span>
+            <div className="p-2.5 rounded-xl bg-emerald-600/15 text-emerald-300 border border-emerald-500/30 group-hover:bg-emerald-600/25 group-hover:scale-110 transition-all glow-gold">
               <FileCheck className="w-4 h-4" />
             </div>
           </div>
@@ -329,9 +329,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-3xl font-black font-mono tabular-nums text-white drop-shadow-sm">
               <AnimatedCounter value={menungguPersetujuan.length} />
             </span>
-            <span className="text-xs text-slate-400 font-mono">menunggu audit</span>
+            <span className="text-xs text-emerald-200/75 font-mono">menunggu audit</span>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-cyan-300 font-bold font-mono">
+          <div className="mt-3 pt-3 border-t border-emerald-800/80 flex items-center justify-between text-[11px] text-emerald-300 font-bold font-mono">
             <span>AUDIT BERKAS</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
@@ -345,7 +345,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold text-slate-400 uppercase tracking-wider">Takzir Edukatif</span>
+            <span className="text-xs font-mono font-semibold text-emerald-200/75 uppercase tracking-wider">Takzir Edukatif</span>
             <div className="p-2.5 rounded-xl bg-purple-600/15 text-purple-300 border border-purple-500/30 group-hover:bg-purple-600/25 group-hover:scale-110 transition-all">
               <ShieldCheck className="w-4 h-4" />
             </div>
@@ -354,9 +354,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-3xl font-black font-mono tabular-nums text-amber-300 drop-shadow-sm">
               <AnimatedCounter value={sanksiAktif.length} />
             </span>
-            <span className="text-xs text-slate-400 font-mono">santri dibina</span>
+            <span className="text-xs text-emerald-200/75 font-mono">santri dibina</span>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-300 font-bold font-mono">
+          <div className="mt-3 pt-3 border-t border-emerald-800/80 flex items-center justify-between text-[11px] text-emerald-100/90 font-bold font-mono">
             <span>HAFALAN & KHIDMAH</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>

@@ -516,11 +516,11 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
       {/* ========================================================================= */}
       {/* 1. HEADER UTAMA & SINKRONISASI REAL-TIME WIB (ASIA/JAKARTA)               */}
       {/* ========================================================================= */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 metallic-glass-card p-6 rounded-3xl border border-slate-800/80 shadow-2xl hover-rainbow-edge">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 metallic-glass-card p-6 rounded-3xl border border-emerald-800/80 shadow-2xl hover-rainbow-edge">
         <div>
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 glow-cyan uppercase tracking-wider">
-              <FileCheck2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 glow-gold uppercase tracking-wider">
+              <FileCheck2 className="w-3.5 h-3.5 text-emerald-400" />
               SISTEM PERIZINAN DISIPLIN SANTRI
             </span>
             <span className="text-slate-600">·</span>
@@ -531,28 +531,28 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase font-sans">
             Administrasi Permohonan Izin Santri
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 font-sans">
+          <p className="text-xs sm:text-sm text-emerald-200/75 mt-1 font-sans">
             Verifikasi izin berjenjang, tombol kepulangan santri real-time WIB, audit otomatis keterlambatan, dan sanksi penangguhan perizinan.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           {/* Real-time WIB Live Badge */}
-          <div className="p-3 rounded-2xl bg-slate-950/90 border border-cyan-500/40 shadow-xl flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 shrink-0">
-              <Clock className="w-5 h-5 text-cyan-400 animate-pulse" />
+          <div className="p-3 rounded-2xl bg-[#02100a]/90 border border-emerald-500/40 shadow-xl flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 shrink-0">
+              <Clock className="w-5 h-5 text-emerald-400 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                <span className="text-[10px] font-mono font-bold uppercase text-cyan-300">
+                <span className="text-[10px] font-mono font-bold uppercase text-emerald-300">
                   WAKTU SERVER REAL-TIME (WIB)
                 </span>
               </div>
               <div className="text-base sm:text-lg font-black font-mono text-amber-300 tracking-wider">
-                {wibTime.timeWithSeconds} <span className="text-xs text-cyan-400 font-sans">WIB</span>
+                {wibTime.timeWithSeconds} <span className="text-xs text-emerald-400 font-sans">WIB</span>
               </div>
-              <div className="text-[9px] font-mono text-slate-400">
+              <div className="text-[9px] font-mono text-emerald-200/75">
                 {wibTime.dateStr} · Asia/Jakarta
               </div>
             </div>
@@ -580,24 +580,24 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
             <div>
               <h2 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
                 Daftar Permohonan & Izin Berjalan (Aktif)
-                <span className="px-2 py-0.5 rounded-md text-xs font-mono bg-blue-600 text-white font-bold">
+                <span className="px-2 py-0.5 rounded-md text-xs font-mono bg-emerald-600 text-white font-bold">
                   {activePermits.length}
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-emerald-200/75">
                 Izin yang sedang diajukan, diverifikasi, disetujui, dan santri yang sedang berada di luar pondok.
               </p>
             </div>
           </div>
 
           {/* Quick Filter Status Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-800 rounded-xl overflow-x-auto text-xs">
+          <div className="flex items-center gap-1.5 p-1 bg-[#041d13]/90 border border-emerald-800 rounded-xl overflow-x-auto text-xs">
             <button
               onClick={() => setSelectedStatusTab('all')}
               className={`px-3 py-1 rounded-lg font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
                 selectedStatusTab === 'all'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-emerald-200/75 hover:text-white'
               }`}
             >
               Semua Aktif ({activePermits.length})
@@ -607,7 +607,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               className={`px-3 py-1 rounded-lg font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
                 selectedStatusTab === 'Diajukan'
                   ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-emerald-200/75 hover:text-slate-200'
               }`}
             >
               Diajukan
@@ -616,8 +616,8 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               onClick={() => setSelectedStatusTab('Diverifikasi')}
               className={`px-3 py-1 rounded-lg font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
                 selectedStatusTab === 'Diverifikasi'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  : 'text-emerald-200/75 hover:text-slate-200'
               }`}
             >
               Diverifikasi
@@ -627,7 +627,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               className={`px-3 py-1 rounded-lg font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
                 selectedStatusTab === 'Disetujui'
                   ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : 'text-emerald-200/75 hover:text-slate-200'
               }`}
             >
               Disetujui
@@ -636,8 +636,8 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               onClick={() => setSelectedStatusTab('Sedang Keluar')}
               className={`px-3 py-1 rounded-lg font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
                 selectedStatusTab === 'Sedang Keluar'
-                  ? 'bg-cyan-600/20 text-cyan-300 border border-cyan-500/40'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
+                  : 'text-emerald-200/75 hover:text-slate-200'
               }`}
             >
               Sedang Keluar
@@ -647,21 +647,21 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
 
         {/* Search Input for Active Table */}
         <div className="relative">
-          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-emerald-200/75" />
           <input
             type="text"
             placeholder="Cari permohonan aktif: nama santri, NIS, nomor izin, atau tujuan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-900/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-mono transition-all"
+            className="w-full pl-10 pr-4 py-2.5 text-xs bg-[#041d13]/90 border border-emerald-800 rounded-xl text-slate-100 placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 font-mono transition-all"
           />
         </div>
 
         {/* Active Permits Table */}
-        <div className="metallic-glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-2xl">
+        <div className="metallic-glass-card rounded-2xl border border-emerald-800/80 overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 border-b border-slate-800/80 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
+              <thead className="bg-[#02100a]/80 border-b border-emerald-800/80 text-emerald-200/75 font-mono uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="px-4 py-3.5">Santri / Identitas</th>
                   <th className="px-4 py-3.5">Jenis & Tujuan</th>
@@ -671,10 +671,10 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                   <th className="px-5 py-3.5 text-right">Aksi & Tombol Selesai</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-sans">
+              <tbody className="divide-y divide-emerald-800/60 font-sans">
                 {activePermits.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-mono text-xs">
+                    <td colSpan={6} className="px-4 py-12 text-center text-emerald-200/75 font-mono text-xs">
                       Tidak ada permohonan izin aktif yang sedang berlangsung saat ini.
                     </td>
                   </tr>
@@ -684,49 +684,49 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                     const isDisetujui = izin.status === 'Disetujui';
 
                     return (
-                      <tr key={izin.id} className="hover:bg-slate-800/40 transition-colors">
+                      <tr key={izin.id} className="hover:bg-[#072c1e]/40 transition-colors">
                         <td className="px-4 py-4">
                           <div className="font-bold text-white text-sm font-sans flex items-center gap-2">
                             <span>{izin.santriNama}</span>
                             <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
                               izin.santriGender === 'putra' 
-                                ? 'bg-blue-950 text-blue-300 border border-blue-500/30' 
+                                ? 'bg-emerald-950 text-amber-300 border border-emerald-500/30' 
                                 : 'bg-pink-950 text-pink-300 border border-pink-500/30'
                             }`}>
                               {izin.santriGender === 'putra' ? 'Banin' : 'Banat'}
                             </span>
                           </div>
-                          <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                          <div className="text-[11px] font-mono text-emerald-200/75 mt-0.5">
                             NIS: {izin.santriNis} · Kelas {izin.santriKelas} ({izin.santriKamar})
                           </div>
-                          <div className="text-[10px] font-mono text-cyan-400 mt-0.5">
+                          <div className="text-[10px] font-mono text-emerald-400 mt-0.5">
                             No. Izin: {izin.nomorIzin}
                           </div>
                         </td>
 
                         <td className="px-4 py-4">
-                          <span className="font-bold text-cyan-300 text-xs block font-mono">
+                          <span className="font-bold text-emerald-300 text-xs block font-mono">
                             {izin.jenisIzin}
                           </span>
-                          <span className="text-slate-300 text-xs mt-0.5 block line-clamp-1">
+                          <span className="text-emerald-100/90 text-xs mt-0.5 block line-clamp-1">
                             Tujuan: {izin.tujuan}
                           </span>
-                          <span className="text-slate-400 text-[10px] line-clamp-1 italic">
+                          <span className="text-emerald-200/75 text-[10px] line-clamp-1 italic">
                             &quot;{izin.alasan}&quot;
                           </span>
                         </td>
 
                         <td className="px-4 py-4 font-mono text-[11px]">
-                          <div className="text-slate-300">
-                            <span className="text-slate-500 text-[10px] block">Rencana Keluar:</span>
+                          <div className="text-emerald-100/90">
+                            <span className="text-emerald-300/60 text-[10px] block">Rencana Keluar:</span>
                             {izin.tglKeluar} · {izin.jamKeluar} WIB
                           </div>
                           <div className="text-amber-300 mt-1 font-bold">
-                            <span className="text-slate-500 text-[10px] block">Batas Waktu Kembali:</span>
+                            <span className="text-emerald-300/60 text-[10px] block">Batas Waktu Kembali:</span>
                             {izin.tglKembali} · {izin.jamKembali} WIB
                           </div>
                           {izin.actualKeluar && (
-                            <div className="text-cyan-400 text-[10px] mt-0.5">
+                            <div className="text-emerald-400 text-[10px] mt-0.5">
                               Aktual Keluar: {izin.actualKeluar}
                             </div>
                           )}
@@ -734,14 +734,14 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
 
                         <td className="px-4 py-4 font-mono text-[11px]">
                           <div>
-                            <span className="text-slate-400 text-[10px] block">Pengaju:</span>
+                            <span className="text-emerald-200/75 text-[10px] block">Pengaju:</span>
                             <span className="text-white font-bold font-sans">
                               {izin.petugasPencatat || 'Pengurus Keamanan'}
                             </span>
                           </div>
-                          <div className="mt-1 pt-1 border-t border-slate-800/80">
-                            <span className="text-slate-400 text-[10px] block">Penyetujui:</span>
-                            <span className={izin.disetujuiOleh ? "text-emerald-400 font-bold font-sans" : "text-slate-500 italic text-[10px]"}>
+                          <div className="mt-1 pt-1 border-t border-emerald-800/80">
+                            <span className="text-emerald-200/75 text-[10px] block">Penyetujui:</span>
+                            <span className={izin.disetujuiOleh ? "text-emerald-400 font-bold font-sans" : "text-emerald-300/60 italic text-[10px]"}>
                               {izin.disetujuiOleh || (izin.status === 'Disetujui' ? 'Ketua Keamanan' : 'Menunggu Approval')}
                             </span>
                           </div>
@@ -754,7 +754,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                             </span>
                           )}
                           {izin.status === 'Diverifikasi' && (
-                            <span className="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[11px] font-mono font-bold">
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-mono font-bold">
                               Diverifikasi
                             </span>
                           )}
@@ -764,8 +764,8 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                             </span>
                           )}
                           {izin.status === 'Sedang Keluar' && (
-                            <span className="px-2.5 py-1 rounded-lg bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 text-[11px] font-mono font-bold flex items-center gap-1.5 w-fit">
-                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 text-[11px] font-mono font-bold flex items-center gap-1.5 w-fit">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                               Sedang di Luar
                             </span>
                           )}
@@ -776,7 +776,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                           {izin.status === 'Diajukan' && canVerify && (
                             <button
                               onClick={() => handleVerifikasi(izin)}
-                              className="tactile-interactive px-3 py-1.5 text-[11px] font-mono font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl transition-all shadow-md cursor-pointer border border-blue-400/40"
+                              className="tactile-interactive px-3 py-1.5 text-[11px] font-mono font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all shadow-md cursor-pointer border border-amber-400/40"
                             >
                               Verifikasi
                             </button>
@@ -803,10 +803,10 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                           {isDisetujui && (
                             <button
                               onClick={() => handleTandaiKeluar(izin)}
-                              className="tactile-interactive inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-mono font-bold text-cyan-200 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 rounded-xl cursor-pointer"
+                              className="tactile-interactive inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-mono font-bold text-emerald-200 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/40 rounded-xl cursor-pointer"
                               title="Tandai Santri Melewati Pos Gerbang Keluar"
                             >
-                              <DoorOpen className="w-3.5 h-3.5 text-cyan-400" />
+                              <DoorOpen className="w-3.5 h-3.5 text-emerald-400" />
                               <span>Tandai Keluar</span>
                             </button>
                           )}
@@ -820,7 +820,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                                 setDurasiSuspensiHari(7);
                                 setSelesaiModalIzin(izin);
                               }}
-                              className="tactile-interactive inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-mono font-black text-slate-950 bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 rounded-xl transition-all shadow-lg shadow-emerald-500/30 cursor-pointer border border-emerald-300 glow-cyan active:scale-95"
+                              className="tactile-interactive inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-mono font-black text-slate-950 bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 hover:from-emerald-300 hover:to-emerald-300 rounded-xl transition-all shadow-lg shadow-emerald-500/30 cursor-pointer border border-emerald-300 glow-gold active:scale-95"
                               title="Klik untuk menyelesaikan perizinan setelah santri kembali"
                             >
                               <CheckCircle2 className="w-4 h-4 text-slate-950" />
@@ -843,7 +843,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                           {/* Share WhatsApp */}
                           <button
                             onClick={() => handleKirimWA(izin)}
-                            className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                            className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-[#072c1e] rounded-xl transition-all cursor-pointer"
                             title="Kirim Info WhatsApp ke Wali"
                           >
                             <Share2 className="w-4 h-4" />
@@ -862,17 +862,17 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
       {/* ========================================================================= */}
       {/* 3. TABEL 2: REKAPITULASI RIWAYAT PERIZINAN SANTRI (SELESAI & TERLAMBAT)    */}
       {/* ========================================================================= */}
-      <div className="space-y-4 pt-4 border-t-2 border-slate-800">
+      <div className="space-y-4 pt-4 border-t-2 border-emerald-800">
         
         {/* Section Header & Stats */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white shadow-lg">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-600 text-white shadow-lg">
               <FileText className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/40">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40">
                   DATABASE REKAPITULASI PERIZINAN SANTRI
                 </span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
@@ -880,7 +880,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               <h2 className="text-xl font-black text-white uppercase tracking-tight mt-0.5">
                 Tabel Rekapan Riwayat Perizinan Santri (Selesai & Terlambat)
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-emerald-200/75">
                 Data perizinan otomatis masuk dan terekap di tabel ini setelah tombol Selesai diklik atau santri terdeteksi terlambat.
               </p>
             </div>
@@ -888,8 +888,8 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
 
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
-              <span className="text-[10px] font-mono text-slate-400 block uppercase">Total Rekapan</span>
+            <div className="p-2.5 rounded-xl bg-[#041d13]/90 border border-emerald-800">
+              <span className="text-[10px] font-mono text-emerald-200/75 block uppercase">Total Rekapan</span>
               <span className="text-base font-black font-mono text-white tabular-nums">
                 {rekapStats.total}
               </span>
@@ -918,23 +918,23 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
         {/* Filters & Search for Rekapitulasi Table */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="relative sm:col-span-2">
-            <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-emerald-200/75" />
             <input
               type="text"
               placeholder="Cari pada rekapan: nama santri, NIS, nomor izin, atau alasan..."
               value={searchRekap}
               onChange={(e) => setSearchRekap(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-xs bg-slate-900/90 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-mono transition-all"
+              className="w-full pl-10 pr-4 py-2 text-xs bg-[#041d13]/90 border border-emerald-800 rounded-xl text-slate-100 placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 font-mono transition-all"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-800 rounded-xl text-xs">
+          <div className="flex items-center gap-1.5 p-1 bg-[#041d13]/90 border border-emerald-800 rounded-xl text-xs">
             <button
               onClick={() => setFilterRekapStatus('all')}
               className={`flex-1 py-1.5 rounded-lg font-mono font-bold text-center cursor-pointer transition-all ${
                 filterRekapStatus === 'all'
-                  ? 'bg-blue-600 text-white shadow'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-emerald-200/75 hover:text-white'
               }`}
             >
               Semua ({rekapStats.total})
@@ -944,7 +944,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               className={`flex-1 py-1.5 rounded-lg font-mono font-bold text-center cursor-pointer transition-all ${
                 filterRekapStatus === 'Sudah Kembali'
                   ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-                  : 'text-slate-400 hover:text-emerald-300'
+                  : 'text-emerald-200/75 hover:text-emerald-300'
               }`}
             >
               Tepat Waktu ({rekapStats.tepatWaktu})
@@ -954,7 +954,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               className={`flex-1 py-1.5 rounded-lg font-mono font-bold text-center cursor-pointer transition-all ${
                 filterRekapStatus === 'Terlambat'
                   ? 'bg-red-600/30 text-red-300 border border-red-500/40'
-                  : 'text-slate-400 hover:text-red-400'
+                  : 'text-emerald-200/75 hover:text-red-400'
               }`}
             >
               Terlambat ({rekapStats.terlambat})
@@ -963,10 +963,10 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
         </div>
 
         {/* Rekapitulasi Table */}
-        <div className="metallic-glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-2xl">
+        <div className="metallic-glass-card rounded-2xl border border-emerald-800/80 overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 border-b border-slate-800/80 text-slate-400 font-mono uppercase text-[10px] tracking-wider">
+              <thead className="bg-[#02100a]/80 border-b border-emerald-800/80 text-emerald-200/75 font-mono uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="px-4 py-3.5">Nomor Izin & Tgl Pengajuan</th>
                   <th className="px-4 py-3.5">Santri / Identitas</th>
@@ -978,10 +978,10 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                   <th className="px-5 py-3.5 text-right">Aksi Dokumen</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-sans">
+              <tbody className="divide-y divide-emerald-800/60 font-sans">
                 {rekapitulasiPermits.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400 font-mono text-xs">
+                    <td colSpan={8} className="px-4 py-12 text-center text-emerald-200/75 font-mono text-xs">
                       Belum ada data perizinan santri yang selesai atau terekap.
                     </td>
                   </tr>
@@ -992,12 +992,12 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                     const isSuspended = targetSantri && isSantriSuspended(targetSantri.suspendIzinHingga);
 
                     return (
-                      <tr key={izin.id} className="hover:bg-slate-800/40 transition-colors">
+                      <tr key={izin.id} className="hover:bg-[#072c1e]/40 transition-colors">
                         <td className="px-4 py-4 font-mono">
-                          <span className="text-cyan-400 font-bold block text-xs">
+                          <span className="text-emerald-400 font-bold block text-xs">
                             {izin.nomorIzin}
                           </span>
-                          <span className="text-slate-400 text-[10px] mt-0.5 block">
+                          <span className="text-emerald-200/75 text-[10px] mt-0.5 block">
                             Diajukan: {izin.tglPengajuan}
                           </span>
                         </td>
@@ -1006,7 +1006,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                           <div className="font-bold text-white text-sm">
                             {izin.santriNama}
                           </div>
-                          <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                          <div className="text-[11px] font-mono text-emerald-200/75 mt-0.5">
                             NIS: {izin.santriNis} · Kelas {izin.santriKelas} ({izin.santriKamar})
                           </div>
                         </td>
@@ -1015,14 +1015,14 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                           <span className="font-bold text-white text-xs block font-mono">
                             {izin.jenisIzin}
                           </span>
-                          <span className="text-slate-300 text-xs mt-0.5 block line-clamp-1">
+                          <span className="text-emerald-100/90 text-xs mt-0.5 block line-clamp-1">
                             Tujuan: {izin.tujuan}
                           </span>
                         </td>
 
                         <td className="px-4 py-4 font-mono text-[11px] text-amber-300">
                           {izin.tglKembali}
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[10px] text-emerald-200/75">
                             Pukul: {izin.jamKembali} WIB
                           </div>
                         </td>
@@ -1033,10 +1033,10 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                               {izin.actualKembali}
                             </div>
                           ) : (
-                            <span className="text-slate-500 italic">-</span>
+                            <span className="text-emerald-300/60 italic">-</span>
                           )}
                           {izin.petugasKembali && (
-                            <div className="text-[10px] text-slate-400">
+                            <div className="text-[10px] text-emerald-200/75">
                               Petugas: {izin.petugasKembali}
                             </div>
                           )}
@@ -1068,7 +1068,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                               Ditangguhkan s/d {targetSantri?.suspendIzinHingga}
                             </span>
                           ) : (
-                            <span className="text-slate-500 text-[10px]">
+                            <span className="text-emerald-300/60 text-[10px]">
                               Status Normal
                             </span>
                           )}
@@ -1086,7 +1086,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
 
                           <button
                             onClick={() => handleKirimWA(izin)}
-                            className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                            className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-[#072c1e] rounded-xl transition-all cursor-pointer"
                             title="Hubungi Wali WhatsApp"
                           >
                             <Share2 className="w-4 h-4" />
@@ -1119,7 +1119,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-            <div className="w-full max-w-lg bg-slate-900 border-2 border-slate-700 rounded-3xl shadow-2xl overflow-hidden my-8">
+            <div className="w-full max-w-lg bg-[#041d13] border-2 border-emerald-800 rounded-3xl shadow-2xl overflow-hidden my-8">
               
               <div className={`p-5 flex items-center justify-between border-b ${
                 isLate ? 'bg-red-950/80 border-red-500/60 text-red-100' : 'bg-emerald-950/80 border-emerald-500/60 text-emerald-100'
@@ -1132,14 +1132,14 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                     <h3 className="text-base font-black uppercase font-sans">
                       {isLate ? 'Deteksi Keterlambatan Kepulangan' : 'Konfirmasi Selesai & Santri Kembali'}
                     </h3>
-                    <p className="text-[11px] font-mono text-slate-300">
+                    <p className="text-[11px] font-mono text-emerald-100/90">
                       Waktu Kepulangan Aktual Tersinkronisasi Real-Time (WIB)
                     </p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setSelesaiModalIzin(null)}
-                  className="text-slate-400 hover:text-white"
+                  className="text-emerald-200/75 hover:text-white"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1148,30 +1148,30 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               <div className="p-6 space-y-4 text-xs font-mono">
                 
                 {/* Data Santri Card */}
-                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-slate-200">
+                <div className="p-3.5 rounded-2xl bg-[#02100a] border border-emerald-800 text-slate-200">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-slate-400 text-[10px]">IDENTITAS SANTRI</span>
-                    <span className="text-cyan-400 font-bold">{selesaiModalIzin.nomorIzin}</span>
+                    <span className="text-emerald-200/75 text-[10px]">IDENTITAS SANTRI</span>
+                    <span className="text-emerald-400 font-bold">{selesaiModalIzin.nomorIzin}</span>
                   </div>
                   <div className="text-base font-bold text-white font-sans">
                     {selesaiModalIzin.santriNama}
                   </div>
-                  <div className="text-slate-400 text-[11px] mt-0.5">
+                  <div className="text-emerald-200/75 text-[11px] mt-0.5">
                     NIS: {selesaiModalIzin.santriNis} · Kelas {selesaiModalIzin.santriKelas} ({selesaiModalIzin.santriKamar})
                   </div>
-                  <div className="text-slate-300 text-[11px] mt-1">
+                  <div className="text-emerald-100/90 text-[11px] mt-1">
                     Keperluan: <span className="text-amber-300">{selesaiModalIzin.jenisIzin}</span> tujuan {selesaiModalIzin.tujuan}
                   </div>
                 </div>
 
                 {/* Perbandingan Waktu Real-Time WIB */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-950 border border-amber-500/40">
-                    <span className="text-slate-400 text-[10px] block uppercase">Batas Waktu Kembali</span>
+                  <div className="p-3 rounded-xl bg-[#02100a] border border-amber-500/40">
+                    <span className="text-emerald-200/75 text-[10px] block uppercase">Batas Waktu Kembali</span>
                     <div className="text-amber-300 font-bold text-sm mt-0.5">
                       {selesaiModalIzin.jamKembali} WIB
                     </div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className="text-[10px] text-emerald-200/75">
                       {selesaiModalIzin.tglKembali}
                     </div>
                   </div>
@@ -1207,7 +1207,7 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                       <select
                         value={durasiSuspensiHari}
                         onChange={(e) => setDurasiSuspensiHari(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-slate-900 border border-red-500/70 rounded-xl text-white font-mono focus:outline-none"
+                        className="w-full px-3 py-2 bg-[#041d13] border border-red-500/70 rounded-xl text-white font-mono focus:outline-none"
                       >
                         <option value={7}>7 Hari (1 Minggu) - Berlaku s/d {getTanggalPenangguhanWIB(7)}</option>
                         <option value={14}>14 Hari (2 Minggu) - Berlaku s/d {getTanggalPenangguhanWIB(14)}</option>
@@ -1225,17 +1225,17 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
                       <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                       <span>SANTRI KEMBALI TEPAT WAKTU (SESUAI SOP)</span>
                     </div>
-                    <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
+                    <p className="text-[11px] text-emerald-100/90 leading-relaxed font-sans">
                       Perizinan ini akan ditandai sebagai selesai (<span className="text-emerald-300 font-bold">Sudah Kembali</span>) dan otomatis masuk ke tabel rekapan riwayat perizinan santri.
                     </p>
                   </div>
                 )}
 
-                <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                <div className="flex justify-end gap-3 pt-3 border-t border-emerald-800">
                   <button
                     type="button"
                     onClick={() => setSelesaiModalIzin(null)}
-                    className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer"
+                    className="px-4 py-2 text-emerald-200/75 hover:text-white cursor-pointer"
                   >
                     Batal
                   </button>
@@ -1277,16 +1277,16 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
             <form onSubmit={handleCreatePermit} className="p-6 space-y-4 text-xs font-mono">
               
               {/* Petugas Pengaju Sync Banner */}
-              <div className="p-3.5 rounded-2xl bg-blue-950/70 border border-cyan-500/40 text-cyan-200 text-xs flex items-center justify-between shadow-lg">
+              <div className="p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-cyan-950 border border-cyan-500/50 flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4 text-cyan-300" />
+                  <div className="w-8 h-8 rounded-xl bg-emerald-950 border border-emerald-500/50 flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4 text-emerald-300" />
                   </div>
                   <div>
                     <p className="font-bold text-white font-sans text-xs">
                       Petugas Pengaju: <span className="text-amber-300">{currentUser.nama}</span> ({currentUser.jabatan})
                     </p>
-                    <p className="text-[10px] text-cyan-300 font-mono mt-0.5">
+                    <p className="text-[10px] text-emerald-300 font-mono mt-0.5">
                       NRP: {currentUser.nrp || 'KAMTIB-OFF'} · Tersinkronisasi Real-Time ({wibTime.timeStr} WIB)
                     </p>
                   </div>

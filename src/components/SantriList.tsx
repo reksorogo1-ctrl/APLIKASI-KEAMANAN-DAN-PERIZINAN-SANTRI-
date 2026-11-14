@@ -213,11 +213,11 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
     <div className="space-y-6">
       
       {/* Title & Toolbar - 3D Styled */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 metallic-glass-card p-6 rounded-3xl border border-slate-800/80 shadow-2xl hover-rainbow-edge">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 metallic-glass-card p-6 rounded-3xl border border-emerald-800/80 shadow-2xl hover-rainbow-edge">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 glow-cyan uppercase tracking-wider">
-              <Users className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 glow-gold uppercase tracking-wider">
+              <Users className="w-3.5 h-3.5 text-emerald-400" />
               REGISTRY DATABASE
             </span>
             <span className="text-slate-600">·</span>
@@ -228,23 +228,23 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
           <h1 className="text-2xl font-black text-white tracking-tight flex items-center gap-2 uppercase font-sans">
             Administrasi Data Santri
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5 font-sans">
+          <p className="text-xs text-emerald-200/75 mt-0.5 font-sans">
             Kelola data induk santri putra & putri, biodata wali, status santri, dan kartu identitas digital
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <label className="tactile-interactive inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-mono font-bold text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl transition-all cursor-pointer shadow-md hover-rainbow-edge">
-            <Upload className="w-3.5 h-3.5 text-cyan-400" />
+          <label className="tactile-interactive inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-mono font-bold text-slate-200 bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-800/80 rounded-xl transition-all cursor-pointer shadow-md hover-rainbow-edge">
+            <Upload className="w-3.5 h-3.5 text-emerald-400" />
             <span>Impor CSV</span>
             <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
           </label>
 
           <button
             onClick={handleExportCSV}
-            className="tactile-interactive inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-mono font-bold text-slate-200 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 rounded-xl transition-all cursor-pointer shadow-md hover-rainbow-edge"
+            className="tactile-interactive inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-mono font-bold text-slate-200 bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-800/80 rounded-xl transition-all cursor-pointer shadow-md hover-rainbow-edge"
           >
-            <Download className="w-3.5 h-3.5 text-cyan-400" />
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
             <span>Ekspor CSV</span>
           </button>
 
@@ -259,18 +259,18 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
       </div>
 
       {/* Filter Bar - 3D Metallic Glass */}
-      <div className="p-4 metallic-glass-card border border-slate-800/80 rounded-2xl space-y-3 shadow-xl hover-rainbow-edge">
+      <div className="p-4 metallic-glass-card border border-emerald-800/80 rounded-2xl space-y-3 shadow-xl hover-rainbow-edge">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           
           {/* Search Box */}
           <div className="relative">
-            <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-emerald-200/75" />
             <input
               type="text"
               placeholder="Cari NIS, nama, wali, kamar..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 text-xs bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-mono transition-all"
+              className="w-full pl-10 pr-3 py-2 text-xs bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-100 placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 font-mono transition-all"
             />
           </div>
 
@@ -278,7 +278,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
           <select
             value={selectedGender}
             onChange={(e) => setSelectedGender(e.target.value as any)}
-            className="px-3.5 py-2 text-xs bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-200 focus:outline-none focus:border-cyan-400 font-mono transition-all"
+            className="px-3.5 py-2 text-xs bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-200 focus:outline-none focus:border-emerald-400 font-mono transition-all"
           >
             <option value="all">Semua Kelompok Santri</option>
             <option value="putra">Santri Putra (Banin)</option>
@@ -289,10 +289,11 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3.5 py-2 text-xs bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-200 focus:outline-none focus:border-cyan-400 font-mono transition-all"
+            className="px-3.5 py-2 text-xs bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-200 focus:outline-none focus:border-emerald-400 font-mono transition-all"
           >
             <option value="all">Semua Status Santri</option>
             <option value="Aktif">Aktif</option>
+            <option value="Sakit">Sakit</option>
             <option value="Cuti">Cuti</option>
             <option value="Diskors">Diskors</option>
             <option value="Alumni">Alumni</option>
@@ -302,7 +303,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
           <select
             value={selectedKelas}
             onChange={(e) => setSelectedKelas(e.target.value)}
-            className="px-3.5 py-2 text-xs bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-200 focus:outline-none focus:border-cyan-400 font-mono transition-all"
+            className="px-3.5 py-2 text-xs bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-200 focus:outline-none focus:border-emerald-400 font-mono transition-all"
           >
             <option value="all">Semua Tingkatan Kelas</option>
             <option value="1 Wustho (Tsanawiyah)">1 Wustho (Tsanawiyah)</option>
@@ -317,12 +318,12 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
         </div>
         
         {/* Results summary count */}
-        <div className="flex items-center justify-between text-xs text-slate-400 pt-1 font-mono">
+        <div className="flex items-center justify-between text-xs text-emerald-200/75 pt-1 font-mono">
           <span>Menampilkan <strong className="text-amber-300 tabular-nums">{filteredList.length}</strong> santri terdaftar</span>
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')}
-              className="text-cyan-400 hover:underline cursor-pointer"
+              className="text-emerald-400 hover:underline cursor-pointer"
             >
               Reset Pencarian
             </button>
@@ -331,10 +332,10 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
       </div>
 
       {/* Santri Table - 3D Styled */}
-      <div className="metallic-glass-card border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl hover-rainbow-edge">
+      <div className="metallic-glass-card border border-emerald-800/80 rounded-3xl overflow-hidden shadow-2xl hover-rainbow-edge">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-200">
-            <thead className="table-header-metallic text-slate-300 uppercase text-[10px] font-mono tracking-wider">
+            <thead className="table-header-metallic text-emerald-100/90 uppercase text-[10px] font-mono tracking-wider">
               <tr>
                 <th className="px-6 py-3.5">Santri</th>
                 <th className="px-4 py-3.5">Kelas & Kamar</th>
@@ -345,10 +346,10 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
                 <th className="px-6 py-3.5 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 bg-slate-950/40 font-mono">
+            <tbody className="divide-y divide-emerald-800/60 bg-[#02100a]/40 font-mono">
               {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-emerald-200/75">
                     Tidak ditemukan santri yang sesuai kriteria pencarian.
                   </td>
                 </tr>
@@ -364,14 +365,14 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
                             className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shrink-0 shadow-sm"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-xl bg-slate-800/90 border border-amber-400/40 shrink-0 shadow-sm flex items-center justify-center text-amber-400">
+                          <div className="w-10 h-10 rounded-xl bg-[#072c1e]/90 border border-amber-400/40 shrink-0 shadow-sm flex items-center justify-center text-amber-400">
                             <User className="w-5 h-5" />
                           </div>
                         )}
                         <div>
                           <div className="font-bold text-white text-xs font-sans tracking-wide">{santri.nama}</div>
-                          <div className="text-[11px] text-slate-400">
-                            NIS: <span className="text-cyan-300">{santri.nis}</span> · <span className="capitalize">{santri.gender === 'putra' ? 'Banin' : 'Banat'}</span>
+                          <div className="text-[11px] text-emerald-200/75">
+                            NIS: <span className="text-emerald-300">{santri.nis}</span> · <span className="capitalize">{santri.gender === 'putra' ? 'Banin' : 'Banat'}</span>
                           </div>
                         </div>
                       </div>
@@ -379,14 +380,14 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
                     <td className="px-4 py-4">
                       <div className="text-slate-200 font-medium font-sans">{santri.kelas}</div>
                       <div className="text-[11px] text-amber-300">{santri.kamar}</div>
-                      <div className="text-[10px] text-slate-400 truncate max-w-[140px]">{santri.asrama}</div>
+                      <div className="text-[10px] text-emerald-200/75 truncate max-w-[140px]">{santri.asrama}</div>
                     </td>
                     <td className="px-4 py-4 font-sans">
                       <div className="text-slate-200">{santri.namaWali}</div>
                       <div className="text-[11px] text-emerald-400 font-mono">{santri.noWaWali}</div>
                     </td>
                     <td className="px-4 py-4 font-sans">
-                      <div className="text-slate-300 truncate max-w-[150px]">{santri.alamat}</div>
+                      <div className="text-emerald-100/90 truncate max-w-[150px]">{santri.alamat}</div>
                       <div className="text-[11px] text-amber-300/80 font-mono">{santri.jarakRumahKm} km dari pondok</div>
                     </td>
                     <td className="px-4 py-4">
@@ -406,7 +407,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
                           ? 'text-emerald-300 bg-emerald-950/60 border-emerald-500/40'
                           : santri.status === 'Diskors'
                           ? 'text-red-300 bg-red-950/60 border-red-500/40 glow-red'
-                          : 'text-slate-300 bg-slate-900 border-slate-700'
+                          : 'text-emerald-100/90 bg-[#041d13] border-emerald-800'
                       }`}>
                         {santri.status}
                       </span>
@@ -414,21 +415,21 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
                     <td className="px-6 py-4 text-right space-x-1.5">
                       <button
                         onClick={() => setCardPreviewSantri(santri)}
-                        className="p-2 text-slate-300 hover:text-cyan-300 hover:bg-slate-800/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-cyan-500/40"
+                        className="p-2 text-emerald-100/90 hover:text-emerald-300 hover:bg-[#072c1e]/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-emerald-500/40"
                         title="Cetak Kartu Tanda Santri (KTS)"
                       >
                         <CreditCard className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => openEditModal(santri)}
-                        className="p-2 text-slate-300 hover:text-emerald-300 hover:bg-slate-800/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-emerald-500/40"
+                        className="p-2 text-emerald-100/90 hover:text-emerald-300 hover:bg-[#072c1e]/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-emerald-500/40"
                         title="Ubah Data"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setDeleteConfirmId(santri.id)}
-                        className="p-2 text-slate-300 hover:text-red-400 hover:bg-slate-800/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-red-500/40"
+                        className="p-2 text-emerald-100/90 hover:text-red-400 hover:bg-[#072c1e]/80 rounded-xl transition-all cursor-pointer border border-transparent hover:border-red-500/40"
                         title="Hapus Data"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -577,6 +578,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
                     className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:outline-none focus:border-amber-400"
                   >
                     <option value="Aktif">Aktif</option>
+                    <option value="Sakit">Sakit</option>
                     <option value="Cuti">Cuti</option>
                     <option value="Diskors">Diskors</option>
                     <option value="Alumni">Alumni</option>
@@ -699,7 +701,7 @@ export const SantriList: React.FC<SantriListProps> = ({ santriList, currentGende
                       className="w-20 h-24 object-cover rounded-xl border-2 border-amber-400/80 shadow-md shrink-0"
                     />
                   ) : (
-                    <div className="w-20 h-24 rounded-xl border-2 border-amber-400/80 bg-slate-900 shadow-md shrink-0 flex items-center justify-center text-amber-400">
+                    <div className="w-20 h-24 rounded-xl border-2 border-amber-400/80 bg-[#041d13] shadow-md shrink-0 flex items-center justify-center text-amber-400">
                       <User className="w-10 h-10" />
                     </div>
                   )}

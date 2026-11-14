@@ -32,16 +32,16 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
       case 'success':
         return <CheckCircle className="w-4 h-4 text-emerald-400" />;
       default:
-        return <Info className="w-4 h-4 text-cyan-400" />;
+        return <Info className="w-4 h-4 text-emerald-400" />;
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div className="w-full max-w-lg metallic-glass-card border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] rainbow-active-border card-3d-floating">
+      <div className="w-full max-w-lg metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] rainbow-active-border card-3d-floating">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950">
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
           <div className="flex items-center gap-2.5">
             <Bell className="w-5 h-5 text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
             <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide">
@@ -57,7 +57,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="w-7 h-7 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+              className="w-7 h-7 rounded-lg bg-[#072c1e]/80 text-emerald-200/75 hover:text-white flex items-center justify-center transition-all cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -67,7 +67,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
         {/* List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono">
           {notifications.length === 0 ? (
-            <div className="text-center py-10 text-slate-500 text-xs font-mono">
+            <div className="text-center py-10 text-emerald-300/60 text-xs font-mono">
               Tidak ada notifikasi saat ini
             </div>
           ) : (
@@ -81,12 +81,12 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                 }}
                 className={`p-4 rounded-2xl border transition-all hover-rainbow-edge shadow-md cursor-pointer ${
                   item.dibaca
-                    ? 'bg-slate-950/60 border-slate-800/80 text-slate-400'
-                    : 'bg-slate-900/90 border-amber-400/30 text-slate-200'
+                    ? 'bg-[#02100a]/60 border-emerald-800/80 text-emerald-200/75'
+                    : 'bg-[#041d13]/90 border-amber-400/30 text-slate-200'
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 p-2 rounded-xl bg-slate-950 border border-slate-800 shrink-0">
+                  <div className="mt-0.5 p-2 rounded-xl bg-[#02100a] border border-emerald-800 shrink-0">
                     {getIcon(item.tipe)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -97,16 +97,16 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                           <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
                         )}
                       </p>
-                      <span className="text-[10px] text-cyan-400 shrink-0 font-mono">
+                      <span className="text-[10px] text-emerald-400 shrink-0 font-mono">
                         {item.waktu}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-300 mt-1.5 leading-relaxed font-sans">
+                    <p className="text-xs text-emerald-100/90 mt-1.5 leading-relaxed font-sans">
                       {item.pesan}
                     </p>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-slate-800">
+                    <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-emerald-800">
                       {item.linkMenu && (
                         <button
                           onClick={(e) => {

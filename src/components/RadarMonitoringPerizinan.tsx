@@ -366,23 +366,23 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
   };
 
   return (
-    <div className={`relative rounded-3xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-black ${isMedium ? 'p-4 sm:p-5' : 'p-5 sm:p-7'} shadow-2xl metallic-glass-card hover-rainbow-edge font-sans`}>
+    <div className={`relative rounded-3xl overflow-hidden border border-emerald-800 bg-gradient-to-b from-[#02100a] via-[#041d13] to-black ${isMedium ? 'p-4 sm:p-5' : 'p-5 sm:p-7'} shadow-2xl metallic-glass-card hover-rainbow-edge font-sans`}>
       
       {/* Top Specular Military Cyan/Red Line */}
       <div className={`absolute top-0 left-0 right-0 h-[2px] ${
         threatCount > 0 
           ? 'bg-gradient-to-r from-red-500 via-amber-400 to-red-600 animate-pulse' 
           : warningCount > 0
-          ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-cyan-500'
-          : 'bg-gradient-to-r from-cyan-400 via-blue-500 to-emerald-400'
+          ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-emerald-500'
+          : 'bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400'
       }`} />
 
       {/* Military Radar Header Section */}
-      <div className={`flex flex-col lg:flex-row lg:items-center justify-between ${isMedium ? 'gap-3 pb-3' : 'gap-4 pb-5'} border-b border-slate-800/80`}>
+      <div className={`flex flex-col lg:flex-row lg:items-center justify-between ${isMedium ? 'gap-3 pb-3' : 'gap-4 pb-5'} border-b border-emerald-800/80`}>
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-mono font-bold bg-cyan-950/90 text-cyan-300 border border-cyan-500/50 shadow-xs glow-cyan uppercase tracking-wider">
-              <Radar className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: '6s' }} />
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-[10px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-xs glow-gold uppercase tracking-wider">
+              <Radar className="w-3.5 h-3.5 text-emerald-400 animate-spin" style={{ animationDuration: '6s' }} />
               SENTRY TARGET ACQUISITION RADAR (REAL-TIME WIB)
             </span>
             <span className="text-slate-600">·</span>
@@ -390,16 +390,16 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
               TARGET AKTIF: {activePermits.length} SANTRI
             </span>
             <span className="text-slate-600">·</span>
-            <span className="text-[10px] font-mono text-slate-400">
+            <span className="text-[10px] font-mono text-emerald-200/75">
               AZIMUTH: 360° CONTINUOUS
             </span>
           </div>
 
           <h3 className={`${isMedium ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-black text-white uppercase tracking-tight mt-1.5 flex items-center gap-2 font-sans`}>
-            <Crosshair className={`w-5 h-5 ${threatCount > 0 ? 'text-red-500 animate-pulse' : warningCount > 0 ? 'text-amber-400' : 'text-cyan-400'}`} />
+            <Crosshair className={`w-5 h-5 ${threatCount > 0 ? 'text-red-500 animate-pulse' : warningCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`} />
             Radar Kontrol Perizinan & Deteksi Santri Terlambat
           </h3>
-          <p className="text-xs text-slate-400 font-mono mt-0.5">
+          <p className="text-xs text-emerald-200/75 font-mono mt-0.5">
             Sistem pemindai spatio-temporal militer terhubung langsung ke database perizinan santri secara real-time
           </p>
         </div>
@@ -407,7 +407,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
         {/* Threat Level HUD Telemetry */}
         <div className="flex items-center gap-3 shrink-0">
           {threatCount > 0 ? (
-            <div className="p-3 rounded-2xl bg-gradient-to-r from-red-950/90 via-red-900/50 to-slate-950 border border-red-500/80 shadow-xl glow-red flex items-center gap-3 animate-pulse">
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-red-950/90 via-red-900/50 to-[#02100a] border border-red-500/80 shadow-xl glow-red flex items-center gap-3 animate-pulse">
               <div className="w-3 h-3 rounded-full bg-red-500 animate-ping shrink-0" />
               <div>
                 <p className="text-[10px] font-mono font-black text-red-300 uppercase tracking-widest leading-none">
@@ -419,7 +419,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
               </div>
             </div>
           ) : warningCount > 0 ? (
-            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-950/90 via-slate-900 to-slate-950 border border-amber-500/60 shadow-xl flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-950/90 via-[#041d13] to-[#02100a] border border-amber-500/60 shadow-xl flex items-center gap-3">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0" />
               <div>
                 <p className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-widest leading-none">
@@ -431,7 +431,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
               </div>
             </div>
           ) : (
-            <div className="p-3 rounded-2xl bg-slate-950/90 border border-emerald-500/40 shadow-xl flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-[#02100a]/90 border border-emerald-500/40 shadow-xl flex items-center gap-3">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               <div>
                 <p className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest leading-none">
@@ -453,28 +453,28 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
         <div className={`${isMedium ? 'lg:col-span-5' : 'lg:col-span-7'} flex flex-col items-center justify-center relative`}>
           
           {/* Radar Frame & Azimuth Markers */}
-          <div className={`relative w-full ${isMedium ? 'max-w-[310px]' : 'max-w-[420px]'} aspect-square rounded-full p-2 bg-gradient-to-b from-slate-900 via-slate-950 to-black border-2 border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.18)] flex items-center justify-center overflow-hidden group`}>
+          <div className={`relative w-full ${isMedium ? 'max-w-[310px]' : 'max-w-[420px]'} aspect-square rounded-full p-2 bg-gradient-to-b from-[#041d13] via-[#02100a] to-black border-2 border-emerald-500/40 shadow-[0_0_50px_rgba(6,182,212,0.18)] flex items-center justify-center overflow-hidden group`}>
             
             {/* Outer Compass Degree Ring */}
-            <div className="absolute inset-2 rounded-full border border-cyan-500/30 pointer-events-none" />
-            <div className="absolute inset-5 rounded-full border border-cyan-500/15 border-dashed pointer-events-none" />
+            <div className="absolute inset-2 rounded-full border border-emerald-500/30 pointer-events-none" />
+            <div className="absolute inset-5 rounded-full border border-emerald-500/15 border-dashed pointer-events-none" />
 
             {/* Compass Headings (N, S, E, W) */}
             <span className="absolute top-3 text-[10px] font-mono font-black text-amber-400 tracking-widest pointer-events-none">
               N 000°
             </span>
-            <span className="absolute bottom-3 text-[10px] font-mono font-bold text-cyan-400 tracking-widest pointer-events-none">
+            <span className="absolute bottom-3 text-[10px] font-mono font-bold text-emerald-400 tracking-widest pointer-events-none">
               S 180°
             </span>
-            <span className="absolute right-3.5 text-[10px] font-mono font-bold text-cyan-400 tracking-widest pointer-events-none">
+            <span className="absolute right-3.5 text-[10px] font-mono font-bold text-emerald-400 tracking-widest pointer-events-none">
               E 090°
             </span>
-            <span className="absolute left-3 text-[10px] font-mono font-bold text-cyan-400 tracking-widest pointer-events-none">
+            <span className="absolute left-3 text-[10px] font-mono font-bold text-emerald-400 tracking-widest pointer-events-none">
               W 270°
             </span>
 
             {/* Circular Phosphor Screen Grid */}
-            <div className="relative w-full h-full rounded-full bg-slate-950/90 overflow-hidden border border-cyan-500/40 shadow-inner flex items-center justify-center">
+            <div className="relative w-full h-full rounded-full bg-[#02100a]/90 overflow-hidden border border-emerald-500/40 shadow-inner flex items-center justify-center">
               
               {/* Tactical Phosphor Radial Gradient Background */}
               <div 
@@ -485,29 +485,29 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
               />
 
               {/* Concentric Range Rings */}
-              <div className="absolute w-[25%] h-[25%] rounded-full border border-cyan-500/30 pointer-events-none" />
-              <div className="absolute w-[50%] h-[50%] rounded-full border border-cyan-500/35 pointer-events-none" />
-              <div className="absolute w-[75%] h-[75%] rounded-full border border-cyan-500/30 border-dashed pointer-events-none" />
-              <div className="absolute w-[98%] h-[98%] rounded-full border border-cyan-500/40 pointer-events-none" />
+              <div className="absolute w-[25%] h-[25%] rounded-full border border-emerald-500/30 pointer-events-none" />
+              <div className="absolute w-[50%] h-[50%] rounded-full border border-emerald-500/35 pointer-events-none" />
+              <div className="absolute w-[75%] h-[75%] rounded-full border border-emerald-500/30 border-dashed pointer-events-none" />
+              <div className="absolute w-[98%] h-[98%] rounded-full border border-emerald-500/40 pointer-events-none" />
 
               {/* Range Distance Labels on Ring */}
-              <span className="absolute top-[38%] text-[8px] font-mono text-cyan-500/80 font-bold pointer-events-none">
+              <span className="absolute top-[38%] text-[8px] font-mono text-emerald-500/80 font-bold pointer-events-none">
                 {(rangeScale * 0.25).toFixed(1)} KM
               </span>
-              <span className="absolute top-[25%] text-[8px] font-mono text-cyan-500/80 font-bold pointer-events-none">
+              <span className="absolute top-[25%] text-[8px] font-mono text-emerald-500/80 font-bold pointer-events-none">
                 {(rangeScale * 0.5).toFixed(1)} KM
               </span>
-              <span className="absolute top-[13%] text-[8px] font-mono text-cyan-500/80 font-bold pointer-events-none">
+              <span className="absolute top-[13%] text-[8px] font-mono text-emerald-500/80 font-bold pointer-events-none">
                 {(rangeScale * 0.75).toFixed(1)} KM
               </span>
 
               {/* Crosshair Axes */}
-              <div className="absolute left-0 right-0 h-[1px] bg-cyan-500/25 pointer-events-none" />
-              <div className="absolute top-0 bottom-0 w-[1px] bg-cyan-500/25 pointer-events-none" />
+              <div className="absolute left-0 right-0 h-[1px] bg-emerald-500/25 pointer-events-none" />
+              <div className="absolute top-0 bottom-0 w-[1px] bg-emerald-500/25 pointer-events-none" />
 
               {/* Diagonal 45° Guidelines */}
-              <div className="absolute w-full h-[1px] bg-cyan-500/15 rotate-45 pointer-events-none" />
-              <div className="absolute w-full h-[1px] bg-cyan-500/15 -rotate-45 pointer-events-none" />
+              <div className="absolute w-full h-[1px] bg-emerald-500/15 rotate-45 pointer-events-none" />
+              <div className="absolute w-full h-[1px] bg-emerald-500/15 -rotate-45 pointer-events-none" />
 
               {/* 360° ROTATING MILITARY RADAR BEAM */}
               <div 
@@ -524,12 +524,12 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                   }}
                 />
                 <div 
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-1/2 bg-gradient-to-t from-cyan-400 to-white shadow-[0_0_12px_#22d3ee]"
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-1/2 bg-gradient-to-t from-emerald-400 to-white shadow-[0_0_12px_#10b981]"
                 />
               </div>
 
               {/* Center Sentry Headquarters Base (PP Salaf Al-Maliki Command) */}
-              <div className="relative z-20 w-8 h-8 rounded-full bg-slate-900 border-2 border-amber-400 flex items-center justify-center shadow-lg shadow-amber-400/40">
+              <div className="relative z-20 w-8 h-8 rounded-full bg-[#041d13] border-2 border-amber-400 flex items-center justify-center shadow-lg shadow-amber-400/40">
                 <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
                 <span className="sr-only">Pos Pusat Al-Maliki</span>
               </div>
@@ -574,14 +574,14 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                       <div className="relative flex items-center justify-center">
                         <span className="absolute w-6 h-6 rounded-full bg-amber-500/30 animate-ping border border-amber-400" />
                         <div className={`w-4 h-4 rounded-md border-2 ${
-                          isSelected ? 'border-cyan-300 bg-amber-950/90 scale-110' : 'border-amber-400 bg-amber-950/80'
+                          isSelected ? 'border-emerald-300 bg-amber-950/90 scale-110' : 'border-amber-400 bg-amber-950/80'
                         } flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.8)]`}>
                           <div className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping" />
                         </div>
 
                         <div className={`absolute left-5 top-1/2 -translate-y-1/2 whitespace-nowrap px-2 py-0.5 rounded-md border font-mono text-[9px] font-bold z-40 shadow-xl pointer-events-none transition-all ${
                           isSelected 
-                            ? 'bg-amber-950 text-cyan-200 border-cyan-400 scale-105' 
+                            ? 'bg-amber-950 text-emerald-200 border-emerald-400 scale-105' 
                             : 'bg-black/90 text-amber-300 border-amber-500/80'
                         }`}>
                           <span className="text-amber-400 font-bold">SEGERA KEMBALI:</span> {blip.label.split(' ')[0]} (sisa {blip.sisaMenit}m)
@@ -590,14 +590,14 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                     ) : (
                       /* SAFE / ON-TIME SANTRI TARGET BLIP (Steady Cyan) */
                       <div className="relative flex items-center justify-center">
-                        <span className="absolute w-5 h-5 rounded-full bg-cyan-400/20 animate-ping" />
+                        <span className="absolute w-5 h-5 rounded-full bg-emerald-400/20 animate-ping" />
                         <div className={`w-3.5 h-3.5 rounded-full border ${
-                          isSelected ? 'border-amber-400 bg-cyan-400 scale-125' : 'border-cyan-300 bg-cyan-500/80'
+                          isSelected ? 'border-amber-400 bg-emerald-400 scale-125' : 'border-emerald-300 bg-emerald-500/80'
                         } flex items-center justify-center shadow-[0_0_8px_rgba(6,182,212,0.8)]`}>
                           <div className="w-1.5 h-1.5 rounded-full bg-white" />
                         </div>
                         {isSelected && (
-                          <div className="absolute left-5 top-1/2 -translate-y-1/2 whitespace-nowrap px-2 py-0.5 rounded-md bg-slate-950/95 border border-cyan-400 text-cyan-300 font-mono text-[9px] font-bold z-40 shadow-xl pointer-events-none">
+                          <div className="absolute left-5 top-1/2 -translate-y-1/2 whitespace-nowrap px-2 py-0.5 rounded-md bg-[#02100a]/95 border border-emerald-400 text-emerald-300 font-mono text-[9px] font-bold z-40 shadow-xl pointer-events-none">
                             {blip.label.split(' ')[0]} ({blip.distanceKm} km)
                           </div>
                         )}
@@ -611,7 +611,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
               {visibleBlips.length === 0 && (
                 <div className="absolute z-20 text-center px-4 py-2 rounded-xl bg-black/75 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] pointer-events-none">
                   <span className="block font-bold">0 TARGET DI LUAR PONDOK</span>
-                  <span className="text-slate-400 text-[9px]">Perimeter Kamtib Steril & Aman</span>
+                  <span className="text-emerald-200/75 text-[9px]">Perimeter Kamtib Steril & Aman</span>
                 </div>
               )}
 
@@ -620,18 +620,18 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
           </div>
 
           {/* Radar Controller Tuning Toolbar */}
-          <div className="flex items-center justify-between w-full max-w-[420px] mt-4 pt-3 border-t border-slate-800 text-[10px] font-mono text-slate-400">
+          <div className="flex items-center justify-between w-full max-w-[420px] mt-4 pt-3 border-t border-emerald-800 text-[10px] font-mono text-emerald-200/75">
             <div className="flex items-center gap-1.5">
               <span>SCAN SPEED:</span>
               <button
                 onClick={() => setSweepSpeed('normal')}
-                className={`px-2 py-0.5 rounded ${sweepSpeed === 'normal' ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40' : 'hover:text-white'}`}
+                className={`px-2 py-0.5 rounded ${sweepSpeed === 'normal' ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40' : 'hover:text-white'}`}
               >
                 1X
               </button>
               <button
                 onClick={() => setSweepSpeed('fast')}
-                className={`px-2 py-0.5 rounded ${sweepSpeed === 'fast' ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40' : 'hover:text-white'}`}
+                className={`px-2 py-0.5 rounded ${sweepSpeed === 'fast' ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40' : 'hover:text-white'}`}
               >
                 2X FAST
               </button>
@@ -641,7 +641,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
               <span>ZOOM RADIUS:</span>
               <button
                 onClick={() => setRangeScale(prev => prev === 10 ? 25 : 10)}
-                className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700 font-bold cursor-pointer"
+                className="px-2 py-0.5 rounded bg-[#041d13] hover:bg-[#072c1e] text-amber-300 border border-emerald-800 font-bold cursor-pointer"
               >
                 {rangeScale} KM
               </button>
@@ -653,13 +653,13 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
         <div className={`${isMedium ? 'lg:col-span-7' : 'lg:col-span-5'} space-y-4`}>
           
           {/* Target Filter Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-950 border border-slate-800 rounded-xl text-xs font-mono">
+          <div className="flex items-center gap-1.5 p-1 bg-[#02100a] border border-emerald-800 rounded-xl text-xs font-mono">
             <button
               onClick={() => setFilterMode('all')}
               className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
                 filterMode === 'all'
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-600 text-white shadow-md'
+                  : 'text-emerald-200/75 hover:text-white'
               }`}
             >
               Semua ({blips.length})
@@ -692,12 +692,12 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
           {selectedBlip ? (
             <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
               selectedBlip.isThreat
-                ? 'bg-gradient-to-b from-red-950/70 via-slate-900 to-slate-950 border-red-500/80 shadow-2xl glow-red'
+                ? 'bg-gradient-to-b from-red-950/70 via-[#041d13] to-[#02100a] border-red-500/80 shadow-2xl glow-red'
                 : selectedBlip.isWarning
-                ? 'bg-gradient-to-b from-amber-950/70 via-slate-900 to-slate-950 border-amber-500/80 shadow-xl'
-                : 'bg-gradient-to-b from-slate-900 via-slate-950 to-black border-cyan-500/40 shadow-xl'
+                ? 'bg-gradient-to-b from-amber-950/70 via-[#041d13] to-[#02100a] border-amber-500/80 shadow-xl'
+                : 'bg-gradient-to-b from-[#041d13] via-[#02100a] to-black border-emerald-500/40 shadow-xl'
             }`}>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-emerald-800">
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
                     selectedBlip.isThreat
@@ -706,11 +706,11 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                       ? 'bg-amber-500 text-slate-950 animate-pulse'
                       : selectedBlip.statusKamtib === 'SEDANG DI LUAR'
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                      : 'bg-emerald-500/20 text-amber-300 border border-emerald-500/40'
                   }`}>
                     {selectedBlip.statusKamtib}
                   </span>
-                  <span className="text-xs font-mono text-slate-400">
+                  <span className="text-xs font-mono text-emerald-200/75">
                     AZ: {selectedBlip.angleDeg}°
                   </span>
                 </div>
@@ -726,24 +726,24 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                     <h4 className="text-base font-black text-white font-sans">
                       {selectedBlip.label}
                     </h4>
-                    <p className="text-xs font-mono text-cyan-300">
+                    <p className="text-xs font-mono text-emerald-300">
                       NIS: {selectedBlip.nis} · {selectedBlip.kelas}
                     </p>
                   </div>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-[#072c1e] text-amber-300 font-mono">
                     {selectedBlip.izin.jenisIzin}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-2 text-xs font-mono">
-                  <div className="p-2 rounded-xl bg-black/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Batas Waktu Kembali:</span>
+                  <div className="p-2 rounded-xl bg-black/60 border border-emerald-800">
+                    <span className="text-[10px] text-emerald-200/75 block">Batas Waktu Kembali:</span>
                     <span className={`font-bold ${selectedBlip.isThreat ? 'text-red-400' : selectedBlip.isWarning ? 'text-amber-300' : 'text-slate-200'}`}>
                       {selectedBlip.jamKembali} WIB ({selectedBlip.tglKembali})
                     </span>
                   </div>
-                  <div className="p-2 rounded-xl bg-black/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 block">Status Keterlambatan:</span>
+                  <div className="p-2 rounded-xl bg-black/60 border border-emerald-800">
+                    <span className="text-[10px] text-emerald-200/75 block">Status Keterlambatan:</span>
                     <span className={`font-bold ${
                       selectedBlip.isThreat 
                         ? 'text-red-400 animate-pulse' 
@@ -762,22 +762,22 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-black/60 border border-slate-800 text-xs font-sans">
-                  <span className="text-[10px] font-mono text-slate-400 block">Tujuan & Penjemput:</span>
+                <div className="p-2.5 rounded-xl bg-black/60 border border-emerald-800 text-xs font-sans">
+                  <span className="text-[10px] font-mono text-emerald-200/75 block">Tujuan & Penjemput:</span>
                   <p className="text-slate-200 mt-0.5">
-                    {selectedBlip.tujuan} · <span className="text-slate-400">Wali: {selectedBlip.izin.namaPenjemput}</span>
+                    {selectedBlip.tujuan} · <span className="text-emerald-200/75">Wali: {selectedBlip.izin.namaPenjemput}</span>
                   </p>
                 </div>
               </div>
 
               {/* Action Buttons for Selected Target (Including Selesai Button) */}
-              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-800 flex-wrap">
+              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-emerald-800 flex-wrap">
                 {onViewSuratIzin && (
                   <button
                     onClick={() => onViewSuratIzin(selectedBlip.izin)}
-                    className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-slate-700 transition-colors"
+                    className="flex-1 py-2 px-3 rounded-xl bg-[#072c1e] hover:bg-[#0b422d] text-white font-mono font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-800 transition-colors"
                   >
-                    <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                    <Eye className="w-3.5 h-3.5 text-emerald-400" />
                     <span>Surat Izin</span>
                   </button>
                 )}
@@ -798,7 +798,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                 {selectedBlip.statusKamtib === 'MENUNGGU CHECK-OUT' && (
                   <button
                     onClick={() => handleTandaiKeluar(selectedBlip.izin)}
-                    className="w-full py-2.5 px-4 rounded-xl font-mono font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white border border-blue-400"
+                    className="w-full py-2.5 px-4 rounded-xl font-mono font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md bg-gradient-to-r from-emerald-600 via-emerald-600 to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 text-white border border-amber-400"
                   >
                     <DoorOpen className="w-4 h-4 text-white" />
                     <span>Catat Keluar Gerbang (Status: SEDANG DI LUAR)</span>
@@ -808,7 +808,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                 {/* TOMBOL SELESAI / SANTRI KEMBALI */}
                 <button
                   onClick={() => setSelesaiModalIzin(selectedBlip.izin)}
-                  className="w-full py-2.5 px-4 rounded-xl font-mono font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-slate-950 border border-emerald-300"
+                  className="w-full py-2.5 px-4 rounded-xl font-mono font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 border border-emerald-300"
                 >
                   <CheckCircle2 className="w-4 h-4 text-slate-950" />
                   <span>Selesai / Konfirmasi Santri Kembali</span>
@@ -817,7 +817,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
 
             </div>
           ) : (
-            <div className="p-8 text-center rounded-2xl bg-slate-950/80 border border-slate-800 text-slate-400 text-xs font-mono">
+            <div className="p-8 text-center rounded-2xl bg-[#02100a]/80 border border-emerald-800 text-emerald-200/75 text-xs font-mono">
               <Crosshair className="w-8 h-8 text-slate-600 mx-auto mb-2" />
               {activePermits.length === 0
                 ? 'Tidak ada target izin aktif pada radar saat ini (Semua santri berada di asrama).'
@@ -827,11 +827,11 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
 
           {/* Quick Target Acquisition List */}
           <div className="space-y-1.5 max-h-[190px] overflow-y-auto pr-1">
-            <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest px-1">
+            <p className="text-[10px] font-mono text-emerald-200/75 uppercase tracking-widest px-1">
               DAFTAR SASARAN DETEKSI TERAKHIR ({visibleBlips.length}):
             </p>
             {visibleBlips.length === 0 ? (
-              <p className="text-xs font-mono text-slate-500 px-2 py-3 text-center bg-slate-950/40 rounded-xl">
+              <p className="text-xs font-mono text-emerald-300/60 px-2 py-3 text-center bg-[#02100a]/40 rounded-xl">
                 Nol target aktif pada radar pemindai
               </p>
             ) : (
@@ -847,21 +847,21 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                         : blip.isWarning
                         ? 'bg-amber-950/40 hover:bg-amber-950/70 border-amber-500/50 text-amber-200'
                         : isSelected
-                        ? 'bg-cyan-950/50 border-cyan-400 text-cyan-200'
-                        : 'bg-slate-950/80 hover:bg-slate-900 border-slate-800 text-slate-300'
+                        ? 'bg-emerald-950/50 border-emerald-400 text-emerald-200'
+                        : 'bg-[#02100a]/80 hover:bg-[#041d13] border-emerald-800 text-emerald-100/90'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <span className={`w-2 h-2 rounded-full shrink-0 ${
-                        blip.isThreat ? 'bg-red-500 animate-ping' : blip.isWarning ? 'bg-amber-400 animate-ping' : 'bg-cyan-400'
+                        blip.isThreat ? 'bg-red-500 animate-ping' : blip.isWarning ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'
                       }`} />
                       <span className="font-bold truncate font-sans text-white">{blip.label}</span>
-                      <span className="text-[10px] text-slate-400">{blip.kelas}</span>
+                      <span className="text-[10px] text-emerald-200/75">{blip.kelas}</span>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`text-[10px] font-bold ${
-                        blip.isThreat ? 'text-red-400' : blip.isWarning ? 'text-amber-400' : 'text-slate-400'
+                        blip.isThreat ? 'text-red-400' : blip.isWarning ? 'text-amber-400' : 'text-emerald-200/75'
                       }`}>
                         {blip.isThreat 
                           ? `+${blip.menitKeterlambatan}m LATE` 
@@ -869,7 +869,7 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
                           ? `Sisa ${blip.sisaMenit}m`
                           : blip.jamKembali}
                       </span>
-                      <span className="text-[10px] text-cyan-400 font-bold">{blip.distanceKm}km</span>
+                      <span className="text-[10px] text-emerald-400 font-bold">{blip.distanceKm}km</span>
                     </div>
                   </div>
                 );
@@ -884,8 +884,8 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
       {/* CONFIRMATION MODAL FOR "SELESAI / SANTRI KEMBALI" */}
       {selesaiModalIzin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-lg p-6 rounded-3xl bg-slate-950 border border-emerald-500/50 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="w-full max-w-lg p-6 rounded-3xl bg-[#02100a] border border-emerald-500/50 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-emerald-800">
               <div className="flex items-center gap-2 text-emerald-400">
                 <CheckCircle2 className="w-5 h-5" />
                 <h4 className="text-sm font-black uppercase tracking-wider font-mono">
@@ -894,45 +894,45 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
               </div>
               <button
                 onClick={() => setSelesaiModalIzin(null)}
-                className="w-7 h-7 rounded-lg bg-slate-900 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-[#041d13] text-emerald-200/75 hover:text-white flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-black/60 border border-slate-800 text-xs font-mono space-y-2">
+            <div className="p-4 rounded-2xl bg-black/60 border border-emerald-800 text-xs font-mono space-y-2">
               <div className="flex justify-between">
-                <span className="text-slate-400">Santri:</span>
+                <span className="text-emerald-200/75">Santri:</span>
                 <span className="font-bold text-white font-sans">{selesaiModalIzin.santriNama} ({selesaiModalIzin.santriKelas})</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Nomor Izin:</span>
-                <span className="text-cyan-300 font-bold">{selesaiModalIzin.nomorIzin}</span>
+                <span className="text-emerald-200/75">Nomor Izin:</span>
+                <span className="text-emerald-300 font-bold">{selesaiModalIzin.nomorIzin}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Jadwal Kembali:</span>
+                <span className="text-emerald-200/75">Jadwal Kembali:</span>
                 <span className="text-amber-300 font-bold">{selesaiModalIzin.tglKembali} {selesaiModalIzin.jamKembali} WIB</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Waktu Aktual (WIB):</span>
+                <span className="text-emerald-200/75">Waktu Aktual (WIB):</span>
                 <span className="text-emerald-400 font-bold">{wibNow.dateStr} {wibNow.timeStr} WIB</span>
               </div>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed font-sans">
+            <p className="text-xs text-emerald-100/90 leading-relaxed font-sans">
               Menekan tombol konfirmasi akan mencatat jam kepulangan sebenarnya ke database pusat, menghitung ketertiban secara otomatis, dan memindahkan izin ke rekapitulasi riwayat (dihapus dari radar aktif).
             </p>
 
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={() => setSelesaiModalIzin(null)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono font-bold text-xs cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-[#072c1e] hover:bg-[#0b422d] text-emerald-100/90 font-mono font-bold text-xs cursor-pointer"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmSelesai}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-mono font-black text-xs cursor-pointer shadow-lg"
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-500 hover:from-emerald-400 hover:to-emerald-400 text-slate-950 font-mono font-black text-xs cursor-pointer shadow-lg"
               >
                 Konfirmasi Selesai
               </button>

@@ -197,14 +197,14 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
     <div className="space-y-6">
       
       {/* 3D Telemetry Command Header */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-800/80 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950/60 shadow-2xl metallic-glass-card hover-rainbow-edge p-6">
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-cyan-400 via-amber-400 to-blue-600 opacity-70" />
+      <div className="relative rounded-3xl overflow-hidden border border-emerald-800/80 bg-gradient-to-r from-[#02100a] via-[#041d13] to-emerald-950/60 shadow-2xl metallic-glass-card hover-rainbow-edge p-6">
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-400 via-amber-400 to-emerald-600 opacity-70" />
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 shadow-xs glow-cyan uppercase tracking-wider">
-                <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-xs glow-gold uppercase tracking-wider">
+                <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
                 KOMUNIKASI INTERNAL TERENKRIPSI
               </span>
               <span className="text-slate-600">·</span>
@@ -222,7 +222,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight flex items-center gap-2 font-sans uppercase">
               Pusat Koordinasi & Disposisi Internal Komando
             </h1>
-            <p className="text-xs text-slate-300 mt-1 font-sans max-w-2xl">
+            <p className="text-xs text-emerald-100/90 mt-1 font-sans max-w-2xl">
               Saluran resmi koordinasi real-time instruksi pimpinan, laporan kejadian darurat, penyampaian kendala patroli pos gerbang, dan tindak lanjut tugas keamanan.
             </p>
           </div>
@@ -240,16 +240,16 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="metallic-glass-card border border-slate-800/80 rounded-2xl p-4 shadow-xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 font-mono text-xs hover-rainbow-edge">
+      <div className="metallic-glass-card border border-emerald-800/80 rounded-2xl p-4 shadow-xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 font-mono text-xs hover-rainbow-edge">
         {/* Search */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-emerald-200/75" />
           <input
             type="text"
             placeholder="Cari tiket, judul pesan, nama pengirim, atau isi disposisi..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-mono transition-all text-xs"
+            className="w-full pl-10 pr-3 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-100 placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 font-mono transition-all text-xs"
           />
         </div>
 
@@ -259,7 +259,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
           <select
             value={filterPrioritas}
             onChange={(e) => setFilterPrioritas(e.target.value)}
-            className="px-3 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-200 focus:outline-none focus:border-amber-400 font-mono text-xs"
+            className="px-3 py-1.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-200 focus:outline-none focus:border-amber-400 font-mono text-xs"
           >
             <option value="all">Semua Prioritas</option>
             <option value="Mendesak">🚨 Mendesak</option>
@@ -271,7 +271,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
           <select
             value={filterKategori}
             onChange={(e) => setFilterKategori(e.target.value)}
-            className="px-3 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-200 focus:outline-none focus:border-amber-400 font-mono text-xs"
+            className="px-3 py-1.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-200 focus:outline-none focus:border-amber-400 font-mono text-xs"
           >
             <option value="all">Semua Kategori</option>
             <option value="Instruksi Admin">Instruksi Admin</option>
@@ -285,7 +285,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-1.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-slate-200 focus:outline-none focus:border-amber-400 font-mono text-xs"
+            className="px-3 py-1.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-slate-200 focus:outline-none focus:border-amber-400 font-mono text-xs"
           >
             <option value="all">Semua Status</option>
             <option value="Terkirim">Terkirim</option>
@@ -301,7 +301,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                 setFilterStatus('all');
                 setSearchQuery('');
               }}
-              className="px-3 py-1.5 text-xs text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded-xl cursor-pointer"
+              className="px-3 py-1.5 text-xs text-emerald-200/75 hover:text-white bg-[#072c1e]/80 hover:bg-[#0b422d] rounded-xl cursor-pointer"
             >
               Reset
             </button>
@@ -314,7 +314,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
         
         {/* LEFT COLUMN: LIST OF DISPATCH TICKETS (5 cols) */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="flex items-center justify-between px-1 text-xs font-mono text-slate-400">
+          <div className="flex items-center justify-between px-1 text-xs font-mono text-emerald-200/75">
             <span>Daftar Disposisi & Laporan ({filteredList.length})</span>
             {unreadCount > 0 && (
               <span className="text-amber-300 font-bold">{unreadCount} Belum Dibaca</span>
@@ -323,7 +323,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
 
           <div className="space-y-3 max-h-[750px] overflow-y-auto p-2.5 rounded-2xl track-scroll-box">
             {filteredList.length === 0 ? (
-              <div className="metallic-glass-card rounded-2xl p-8 border border-slate-800/80 text-center text-slate-400 text-xs font-mono">
+              <div className="metallic-glass-card rounded-2xl p-8 border border-emerald-800/80 text-center text-emerald-200/75 text-xs font-mono">
                 <MessageSquare className="w-8 h-8 text-slate-600 mx-auto mb-2" />
                 Tidak ada pesan koordinasi yang sesuai filter pencarian.
               </div>
@@ -339,15 +339,15 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                     onClick={() => setSelectedTicketId(item.id)}
                     className={`tactile-interactive p-4 rounded-2xl border transition-all cursor-pointer relative hover-rainbow-edge shadow-md ${
                       isSelected
-                        ? 'bg-gradient-to-r from-blue-950/80 via-slate-900 to-slate-900 border-cyan-400/80 rainbow-active-border glow-cyan'
+                        ? 'bg-gradient-to-r from-emerald-950/80 via-[#041d13] to-[#041d13] border-emerald-400/80 rainbow-active-border glow-gold'
                         : isMendesak && item.status !== 'Ditindaklanjuti'
-                        ? 'bg-red-950/30 border-red-500/50 hover:bg-slate-900/90'
-                        : 'metallic-glass-card border-slate-800/80 hover:bg-slate-900/80'
+                        ? 'bg-red-950/30 border-red-500/50 hover:bg-[#041d13]/90'
+                        : 'metallic-glass-card border-emerald-800/80 hover:bg-[#041d13]/80'
                     }`}
                   >
                     {/* Unread dot */}
                     {isUnread && (
-                      <span className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+                      <span className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
                     )}
 
                     <div className="flex items-center justify-between gap-2 mb-1.5 font-mono text-[10px]">
@@ -358,11 +358,11 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                             ? 'bg-red-600/30 text-red-300 border border-red-500/50 glow-red animate-pulse'
                             : item.prioritas === 'Penting'
                             ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 glow-gold'
-                            : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                            : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                         }`}>
                           {item.prioritas === 'Mendesak' ? '🚨 MENDESAK' : item.prioritas === 'Penting' ? '⚠️ PENTING' : 'NORMAL'}
                         </span>
-                        <span className="text-slate-400">{item.nomorTiket}</span>
+                        <span className="text-emerald-200/75">{item.nomorTiket}</span>
                       </div>
 
                       {/* Status */}
@@ -370,8 +370,8 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                         item.status === 'Ditindaklanjuti'
                           ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                           : item.status === 'Dibaca'
-                          ? 'bg-blue-600/20 text-cyan-300 border border-blue-500/30'
-                          : 'bg-slate-800 text-slate-300 border border-slate-700'
+                          ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-[#072c1e] text-emerald-100/90 border border-emerald-800'
                       }`}>
                         {item.status}
                       </span>
@@ -380,17 +380,17 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                     <h3 className="font-bold text-white text-xs font-sans tracking-wide line-clamp-1 mb-1">
                       {item.judul}
                     </h3>
-                    <p className="text-[11px] text-slate-400 line-clamp-2 font-sans mb-3 leading-relaxed">
+                    <p className="text-[11px] text-emerald-200/75 line-clamp-2 font-sans mb-3 leading-relaxed">
                       {item.isi}
                     </p>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-[10px] font-mono text-slate-400">
+                    <div className="flex items-center justify-between pt-2 border-t border-emerald-800/80 text-[10px] font-mono text-emerald-200/75">
                       <div className="flex items-center gap-2">
                         <span className="text-slate-200 font-semibold truncate max-w-[140px] font-sans">
                           {item.pengirimNama}
                         </span>
                         <span>·</span>
-                        <span className="text-cyan-400 truncate max-w-[110px]">
+                        <span className="text-emerald-400 truncate max-w-[110px]">
                           {item.kategori}
                         </span>
                       </div>
@@ -413,13 +413,13 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
         {/* RIGHT COLUMN: ACTIVE THREAD & ACTIONS (7 cols) */}
         <div className="lg:col-span-7">
           {selectedTicket ? (
-            <div className="metallic-glass-card border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col min-h-[600px] hover-rainbow-edge">
+            <div className="metallic-glass-card border border-emerald-800/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col min-h-[600px] hover-rainbow-edge">
               
               {/* Thread Header Banner */}
-              <div className={`p-6 border-b border-slate-800/80 relative overflow-hidden ${
+              <div className={`p-6 border-b border-emerald-800/80 relative overflow-hidden ${
                 selectedTicket.prioritas === 'Mendesak'
-                  ? 'bg-gradient-to-r from-red-950/60 via-slate-900 to-slate-950'
-                  : 'bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950'
+                  ? 'bg-gradient-to-r from-red-950/60 via-[#041d13] to-[#02100a]'
+                  : 'bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]'
               }`}>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-2 font-mono text-xs">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -428,27 +428,27 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                         ? 'bg-red-600 text-white shadow-md glow-red animate-pulse'
                         : selectedTicket.prioritas === 'Penting'
                         ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 glow-gold'
-                        : 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                        : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
                     }`}>
                       PRIORITAS: {selectedTicket.prioritas.toUpperCase()}
                     </span>
-                    <span className="text-slate-400 font-bold">{selectedTicket.nomorTiket}</span>
+                    <span className="text-emerald-200/75 font-bold">{selectedTicket.nomorTiket}</span>
                     <span className="text-slate-600">·</span>
-                    <span className="text-cyan-300 font-semibold">{selectedTicket.kategori}</span>
+                    <span className="text-emerald-300 font-semibold">{selectedTicket.kategori}</span>
                   </div>
 
                   {/* Status Indicator */}
                   <span className={`px-3 py-1 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 ${
                     selectedTicket.status === 'Ditindaklanjuti'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 glow-cyan'
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 glow-gold'
                       : selectedTicket.status === 'Dibaca'
-                      ? 'bg-blue-600/20 text-cyan-300 border border-blue-500/40'
-                      : 'bg-slate-800 text-slate-300 border border-slate-700'
+                      ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-[#072c1e] text-emerald-100/90 border border-emerald-800'
                   }`}>
                     {selectedTicket.status === 'Ditindaklanjuti' ? (
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     ) : (
-                      <CheckCheck className="w-3.5 h-3.5 text-cyan-400" />
+                      <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
                     )}
                     <span>STATUS: {selectedTicket.status.toUpperCase()}</span>
                   </span>
@@ -459,7 +459,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                 </h2>
 
                 {/* Sender & Timestamp Bar */}
-                <div className="flex items-center gap-3 pt-2 border-t border-slate-800/80 text-xs">
+                <div className="flex items-center gap-3 pt-2 border-t border-emerald-800/80 text-xs">
                   {selectedTicket.pengirimAvatar ? (
                     <img
                       src={selectedTicket.pengirimAvatar}
@@ -467,18 +467,18 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                       className="w-10 h-10 rounded-xl object-cover border border-amber-400/40 shadow-xs"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-amber-400/40 shadow-xs flex items-center justify-center text-amber-400">
+                    <div className="w-10 h-10 rounded-xl bg-[#072c1e] border border-amber-400/40 shadow-xs flex items-center justify-center text-amber-400">
                       <User className="w-5 h-5" />
                     </div>
                   )}
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-white font-sans text-sm">{selectedTicket.pengirimNama}</span>
-                      <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-800 text-amber-300 border border-slate-700">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#072c1e] text-amber-300 border border-emerald-800">
                         {selectedTicket.pengirimRole.toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                    <div className="text-[11px] text-emerald-200/75 font-mono mt-0.5">
                       {selectedTicket.pengirimJabatan || 'Pejabat Keamanan'} · {selectedTicket.waktu}
                     </div>
                   </div>
@@ -489,18 +489,18 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
               <div className="p-6 flex-1 space-y-6">
                 
                 {/* Main Instruction/Report Text */}
-                <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs sm:text-sm text-slate-200 font-sans leading-relaxed whitespace-pre-line shadow-inner">
+                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 text-xs sm:text-sm text-slate-200 font-sans leading-relaxed whitespace-pre-line shadow-inner">
                   {selectedTicket.isi}
                 </div>
 
                 {/* Attachment if present */}
                 {selectedTicket.lampiranNama && (
-                  <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs font-mono">
+                  <div className="p-3.5 rounded-2xl bg-[#041d13]/60 border border-emerald-800 flex items-center justify-between text-xs font-mono">
                     <div className="flex items-center gap-2.5">
-                      <Paperclip className="w-4 h-4 text-cyan-400 shrink-0" />
+                      <Paperclip className="w-4 h-4 text-emerald-400 shrink-0" />
                       <div>
                         <p className="font-bold text-white font-sans">{selectedTicket.lampiranNama}</p>
-                        <p className="text-[10px] text-slate-400">Lampiran Berkas Koordinasi</p>
+                        <p className="text-[10px] text-emerald-200/75">Lampiran Berkas Koordinasi</p>
                       </div>
                     </div>
                     {selectedTicket.lampiranUrl && selectedTicket.lampiranUrl !== '#' ? (
@@ -508,13 +508,13 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                         href={selectedTicket.lampiranUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#072c1e] hover:bg-[#0b422d] text-emerald-300 hover:text-white transition-colors"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>Buka Berkas</span>
                       </a>
                     ) : (
-                      <span className="px-3 py-1 text-[11px] bg-slate-800 text-slate-300 rounded-lg">
+                      <span className="px-3 py-1 text-[11px] bg-[#072c1e] text-emerald-100/90 rounded-lg">
                         Tersimpan di Dokumen Pusat
                       </span>
                     )}
@@ -522,7 +522,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                 )}
 
                 {/* Tindak Lanjut Card or Action */}
-                <div className="p-4 rounded-2xl border border-slate-800 bg-slate-950/60 space-y-2">
+                <div className="p-4 rounded-2xl border border-emerald-800 bg-[#02100a]/60 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -544,33 +544,33 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                   </div>
 
                   {selectedTicket.status === 'Ditindaklanjuti' ? (
-                    <div className="text-xs text-slate-300 font-sans pt-1">
+                    <div className="text-xs text-emerald-100/90 font-sans pt-1">
                       <p className="text-emerald-400 font-bold mb-1">
                         ✓ Telah ditindaklanjuti oleh: {selectedTicket.tindakLanjutOleh || 'Admin / Dewan Keamanan'} ({selectedTicket.tindakLanjutWaktu || 'WIB'})
                       </p>
-                      <p className="text-slate-300 italic bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                      <p className="text-emerald-100/90 italic bg-[#041d13]/80 p-2.5 rounded-xl border border-emerald-800">
                         "{selectedTicket.tindakLanjutCatatan || 'Instruksi telah dikoordinasikan dan diselesaikan di lapangan.'}"
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-400 font-mono pt-1">
+                    <p className="text-xs text-emerald-200/75 font-mono pt-1">
                       Menunggu tindak lanjut resmi atau konfirmasi penyelesaian dari pejabat berwenang.
                     </p>
                   )}
                 </div>
 
                 {/* Replies / Tanggapan Thread */}
-                <div className="space-y-3 pt-3 border-t border-slate-800/80">
-                  <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-                    <span className="font-bold text-slate-300 flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
+                <div className="space-y-3 pt-3 border-t border-emerald-800/80">
+                  <div className="flex items-center justify-between text-xs font-mono text-emerald-200/75">
+                    <span className="font-bold text-emerald-100/90 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
                       Riwayat Tanggapan & Balasan ({selectedTicket.balasan.length})
                     </span>
                     <span>Kronologi waktu komunikasi</span>
                   </div>
 
                   {selectedTicket.balasan.length === 0 ? (
-                    <p className="text-xs text-slate-500 font-mono italic py-2">
+                    <p className="text-xs text-emerald-300/60 font-mono italic py-2">
                       Belum ada tanggapan balasan pada tiket koordinasi ini.
                     </p>
                   ) : (
@@ -578,16 +578,16 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                       {selectedTicket.balasan.map((bal) => (
                         <div
                           key={bal.id}
-                          className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1.5"
+                          className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800 space-y-1.5"
                         >
                           <div className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-amber-300 font-sans">{bal.pengirimNama}</span>
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-[#072c1e] text-emerald-100/90 border border-emerald-800">
                                 {bal.pengirimRole}
                               </span>
                             </div>
-                            <span className="text-[10px] text-slate-400 font-mono">{bal.waktu}</span>
+                            <span className="text-[10px] text-emerald-200/75 font-mono">{bal.waktu}</span>
                           </div>
                           <p className="text-xs text-slate-200 font-sans leading-relaxed">
                             {bal.isi}
@@ -605,7 +605,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         placeholder={`Ketik balasan atau tanggapan sebagai ${currentUser.nama}...`}
-                        className="w-full px-4 py-2.5 text-xs bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-sans shadow-inner transition-all"
+                        className="w-full px-4 py-2.5 text-xs bg-[#02100a]/90 border border-emerald-800/80 rounded-2xl text-white placeholder-emerald-200/40 focus:outline-none focus:border-emerald-400 font-sans shadow-inner transition-all"
                       />
                     </div>
                     
@@ -615,11 +615,11 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                         placeholder="Lampiran nama berkas/dokumen (opsional)..."
                         value={replyAttachmentNama}
                         onChange={(e) => setReplyAttachmentNama(e.target.value)}
-                        className="px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 flex-1"
+                        className="px-3 py-1.5 bg-[#041d13] border border-emerald-800 rounded-xl text-xs font-mono text-emerald-100/90 placeholder-emerald-200/40 focus:outline-none focus:border-emerald-500/50 flex-1"
                       />
                       <button
                         type="submit"
-                        className="tactile-interactive inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-cyan-400 to-blue-400 hover:from-cyan-300 hover:to-blue-300 rounded-xl cursor-pointer shadow-md"
+                        className="tactile-interactive inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-amber-400 hover:from-emerald-300 hover:to-amber-300 rounded-xl cursor-pointer shadow-md"
                       >
                         <Send className="w-3.5 h-3.5 text-slate-950" />
                         <span>Kirim Balasan</span>
@@ -632,12 +632,12 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
               </div>
             </div>
           ) : (
-            <div className="metallic-glass-card border border-slate-800/80 rounded-3xl p-12 text-center text-slate-400 text-xs font-mono flex flex-col items-center justify-center min-h-[500px]">
+            <div className="metallic-glass-card border border-emerald-800/80 rounded-3xl p-12 text-center text-emerald-200/75 text-xs font-mono flex flex-col items-center justify-center min-h-[500px]">
               <Radio className="w-12 h-12 text-slate-600 mb-3 animate-pulse" />
-              <p className="font-bold text-slate-300 text-sm mb-1 font-sans">
+              <p className="font-bold text-emerald-100/90 text-sm mb-1 font-sans">
                 Pilih Pesan Koordinasi untuk Menampilkan Detail
               </p>
-              <p className="text-slate-500 max-w-sm">
+              <p className="text-emerald-300/60 max-w-sm">
                 Klik salah satu tiket pada daftar di sebelah kiri untuk membaca instruksi, melampirkan berkas, atau membalas pesan.
               </p>
             </div>
@@ -649,15 +649,15 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
       {/* Compose Modal (Admin Instruksi or Dewan Laporan) */}
       {isComposeOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-          <div className="w-full max-w-xl metallic-glass-card border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden my-8 rainbow-active-border card-3d-floating">
-            <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950">
+          <div className="w-full max-w-xl metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden my-8 rainbow-active-border card-3d-floating">
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <Radio className="w-4 h-4 text-amber-400" />
                 {isAdmin ? 'Penerbitan Instruksi Komando Admin' : 'Pengiriman Laporan / Informasi Dewan Keamanan'}
               </h3>
               <button 
                 onClick={() => setIsComposeOpen(false)} 
-                className="w-7 h-7 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-[#072c1e]/80 text-emerald-200/75 hover:text-white flex items-center justify-center transition-all cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -665,7 +665,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
 
             <form onSubmit={handleSendCompose} className="p-6 space-y-4 text-xs font-mono">
               <div>
-                <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                   Judul Pesan / Perintah / Laporan
                 </label>
                 <input
@@ -674,19 +674,19 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                   placeholder={isAdmin ? 'Contoh: Instruksi Pengamanan Malam Imtihan & Jam Malam' : 'Contoh: Laporan Kerusakan Lampu Sektor Barat'}
                   value={composeData.judul}
                   onChange={(e) => setComposeData({ ...composeData, judul: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400"
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                     Kategori Komunikasi
                   </label>
                   <select
                     value={composeData.kategori}
                     onChange={(e) => setComposeData({ ...composeData, kategori: e.target.value as KategoriKoordinasi })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
                   >
                     {isAdmin ? (
                       <>
@@ -705,13 +705,13 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                     Tingkat Prioritas
                   </label>
                   <select
                     value={composeData.prioritas}
                     onChange={(e) => setComposeData({ ...composeData, prioritas: e.target.value as PrioritasKoordinasi })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400 font-bold"
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400 font-bold"
                   >
                     <option value="Normal">ℹ️ Normal (Operasional Biasa)</option>
                     <option value="Penting">⚠️ Penting (Butuh Perhatian Segera)</option>
@@ -721,7 +721,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                   Uraian Lengkap Pesan / Instruksi / Laporan
                 </label>
                 <textarea
@@ -730,13 +730,13 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                   placeholder="Ketik instruksi, perincian kejadian, atau kendala lapangan secara mendetail..."
                   value={composeData.isi}
                   onChange={(e) => setComposeData({ ...composeData, isi: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400 leading-relaxed"
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400 leading-relaxed"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                     Nama Lampiran Dokumen / Foto (Opsional)
                   </label>
                   <input
@@ -744,17 +744,17 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                     placeholder="Misal: Foto_CCTV_Rusak.jpg atau Berita_Acara.pdf"
                     value={composeData.lampiranNama}
                     onChange={(e) => setComposeData({ ...composeData, lampiranNama: e.target.value })}
-                    className="w-full px-3.5 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                    className="w-full px-3.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                     Jenis Lampiran
                   </label>
                   <select
                     value={composeData.lampiranTipe}
                     onChange={(e) => setComposeData({ ...composeData, lampiranTipe: e.target.value as any })}
-                    className="w-full px-3.5 py-2 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                    className="w-full px-3.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
                   >
                     <option value="dokumen">Dokumen PDF / Berkas</option>
                     <option value="foto">Foto Bukti / Kamera Gerbang</option>
@@ -763,11 +763,11 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-emerald-800">
                 <button
                   type="button"
                   onClick={() => setIsComposeOpen(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer font-bold"
+                  className="px-4 py-2 text-emerald-200/75 hover:text-white cursor-pointer font-bold"
                 >
                   Batal
                 </button>
@@ -786,27 +786,27 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
       {/* Tindak Lanjut Modal */}
       {isTindakLanjutModalOpen && selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-md metallic-glass-card border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950">
+          <div className="w-full max-w-md metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 Catatan Tindak Lanjut Tiket
               </h3>
               <button 
                 onClick={() => setIsTindakLanjutModalOpen(false)} 
-                className="w-7 h-7 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-[#072c1e]/80 text-emerald-200/75 hover:text-white flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleConfirmTindakLanjut} className="p-6 space-y-4 text-xs font-mono">
-              <p className="text-slate-300">
+              <p className="text-emerald-100/90">
                 Tiket: <span className="font-bold text-amber-300">{selectedTicket.nomorTiket}</span> - {selectedTicket.judul}
               </p>
 
               <div>
-                <label className="block text-slate-300 font-bold uppercase text-[10px] tracking-wider mb-1">
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
                   Uraian Tindakan / Solusi yang Dijalankan
                 </label>
                 <textarea
@@ -815,15 +815,15 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
                   placeholder="Misal: Sarpras telah mengganti lampu sorot pukul 15.00 WIB dan 4 senter telah dibagikan..."
                   value={tindakLanjutNote}
                   onChange={(e) => setTindakLanjutNote(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white font-sans focus:outline-none focus:border-emerald-400"
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-sans focus:outline-none focus:border-emerald-400"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-3 border-t border-emerald-800">
                 <button
                   type="button"
                   onClick={() => setIsTindakLanjutModalOpen(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white cursor-pointer font-bold"
+                  className="px-4 py-2 text-emerald-200/75 hover:text-white cursor-pointer font-bold"
                 >
                   Batal
                 </button>

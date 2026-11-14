@@ -6,12 +6,20 @@
     --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     --font-serif: 'Amiri', serif;
     --font-display: 'Cinzel', serif;
+    --emerald-abyss: #02100a;
+    --emerald-deep: #041b12;
+    --emerald-surface: #06281c;
+    --emerald-elevated: #0a3828;
+    --emerald-accent: #10b981;
+    --luxury-gold: #d4af37;
+    --luxury-gold-bright: #f3d266;
+    --luxury-cream: #f4f9f5;
   }
 
   html, body {
     font-family: var(--font-sans);
-    background-color: #030712;
-    color: #f8fafc;
+    background-color: #02100a;
+    color: #f4f9f5;
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
@@ -19,167 +27,134 @@
   }
 }
 
-/* 3D Security Command Grid Background */
-.bg-security-grid {
-  background-image: 
-    linear-gradient(to right, rgba(59, 130, 246, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(59, 130, 246, 0.04) 1px, transparent 1px);
-  background-size: 32px 32px;
+/* Luxury 3D Emerald-Gold Architectural Grid Background */
+.bg-security-grid,
+.bg-luxury-grid {
+  background-color: #02100a;
+  background-image:
+    radial-gradient(circle at 16% 12%, rgba(16, 185, 129, 0.14) 0%, transparent 42%),
+    radial-gradient(circle at 84% 85%, rgba(212, 175, 55, 0.1) 0%, transparent 45%),
+    linear-gradient(to right, rgba(212, 175, 55, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 185, 129, 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
 }
 
-/* 3D Metallic Glass Card System */
-.metallic-glass-card {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.75) 0%, rgba(3, 7, 18, 0.90) 100%);
+/* 3D Luxury Emerald-Gold Card System */
+.metallic-glass-card,
+.luxury-3d-card {
+  background: linear-gradient(145deg, rgba(6, 40, 28, 0.93) 0%, rgba(2, 18, 12, 0.98) 100%);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.5),
-    0 10px 25px -3px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  border: 1px solid rgba(212, 175, 55, 0.26);
+  box-shadow:
+    0 10px 28px -6px rgba(0, 0, 0, 0.82),
+    inset 0 1px 0 rgba(243, 210, 102, 0.14),
+    inset 0 -1px 0 rgba(16, 185, 129, 0.16);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
 }
 
-.metallic-glass-card:hover {
-  border-color: rgba(96, 165, 250, 0.35);
-  box-shadow: 
-    0 12px 28px -4px rgba(0, 0, 0, 0.75),
-    0 8px 16px -2px rgba(59, 130, 246, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+.metallic-glass-card:hover,
+.luxury-3d-card:hover {
+  border-color: rgba(212, 175, 55, 0.48);
+  box-shadow:
+    0 14px 34px -6px rgba(0, 0, 0, 0.88),
+    0 4px 18px -2px rgba(212, 175, 55, 0.16),
+    inset 0 1px 0 rgba(243, 210, 102, 0.22);
 }
 
 /* 3D Tactile Interactive Motion */
 .tactile-interactive {
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
   will-change: transform;
 }
 
 .tactile-interactive:hover {
-  transform: translateY(-3px) scale(1.004);
+  transform: translateY(-1.5px);
 }
 
 .tactile-interactive:active {
-  transform: translateY(1px) scale(0.996);
+  transform: translateY(1px) scale(0.992);
 }
 
-/* 3D Floating Tilt Effect */
+/* 3D Floating Depth */
 .card-3d-floating {
   transform-style: preserve-3d;
   perspective: 1000px;
 }
 
-/* Rainbow Edge Lighting Properties */
-@property --rainbow-angle {
-  syntax: '<angle>';
-  initial-value: 0deg;
-  inherits: false;
+/* Luxury Gold Gradient Action Button */
+.luxury-gold-btn {
+  background: linear-gradient(135deg, #d4af37 0%, #f3d266 50%, #c59b27 100%);
+  color: #02140c;
+  border: 1px solid rgba(255, 250, 224, 0.45);
+  box-shadow:
+    0 6px 18px -4px rgba(212, 175, 55, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes rainbow-conic-spin {
-  0% {
-    --rainbow-angle: 0deg;
-  }
-  100% {
-    --rainbow-angle: 360deg;
-  }
+.luxury-gold-btn:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    0 10px 24px -4px rgba(212, 175, 55, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
-/* Permanent / Active Rainbow Border Effect */
+/* Luxury Emerald Action Button */
+.luxury-emerald-btn {
+  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
+  color: #f4f9f5;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow:
+    0 6px 18px -4px rgba(16, 185, 129, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.luxury-emerald-btn:hover {
+  filter: brightness(1.08);
+  border-color: rgba(212, 175, 55, 0.7);
+}
+
+/* Luxury Active & Hover Edge Accents (Emerald-Gold Rim) */
 .rainbow-active-border {
   position: relative !important;
-  isolation: isolate;
-  border-color: transparent !important;
+  border-color: rgba(212, 175, 55, 0.75) !important;
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.35),
+    0 8px 24px -6px rgba(16, 185, 129, 0.28),
+    inset 0 1px 0 rgba(243, 210, 102, 0.2) !important;
 }
 
-.rainbow-active-border::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from var(--rainbow-angle, 0deg),
-    #06b6d4, /* Cyan */
-    #3b82f6, /* Electric Blue */
-    #8b5cf6, /* Violet */
-    #ec4899, /* Magenta */
-    #ef4444, /* Interpol Red */
-    #f59e0b, /* Gold */
-    #10b981, /* Emerald */
-    #06b6d4
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  padding: 2px;
-  animation: rainbow-conic-spin 3s linear infinite;
-  pointer-events: none;
-  z-index: 10;
-  box-shadow: 
-    0 0 16px rgba(6, 182, 212, 0.45),
-    0 0 28px rgba(139, 92, 246, 0.25);
-}
-
-/* Hover-Activated Rainbow Border (Edge Glow on Hover/Touch) */
 .hover-rainbow-edge {
   position: relative;
-  transition: all 0.25s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.hover-rainbow-edge::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from var(--rainbow-angle, 0deg),
-    #06b6d4,
-    #3b82f6,
-    #8b5cf6,
-    #ec4899,
-    #ef4444,
-    #f59e0b,
-    #06b6d4
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  padding: 2px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-  z-index: 10;
-  animation: rainbow-conic-spin 3.2s linear infinite;
+.hover-rainbow-edge:hover,
+.hover-rainbow-edge:focus-within {
+  border-color: rgba(212, 175, 55, 0.55);
+  box-shadow: 0 8px 22px -6px rgba(16, 185, 129, 0.24);
 }
 
-.hover-rainbow-edge:hover::before,
-.hover-rainbow-edge:focus-within::before {
-  opacity: 1;
-  box-shadow: 0 0 18px rgba(6, 182, 212, 0.4);
-}
-
-/* Table Row Rainbow Edge Glow & Highlight */
+/* Table Row Highlight */
 .table-row-rainbow {
   position: relative;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.18s ease;
 }
 
 .table-row-rainbow:hover {
-  background-color: rgba(30, 41, 59, 0.7) !important;
-  box-shadow: 
-    inset 3px 0 0 #06b6d4,
-    inset -3px 0 0 #ec4899,
-    0 2px 8px rgba(0, 0, 0, 0.4);
+  background-color: rgba(16, 185, 129, 0.12) !important;
 }
 
-/* Metallic Header Gradient for Tables */
+/* Luxury Metallic Emerald-Gold Header Gradient for Tables */
 .table-header-metallic {
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
+  background: linear-gradient(180deg, #073322 0%, #031a11 100%);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.32);
+  color: #f3d266;
 }
 
-/* Radar Sweep Animation for Tactical Security HUD */
+/* Radar Sweep Animation for Security Module */
 @keyframes radar-sweep {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -190,115 +165,73 @@
   transform-origin: center;
 }
 
-/* Soft Neon Glow Badges */
+/* Unified Luxury Emerald-Gold Glows */
 .glow-gold {
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.35);
 }
 
-.glow-blue {
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+.glow-emerald,
+.glow-blue,
+.glow-cyan {
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.32);
 }
 
 .glow-red {
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
-}
-
-.glow-cyan {
-  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 14px rgba(220, 38, 38, 0.38);
 }
 
 /* ==========================================================================
-   AL-MALIKI PREMIUM DARK GLASS SCROLLBAR & TACTILE TRACK SYSTEM
-   Eliminates all browser default white tracks and creates 3D depth panels
+   AL-MALIKI LUXURY EMERALD & GOLD SCROLLBAR SYSTEM
    ========================================================================== */
-
-/* Universal WebKit & Blink Scrollbar Architecture */
 *::-webkit-scrollbar {
   width: 7px;
   height: 7px;
 }
 
 *::-webkit-scrollbar-track {
-  background: rgba(11, 17, 32, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(2, 16, 10, 0.9);
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7);
 }
 
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #1e293b 0%, #334155 100%);
+  background: linear-gradient(180deg, #0d4a33 0%, #06281c 100%);
   border-radius: 8px;
-  border: 1px solid rgba(212, 175, 55, 0.35); /* Delicate gold border */
-  box-shadow: 
-    0 1px 3px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transition: all 0.2s ease;
+  border: 1px solid rgba(212, 175, 55, 0.38);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #0284c7 0%, #06b6d4 100%);
-  border-color: rgba(6, 182, 212, 0.7);
-  box-shadow: 
-    0 0 10px rgba(6, 182, 212, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-*::-webkit-scrollbar-thumb:active {
-  background: linear-gradient(180deg, #0369a1 0%, #0891b2 100%);
-  border-color: rgba(14, 165, 233, 0.9);
+  background: linear-gradient(180deg, #d4af37 0%, #059669 100%);
+  border-color: rgba(243, 210, 102, 0.8);
 }
 
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-/* Firefox Standard Scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #334155 rgba(11, 17, 32, 0.75);
+  scrollbar-color: #0d4a33 rgba(2, 16, 10, 0.9);
 }
 
-/* 3D Tactile Scroll Box & Track Panel */
 .track-scroll-box,
 .tactile-scroll-box {
-  background: linear-gradient(145deg, rgba(15, 23, 42, 0.85) 0%, rgba(2, 6, 23, 0.95) 100%);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top-color: rgba(255, 255, 255, 0.15);
-  border-bottom-color: rgba(212, 175, 55, 0.2);
+  background: linear-gradient(145deg, rgba(6, 38, 26, 0.94) 0%, rgba(2, 16, 10, 0.98) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.26);
   border-radius: 1rem;
-  box-shadow: 
+  box-shadow:
     0 10px 30px -5px rgba(0, 0, 0, 0.85),
-    inset 0 2px 8px rgba(0, 0, 0, 0.8),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
-}
-
-.track-scroll-box:hover,
-.tactile-scroll-box:hover {
-  border-color: rgba(6, 182, 212, 0.3);
-  box-shadow: 
-    0 12px 36px -4px rgba(0, 0, 0, 0.9),
-    0 0 14px rgba(6, 182, 212, 0.12),
-    inset 0 2px 8px rgba(0, 0, 0, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    inset 0 1px 0 rgba(212, 175, 55, 0.12);
 }
 
 /* ==========================================================================
-   OFFICIAL SURAT IZIN & SURAT SANKSI HIGH-FIDELITY PRINT ARCHITECTURE
-   Fixes blank prints, overflow clipping, and page break issues
+   OFFICIAL A4 PRINT ARCHITECTURE (KEAMANAN + SEKRETARIS + BENDAHARA)
    ========================================================================== */
-
 @page {
   size: A4 portrait;
-  margin: 8mm 12mm 10mm 12mm;
+  margin: 10mm 12mm 12mm 12mm;
 }
 
 @media print {
-  /* 1. Global Reset for Physical & PDF Print Rendering */
   html,
   body {
     width: 100% !important;
@@ -307,8 +240,6 @@
     min-height: auto !important;
     max-height: none !important;
     overflow: visible !important;
-    overflow-x: visible !important;
-    overflow-y: visible !important;
     background: #ffffff !important;
     background-color: #ffffff !important;
     color: #0f172a !important;
@@ -318,7 +249,6 @@
     print-color-adjust: exact !important;
   }
 
-  /* 2. When Official Letter Modal is Open, Completely Isolate the Letter */
   body.modal-surat-open #root,
   body.printing-letter #root {
     display: none !important;
@@ -327,7 +257,6 @@
     overflow: hidden !important;
   }
 
-  /* 3. Non-Print UI Elements Elimination */
   .no-print,
   header,
   aside,
@@ -336,37 +265,28 @@
   button,
   input,
   textarea,
-  select,
-  .rainbow-active-border::before,
-  .rainbow-active-border::after,
-  .card-3d-floating::before,
-  .card-3d-floating::after {
+  select {
     display: none !important;
     visibility: hidden !important;
   }
 
-  /* 4. Transform Modal Backdrop into Clean Unconstrained Page */
   .surat-print-overlay {
     position: static !important;
     inset: auto !important;
     width: 100% !important;
     height: auto !important;
-    min-height: auto !important;
     max-height: none !important;
     overflow: visible !important;
     background: transparent !important;
-    background-color: transparent !important;
     backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
     padding: 0 !important;
     margin: 0 !important;
     display: block !important;
-    z-index: auto !important;
-    border: none !important;
   }
 
-  /* 5. Transform Modal Card Container into Borderless Print Canvas */
-  .surat-print-modal {
+  .surat-print-modal,
+  .surat-print-sheet,
+  .a4-print-canvas {
     position: static !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -374,7 +294,6 @@
     max-height: none !important;
     overflow: visible !important;
     background: #ffffff !important;
-    background-color: #ffffff !important;
     color: #0f172a !important;
     box-shadow: none !important;
     border: none !important;
@@ -384,25 +303,6 @@
     display: block !important;
   }
 
-  /* 6. Printable Sheet Styling */
-  .surat-print-sheet {
-    position: static !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: block !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  /* 7. Ensure Colors, Borders, Watermarks, and Badges Print Accurately */
   *,
   *::before,
   *::after {
@@ -412,22 +312,17 @@
     print-color-adjust: exact !important;
   }
 
-  /* 8. Page Break Avoidance on Critical Sections */
   .avoid-break {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  /* 9. Preserve Full Quality of Logos, Stamps, and QR Codes */
   img {
     max-width: 100% !important;
     display: inline-block !important;
     visibility: visible !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
   }
 
-  /* 10. Official High-Fidelity 5x5 cm QR Code on A4 Print */
   .official-qr-code {
     width: 48mm !important;
     height: 48mm !important;
@@ -437,36 +332,29 @@
     max-height: 50mm !important;
     object-fit: contain !important;
     background: #ffffff !important;
-    image-rendering: -webkit-optimize-contrast !important;
-    image-rendering: crisp-edges !important;
   }
 
-  /* 11. Fallback for General Document Printing (e.g. Laporan or KTS) */
-  body:not(.modal-surat-open):not(.printing-letter) #root {
+  body:not(.modal-surat-open):not(.printing-letter) #root,
+  body:not(.modal-surat-open):not(.printing-letter) main {
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
     background: #ffffff !important;
     color: #0f172a !important;
-  }
-
-  body:not(.modal-surat-open):not(.printing-letter) main {
-    overflow: visible !important;
-    height: auto !important;
-    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 }
 
 /* ==========================================================================
    AL-MALIKI REAL-TIME QR SCANNER VIEWPORT STYLING
-   Optimizes camera video stream, eliminates horizontal overflow, removes library watermark
    ========================================================================== */
 #almaliki-qr-scanner-viewport {
   width: 100% !important;
   height: 100% !important;
   position: relative !important;
   overflow: hidden !important;
-  background: #020617;
+  background: #02100a;
   border-radius: 1rem;
   display: flex !important;
   align-items: center !important;
@@ -486,4 +374,3 @@
 #almaliki-qr-scanner-viewport span:has(a) {
   display: none !important;
 }
-
