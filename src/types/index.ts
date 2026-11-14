@@ -340,6 +340,7 @@ export interface SystemConfig {
   syahriyahList?: SyahriyahSantri[];
   uangSakuList?: UangSakuMutasi[];
   anggaranList?: AnggaranPondok[];
+  bendaharaConfig?: BendaharaConfig;
   mutasiBarangList?: MutasiBarang[];
   jadwalPerbaikanList?: JadwalPerbaikanAset[];
   kamarSantriList?: DataKamarAsrama[];
@@ -717,12 +718,32 @@ export interface NotulenRapat {
   notulis: string;
 }
 
+export interface BendaharaConfig {
+  nominalDefaultSyahriyah: number;
+  tanggalJatuhTempoSyahriyah: number;
+  periodeSyahriyahAktif: string;
+  saldoAwalJuta: number;
+  ambangDaruratJuta: number;
+  ambangStabilJuta: number;
+  ambangPerkembanganPesatJuta: number;
+  namaUnitKeuangan: string;
+  namaBendaharaUmum: string;
+  jabatanBendahara: string;
+  noRekeningPondok: string;
+  namaBankPondok: string;
+  catatanKwitansi: string;
+  kategoriPemasukan: string[];
+  kategoriPengeluaran: string[];
+}
+
 export interface SyahriyahSantri {
   id: string;
   santriId: string;
   santriNama: string;
   santriNis: string;
   kelas: string;
+  gender?: Gender;
+  kamar?: string;
   bulanTahun: string; // Contoh: "November 2026"
   nominal: number;
   status: 'Lunas' | 'Menunggak';
@@ -730,6 +751,10 @@ export interface SyahriyahSantri {
   metodeBayar?: 'Tunai' | 'Transfer Bank' | 'QRIS';
   noWaWali: string;
   namaWali: string;
+  penyetorNama?: string;
+  catatan?: string;
+  dicatatOleh?: string;
+  nomorKwitansi?: string;
 }
 
 export interface UangSakuMutasi {

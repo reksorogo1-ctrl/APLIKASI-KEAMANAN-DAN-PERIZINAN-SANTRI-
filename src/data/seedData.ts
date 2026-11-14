@@ -17,7 +17,8 @@ import {
   ArsipSurat,
   TransaksiKeuangan,
   BarangInventaris,
-  PeminjamanBarang
+  PeminjamanBarang,
+  BendaharaConfig
 } from '../types';
 
 export const INITIAL_SURAT_SEKRETARIS_CONFIG: SuratSekretarisConfig = {
@@ -214,6 +215,39 @@ export const INITIAL_SURAT_SEKRETARIS_CONFIG: SuratSekretarisConfig = {
   }
 };
 
+export const INITIAL_BENDAHARA_CONFIG: BendaharaConfig = {
+  nominalDefaultSyahriyah: 650000,
+  tanggalJatuhTempoSyahriyah: 10,
+  periodeSyahriyahAktif: 'November 2026',
+  saldoAwalJuta: 0,
+  ambangDaruratJuta: 12,
+  ambangStabilJuta: 22,
+  ambangPerkembanganPesatJuta: 32,
+  namaUnitKeuangan: 'KANTOR BENDAHARA PUSAT PONPES SALAF AL-MALIKI',
+  namaBendaharaUmum: 'Ustadz H. Lukman Hakim, S.E',
+  jabatanBendahara: 'Bendahara Umum Pondok',
+  noRekeningPondok: '7120-8899-2026 (BSI a.n. Ponpes Salaf Al-Maliki)',
+  namaBankPondok: 'Bank Syariah Indonesia (BSI)',
+  catatanKwitansi: 'Simpan bukti pembayaran syahriyah ini sebagai arsip resmi pondok dan wali santri.',
+  kategoriPemasukan: [
+    'Syahriah & Makan Santri',
+    'Infaq & Donasi Pembangunan',
+    'Pendaftaran Santri Baru (PSB)',
+    'Bantuan Hibah / Wakaf Tunai',
+    'Unit Usaha & Koperasi Pondok',
+    'Pemasukan Lainnya',
+  ],
+  kategoriPengeluaran: [
+    'Konsumsi & Dapur Umum',
+    'Utilitas (Listrik, Air & Internet)',
+    'Bisyarah Asatidz & Pengurus',
+    'Sarpras & Pemeliharaan',
+    'Operasional Sekretariat & Keamanan',
+    'Kesehatan Santri (Poskestren)',
+    'Pengeluaran Lainnya',
+  ],
+};
+
 export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
   namaPondok: 'Pondok Pesantren Salaf Al-Maliki',
   logoUrl: 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png',
@@ -229,6 +263,7 @@ export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
   segregasiBaninBanatKetat: true,
   kuotaIzinHarian: 35,
   modeOperasiDarurat: false,
+  bendaharaConfig: INITIAL_BENDAHARA_CONFIG,
   suratSekretarisConfig: INITIAL_SURAT_SEKRETARIS_CONFIG,
   suratIzinLayout: {
     teksBismillah: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',

@@ -138,6 +138,10 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       ketuaKeamananPutra: latest.ketuaKeamananPutra,
       ketuaKeamananPutri: latest.ketuaKeamananPutri,
       hotlineWa: latest.hotlineWa,
+      bendaharaConfig: latest.bendaharaConfig,
+      syahriyahList: latest.syahriyahList,
+      uangSakuList: latest.uangSakuList,
+      anggaranList: latest.anggaranList,
     };
     storageService.updateSystemConfig(mergedWebsiteConfig);
     syncPWAIdentity(mergedWebsiteConfig);

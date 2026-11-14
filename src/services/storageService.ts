@@ -39,7 +39,8 @@ import {
   INITIAL_ARSIP_SURAT,
   INITIAL_TRANSAKSI_KEUANGAN,
   INITIAL_BARANG_INVENTARIS,
-  INITIAL_PEMINJAMAN_BARANG
+  INITIAL_PEMINJAMAN_BARANG,
+  INITIAL_BENDAHARA_CONFIG
 } from '../data/seedData';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { 
@@ -232,6 +233,16 @@ class StorageService {
         syahriyahList: parsedCfg.syahriyahList?.length ? parsedCfg.syahriyahList : INITIAL_SYSTEM_CONFIG.syahriyahList,
         uangSakuList: parsedCfg.uangSakuList?.length ? parsedCfg.uangSakuList : INITIAL_SYSTEM_CONFIG.uangSakuList,
         anggaranList: parsedCfg.anggaranList?.length ? parsedCfg.anggaranList : INITIAL_SYSTEM_CONFIG.anggaranList,
+        bendaharaConfig: {
+          ...INITIAL_BENDAHARA_CONFIG,
+          ...(parsedCfg.bendaharaConfig || {}),
+          kategoriPemasukan: parsedCfg.bendaharaConfig?.kategoriPemasukan?.length
+            ? parsedCfg.bendaharaConfig.kategoriPemasukan
+            : INITIAL_BENDAHARA_CONFIG.kategoriPemasukan,
+          kategoriPengeluaran: parsedCfg.bendaharaConfig?.kategoriPengeluaran?.length
+            ? parsedCfg.bendaharaConfig.kategoriPengeluaran
+            : INITIAL_BENDAHARA_CONFIG.kategoriPengeluaran,
+        },
         mutasiBarangList: parsedCfg.mutasiBarangList?.length ? parsedCfg.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
         jadwalPerbaikanList: parsedCfg.jadwalPerbaikanList?.length ? parsedCfg.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
         kamarSantriList: parsedCfg.kamarSantriList?.length ? parsedCfg.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
@@ -595,6 +606,16 @@ class StorageService {
               syahriyahList: cloudData.syahriyahList?.length ? cloudData.syahriyahList : INITIAL_SYSTEM_CONFIG.syahriyahList,
               uangSakuList: cloudData.uangSakuList?.length ? cloudData.uangSakuList : INITIAL_SYSTEM_CONFIG.uangSakuList,
               anggaranList: cloudData.anggaranList?.length ? cloudData.anggaranList : INITIAL_SYSTEM_CONFIG.anggaranList,
+              bendaharaConfig: {
+                ...INITIAL_BENDAHARA_CONFIG,
+                ...(cloudData.bendaharaConfig || {}),
+                kategoriPemasukan: cloudData.bendaharaConfig?.kategoriPemasukan?.length
+                  ? cloudData.bendaharaConfig.kategoriPemasukan
+                  : INITIAL_BENDAHARA_CONFIG.kategoriPemasukan,
+                kategoriPengeluaran: cloudData.bendaharaConfig?.kategoriPengeluaran?.length
+                  ? cloudData.bendaharaConfig.kategoriPengeluaran
+                  : INITIAL_BENDAHARA_CONFIG.kategoriPengeluaran,
+              },
               mutasiBarangList: cloudData.mutasiBarangList?.length ? cloudData.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
               jadwalPerbaikanList: cloudData.jadwalPerbaikanList?.length ? cloudData.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
               kamarSantriList: cloudData.kamarSantriList?.length ? cloudData.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,

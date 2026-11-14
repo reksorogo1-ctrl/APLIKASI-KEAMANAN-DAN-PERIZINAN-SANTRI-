@@ -66,6 +66,8 @@ import {
   GlowingActiveDot,
   LuxuryChartTooltip,
 } from './LuxuryChartComponents';
+import { D3CandlestickChart } from './D3CandlestickChart';
+import { computeFinanceAnalytics } from '../utils/financeCandlestick';
 
 interface MainDashboardProps {
   currentUser: UserAccount;
@@ -188,82 +190,10 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
     };
   }, [santriList, perizinanList, systemConfig.ustadzList]);
 
-  // 2. Analisis Keuangan, Candlestick OHLC & Indikator Penilaian Ekonomi
+  // 2. Analisis Keuangan, Candlestick OHLC & Indikator Penilaian Ekonomi (Terhubung Real-Time ke Bendahara)
   const financeAnalytics = useMemo(() => {
-    const totalPemasukan = transaksiKeuangan
-      .filter(t => t.tipe === 'Pemasukan')
-      .reduce((acc, t) => acc + t.nominal, 0);
-    const totalPengeluaran = transaksiKeuangan
-      .filter(t => t.tipe === 'Pengeluaran')
-      .reduce((acc, t) => acc + t.nominal, 0);
-    const saldoPondok = totalPemasukan - totalPengeluaran;
-
-    const rasioEfisiensiPengeluaran = totalPemasukan > 0 ? Math.round((totalPengeluaran / totalPemasukan) * 100) : 0;
-    const rasioSurplus = totalPemasukan > 0 ? Math.round((saldoPondok / totalPemasukan) * 100) : 0;
-    const rasioLikuiditasBulan = totalPengeluaran > 0 ? Number((saldoPondok / (totalPengeluaran / 2)).toFixed(1)) : 2.5;
-
-    let predikatEkonomi = 'SANGAT SEHAT (SURPLUS OPTIMAL)';
-    let skorEkonomi = 92;
-    let saranMoneyManagement = [
-      'Alokasikan 30% dari dana surplus ke Dana Cadangan Abadi (Endowment/Wakaf Produktif) untuk ketahanan kas jangka panjang.',
-      'Pertahankan rasio pengeluaran operasional di bawah 65% dari total penerimaan syahriyah dan infaq.',
-      'Optimalkan kolektibilitas syahriyah tepat waktu sebelum tanggal 10 setiap bulan untuk menjaga arus kas (cashflow) harian dapur & utilitas.'
-    ];
-
-    if (saldoPondok < 0) {
-      predikatEkonomi = 'DEFISIT ANGGARAN (PERLU EFISIENSI)';
-      skorEkonomi = 48;
-      saranMoneyManagement = [
-        'Tunda pengadaan barang non-prioritas dan fokuskan kas pada konsumsi santri serta utilitas vital.',
-        'Aktifkan pengingat otomatis tunggakan syahriyah kepada wali santri melalui panel Bendahara.',
-        'Evaluasi pos pengeluaran terbesar bersama Ketua Pondok untuk memangkas pemborosan anggaran.'
-      ];
-    } else if (rasioSurplus < 20) {
-      predikatEkonomi = 'CUKUP SEHAT (LIKUIDITAS MODERAT)';
-      skorEkonomi = 76;
-      saranMoneyManagement = [
-        'Tingkatkan cadangan kas likuid minimal setara 2 bulan belanja operasional dapur umum.',
-        'Perketat verifikasi realisasi anggaran (RAPBP) pada setiap pengajuan dana divisi.',
-        'Dorong program infaq jariyah dan unit usaha koperasi pesantren untuk diversifikasi pemasukan.'
-      ];
-    }
-
-    const currentClose = Number(Math.max(8, saldoPondok / 1000000).toFixed(1));
-    const currentHigh = Number(Math.max(34, totalPemasukan / 1000000).toFixed(1));
-    const currentLow = Number(Math.max(6, (totalPemasukan - totalPengeluaran * 1.15) / 1000000).toFixed(1));
-
-    const candlestickData = [
-      { periode: 'Apr', open: 11.5, close: 16.2, high: 19.0, low: 9.8, masuk: 26.5, keluar: 21.8 },
-      { periode: 'Mei', open: 16.2, close: 14.0, high: 18.5, low: 11.2, masuk: 24.0, keluar: 26.2 },
-      { periode: 'Jun', open: 14.0, close: 21.5, high: 24.8, low: 12.5, masuk: 32.0, keluar: 24.5 },
-      { periode: 'Jul', open: 21.5, close: 29.0, high: 33.5, low: 19.0, masuk: 41.0, keluar: 33.5 },
-      { periode: 'Agu', open: 29.0, close: 25.2, high: 31.0, low: 22.4, masuk: 28.0, keluar: 31.8 },
-      { periode: 'Sep', open: 25.2, close: 33.4, high: 36.8, low: 24.0, masuk: 38.2, keluar: 30.0 },
-      { periode: 'Okt', open: 33.4, close: 38.0, high: 41.5, low: 31.0, masuk: 36.6, keluar: 32.0 },
-      {
-        periode: 'Nov (Kini)',
-        open: 28.5,
-        close: currentClose,
-        high: currentHigh,
-        low: currentLow,
-        masuk: Number((totalPemasukan / 1000000).toFixed(1)),
-        keluar: Number((totalPengeluaran / 1000000).toFixed(1)),
-      },
-    ];
-
-    return {
-      totalPemasukan,
-      totalPengeluaran,
-      saldoPondok,
-      rasioEfisiensiPengeluaran,
-      rasioSurplus,
-      rasioLikuiditasBulan,
-      predikatEkonomi,
-      skorEkonomi,
-      saranMoneyManagement,
-      candlestickData,
-    };
-  }, [transaksiKeuangan]);
+    return computeFinanceAnalytics(transaksiKeuangan, systemConfig.bendaharaConfig);
+  }, [transaksiKeuangan, systemConfig.bendaharaConfig]);
 
   // 3. Grafik Line Chart Kinerja Pengurus & Perbandingan Bulan Ini vs Bulan Lalu
   const kinerjaPengurusStats = useMemo(() => {
@@ -989,37 +919,34 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
         </div>
       </div>
 
-      {/* 5. WADAH TERPADU MEMANJANG: GRAFIK TRADER CANDLESTICK KEUANGAN BENDAHARA & INDIKATOR PENILAIAN EKONOMI PONDOK */}
+      {/* 5. WADAH TERPADU MEMANJANG: GRAFIK TRADER CANDLESTICK KEUANGAN BENDAHARA (D3.JS) & INDIKATOR PENILAIAN EKONOMI PONDOK */}
       {showFinanceSection && (() => {
-        const maxScale = 45; // Skala maksimum 45 Juta Rupiah
-        const growLevel = 32; // Garis Perkembangan Pesat / Grow (Atas)
-        const stabilLevel = 22; // Garis Stabil (Tengah)
-        const daruratLevel = 12; // Garis Darurat (Bawah)
-
-        const growPct = (growLevel / maxScale) * 100;
-        const stabilPct = (stabilLevel / maxScale) * 100;
-        const daruratPct = (daruratLevel / maxScale) * 100;
+        const { darurat: daruratLevel, stabil: stabilLevel, perkembanganPesat: growLevel } =
+          financeAnalytics.thresholds;
 
         const latestCandle =
-          financeAnalytics.candlestickData[financeAnalytics.candlestickData.length - 1] ||
-          { periode: 'Kini', open: 28.5, high: 38, low: 20, close: 34, masuk: 38, keluar: 20 };
+          financeAnalytics.candlestickBulanan[financeAnalytics.candlestickBulanan.length - 1] ||
+          { periode: 'Kini', labelLengkap: 'Periode Kini', open: 21.5, high: 34.6, low: 17.3, close: 26.1, masuk: 45.8, keluar: 19.7, jumlahTransaksi: 0 };
         const latestDiff = latestCandle.close - latestCandle.open;
-        const latestPct = latestCandle.open > 0 ? ((latestDiff / latestCandle.open) * 100).toFixed(1) : '0.0';
+        const latestPct =
+          latestCandle.open !== 0 ? ((latestDiff / Math.abs(latestCandle.open)) * 100).toFixed(1) : '0.0';
         const zonaKasSaatIni =
           latestCandle.close >= growLevel
             ? { label: 'ZONA GROW / PERKEMBANGAN PESAT', tone: 'text-emerald-300 bg-emerald-950/90 border-emerald-400/60' }
             : latestCandle.close >= stabilLevel
               ? { label: 'ZONA STABIL / KESEIMBANGAN KAS', tone: 'text-[#f3d266] bg-[#093524] border-[#d4af37]/60' }
-              : { label: 'ZONA DARURAT / PERLU INTERVENSI KAS', tone: 'text-rose-300 bg-rose-950/90 border-rose-500/60' };
+              : latestCandle.close > daruratLevel
+                ? { label: 'ZONA WASPADA / TRANSISI KAS', tone: 'text-amber-300 bg-amber-950/90 border-amber-500/60' }
+                : { label: 'ZONA DARURAT / PERLU INTERVENSI KAS', tone: 'text-rose-300 bg-rose-950/90 border-rose-500/60' };
 
         return (
-          <div className="rounded-3xl bg-gradient-to-b from-[#041d14]/95 via-[#031710]/95 to-[#02100b]/95 border border-[#d4af37]/45 p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.65)] space-y-6">
+          <div className="rounded-3xl bg-gradient-to-b from-[#041d14]/95 via-[#031710]/95 to-[#02100b]/95 border border-[#d4af37]/45 p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.65)] space-y-5">
             {/* Header Bar Gaya Terminal Trader */}
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-[#d4af37]/25 pb-4">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2.5 py-0.5 rounded-md bg-[#d4af37]/20 border border-[#d4af37]/50 text-[10px] font-mono font-bold text-[#f3d266] uppercase">
-                    KAS-ALMALIKI / IDR · 1M OHLC TRADER CHART
+                    KAS-ALMALIKI / IDR · D3.JS TRADER TERMINAL
                   </span>
                   <span className={`px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-bold ${zonaKasSaatIni.tone}`}>
                     {zonaKasSaatIni.label}
@@ -1033,7 +960,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                   <span>Grafik Candlestick Trader Keuangan Bendahara &amp; Indikator Penilaian Ekonomi Pondok</span>
                 </h2>
                 <p className="text-xs text-emerald-200/75 mt-0.5">
-                  Wadah terpadu analisis OHLC Kas Pondok (Open, High, Low, Close) dilengkapi Garis Perkembangan Pesat (Grow), Garis Stabil, dan Garis Darurat.
+                  Tersinkronisasi real-time dengan Buku Kas, Syahriyah &amp; Option Panel Bendahara · Dilengkapi Crosshair, Zoom/Pan D3.js, dan Pita Zona Tren.
                 </p>
               </div>
 
@@ -1068,200 +995,42 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               </div>
             </div>
 
-            {/* Legenda Garis Indikator Trader */}
+            {/* Legenda Pita Visual Ambang Batas Tren */}
             <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] font-mono bg-[#02100a] border border-emerald-900/80 rounded-2xl px-4 py-2.5">
               <div className="flex flex-wrap items-center gap-4">
                 <span className="inline-flex items-center gap-2 text-emerald-300 font-bold">
-                  <span className="w-6 border-t-2 border-dashed border-emerald-400 inline-block shadow-[0_0_8px_#10b981]" />
-                  <span>ATAS: Garis Perkembangan Pesat / Grow (≥ Rp 32 Jt)</span>
+                  <span className="w-4 h-3 rounded-sm bg-emerald-500/30 border border-dashed border-emerald-400 inline-block" />
+                  <span>PITA GROW / PESAT (≥ Rp {growLevel} Jt)</span>
                 </span>
                 <span className="inline-flex items-center gap-2 text-[#f3d266] font-bold">
-                  <span className="w-6 border-t-2 border-dashed border-[#f3d266] inline-block shadow-[0_0_8px_#f3d266]" />
-                  <span>TENGAH: Garis Stabil / Keseimbangan (Rp 22 Jt)</span>
+                  <span className="w-4 h-3 rounded-sm bg-[#d4af37]/25 border border-dashed border-[#f3d266] inline-block" />
+                  <span>PITA STABIL (≥ Rp {stabilLevel} Jt)</span>
                 </span>
                 <span className="inline-flex items-center gap-2 text-rose-400 font-bold">
-                  <span className="w-6 border-t-2 border-dashed border-rose-500 inline-block shadow-[0_0_8px_#f43f5e]" />
-                  <span>BAWAH: Garis Darurat / Minimum Kas (≤ Rp 12 Jt)</span>
+                  <span className="w-4 h-3 rounded-sm bg-rose-500/30 border border-dashed border-rose-500 inline-block" />
+                  <span>PITA DARURAT (≤ Rp {daruratLevel} Jt)</span>
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-1.5 text-emerald-400">
                   <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block shadow-[0_0_8px_#10b981]" />
-                  <span>Candle Bullish (Surplus)</span>
+                  <span>Bullish (Surplus)</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-rose-400">
                   <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block shadow-[0_0_8px_#f43f5e]" />
-                  <span>Candle Bearish (Defisit)</span>
+                  <span>Bearish (Defisit)</span>
                 </span>
               </div>
             </div>
 
-            {/* Wadah Memanjang Grafik Trader Candlestick */}
-            <div className="bg-[#010a06] border-2 border-[#d4af37]/30 rounded-2xl p-4 sm:p-6 relative overflow-hidden shadow-inner">
-              {/* Background Grid Trader */}
-              <div
-                className="relative h-72 sm:h-80 pr-12 sm:pr-16 pt-4 pb-8 select-none"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(to right, rgba(16, 185, 129, 0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(16, 185, 129, 0.07) 1px, transparent 1px)',
-                  backgroundSize: '48px 36px',
-                }}
-              >
-                {/* Zona Warna Halus di Belakang Candle */}
-                <div
-                  className="absolute left-0 right-12 sm:right-16 top-0 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none"
-                  style={{ height: `${100 - growPct}%` }}
-                />
-                <div
-                  className="absolute left-0 right-12 sm:right-16 bottom-8 bg-gradient-to-t from-rose-600/15 to-transparent pointer-events-none"
-                  style={{ height: `${daruratPct}%` }}
-                />
-
-                {/* Skala Harga Kanan (Right Price Axis ala TradingView) */}
-                <div className="absolute right-0 top-2 bottom-8 w-12 sm:w-14 border-l border-emerald-900/80 flex flex-col justify-between items-end pr-1.5 text-[9px] font-mono text-emerald-300/70 pointer-events-none">
-                  <span>45 Jt</span>
-                  <span>36 Jt</span>
-                  <span>27 Jt</span>
-                  <span>18 Jt</span>
-                  <span>9 Jt</span>
-                  <span>0 Jt</span>
-                </div>
-
-                {/* Area Plot Candlestick + 3 Garis Indikator */}
-                <div className="relative w-full h-full">
-                  {/* 1. GARIS ATAS: PERKEMBANGAN PESAT / GROW */}
-                  <div
-                    className="absolute left-0 right-0 border-t-2 border-dashed border-emerald-400/90 z-10 pointer-events-none shadow-[0_0_12px_rgba(16,185,129,0.55)]"
-                    style={{ bottom: `${growPct}%` }}
-                  >
-                    <div className="flex items-center justify-between -mt-3 px-2">
-                      <span className="px-2 py-0.5 rounded bg-emerald-950/95 border border-emerald-400 text-[9px] sm:text-[10px] font-mono font-black text-emerald-300 shadow-lg">
-                        ▲ GARIS PERKEMBANGAN PESAT / GROW (Rp 32 Jt)
-                      </span>
-                      <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-emerald-500 text-[#010a06] text-[9px] font-mono font-black">
-                        GROW 32Jt
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 2. GARIS TENGAH: STABIL */}
-                  <div
-                    className="absolute left-0 right-0 border-t-2 border-dashed border-[#f3d266]/90 z-10 pointer-events-none shadow-[0_0_12px_rgba(243,210,102,0.45)]"
-                    style={{ bottom: `${stabilPct}%` }}
-                  >
-                    <div className="flex items-center justify-between -mt-3 px-2">
-                      <span className="px-2 py-0.5 rounded bg-[#1f1905]/95 border border-[#f3d266] text-[9px] sm:text-[10px] font-mono font-black text-[#f3d266] shadow-lg">
-                        ◆ GARIS STABIL / KESEIMBANGAN KAS (Rp 22 Jt)
-                      </span>
-                      <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-[#f3d266] text-[#010a06] text-[9px] font-mono font-black">
-                        STABIL 22Jt
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 3. GARIS PALING BAWAH: DARURAT */}
-                  <div
-                    className="absolute left-0 right-0 border-t-2 border-dashed border-rose-500/95 z-10 pointer-events-none shadow-[0_0_12px_rgba(244,63,94,0.6)]"
-                    style={{ bottom: `${daruratPct}%` }}
-                  >
-                    <div className="flex items-center justify-between -mt-3 px-2">
-                      <span className="px-2 py-0.5 rounded bg-rose-950/95 border border-rose-500 text-[9px] sm:text-[10px] font-mono font-black text-rose-300 shadow-lg">
-                        ▼ GARIS DARURAT / BATAS MINIMUM LIKUIDITAS (Rp 12 Jt)
-                      </span>
-                      <span className="hidden sm:inline-block px-1.5 py-0.5 rounded bg-rose-500 text-white text-[9px] font-mono font-black">
-                        DARURAT 12Jt
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Barisan Candlestick Trader Memanjang */}
-                  <div className="grid grid-cols-8 gap-2 sm:gap-4 items-end h-full px-2 sm:px-6 relative z-20">
-                    {financeAnalytics.candlestickData.map((c, i) => {
-                      const isBullish = c.close >= c.open;
-                      const highPct = Math.min(98, Math.max(6, (c.high / maxScale) * 100));
-                      const lowPct = Math.min(92, Math.max(2, (c.low / maxScale) * 100));
-                      const bodyTopPct = Math.min(96, (Math.max(c.open, c.close) / maxScale) * 100);
-                      const bodyBottomPct = Math.max(3, (Math.min(c.open, c.close) / maxScale) * 100);
-                      const bodyHeightPct = Math.max(5, bodyTopPct - bodyBottomPct);
-                      const diff = c.close - c.open;
-
-                      return (
-                        <div key={i} className="flex flex-col items-center h-full justify-end group relative">
-                          {/* Interactive Trader Tooltip */}
-                          <div className="opacity-0 group-hover:opacity-100 transition-all duration-150 absolute -top-3 z-30 bg-[#041d14]/95 border border-[#d4af37] rounded-xl px-3 py-2 text-[10px] font-mono text-white whitespace-nowrap shadow-2xl pointer-events-none">
-                            <p className="font-bold text-[#f3d266] border-b border-emerald-800 pb-0.5 mb-1">
-                              Periode: {c.periode} ({isBullish ? 'BULLISH' : 'BEARISH'})
-                            </p>
-                            <p>
-                              O: <strong>Rp{c.open}Jt</strong> · H: <strong className="text-emerald-300">Rp{c.high}Jt</strong>
-                            </p>
-                            <p>
-                              L: <strong className="text-rose-300">Rp{c.low}Jt</strong> · C: <strong className="text-[#f3d266]">Rp{c.close}Jt</strong>
-                            </p>
-                            <p className="text-[9px] text-emerald-200 mt-0.5">
-                              Masuk: Rp{c.masuk}Jt | Keluar: Rp{c.keluar}Jt
-                            </p>
-                          </div>
-
-                          {/* Candle Wick & Body */}
-                          <div className="relative w-full h-full flex justify-center">
-                            {/* Upper & Lower Wick */}
-                            <div
-                              className={`w-[2px] absolute transition-all ${
-                                isBullish
-                                  ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]'
-                                  : 'bg-rose-400 shadow-[0_0_8px_#f43f5e]'
-                              }`}
-                              style={{
-                                bottom: `${lowPct}%`,
-                                height: `${Math.max(4, highPct - lowPct)}%`,
-                              }}
-                            />
-
-                            {/* Candle Body */}
-                            <div
-                              className={`w-6 sm:w-10 md:w-12 rounded-md absolute border transition-all group-hover:scale-105 ${
-                                isBullish
-                                  ? 'bg-gradient-to-t from-emerald-600 via-emerald-500 to-emerald-300 border-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.45)]'
-                                  : 'bg-gradient-to-t from-rose-700 via-rose-500 to-rose-400 border-rose-200 shadow-[0_0_16px_rgba(244,63,94,0.45)]'
-                              }`}
-                              style={{
-                                bottom: `${bodyBottomPct}%`,
-                                height: `${bodyHeightPct}%`,
-                              }}
-                            />
-
-                            {/* Close Price Tag on Latest Candle */}
-                            {i === financeAnalytics.candlestickData.length - 1 && (
-                              <span
-                                className="absolute -right-2 sm:-right-4 px-1.5 py-0.5 rounded bg-[#d4af37] text-[#02120a] font-mono font-black text-[8px] sm:text-[9px] shadow-md whitespace-nowrap"
-                                style={{ bottom: `${bodyTopPct}%` }}
-                              >
-                                {c.close}Jt
-                              </span>
-                            )}
-                          </div>
-
-                          {/* X-Axis Period Label & Delta */}
-                          <div className="absolute -bottom-7 flex flex-col items-center">
-                            <span className="text-[10px] font-mono font-bold text-emerald-100 whitespace-nowrap">
-                              {c.periode}
-                            </span>
-                            <span
-                              className={`text-[9px] font-mono font-bold ${
-                                isBullish ? 'text-emerald-400' : 'text-rose-400'
-                              }`}
-                            >
-                              {isBullish ? `+${diff.toFixed(1)}jt` : `${diff.toFixed(1)}jt`}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Visualisasi Candlestick D3.js Mode Gelap dengan Crosshair, Zoom/Pan, & Pita Zona */}
+            <D3CandlestickChart
+              candlesBulanan={financeAnalytics.candlestickBulanan}
+              candlesMingguan={financeAnalytics.candlestickMingguan}
+              candlesHarian={financeAnalytics.candlestickHarian}
+              thresholds={financeAnalytics.thresholds}
+              height={360}
+            />
 
             {/* Ringkasan Kas & Indikator Penilaian Ekonomi Pondok Terpadu di Dalam Wadah yang Sama */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
