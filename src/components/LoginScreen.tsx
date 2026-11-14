@@ -34,7 +34,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   const availableUsers = storageService.getUsers();
   const systemConfig = storageService.getSystemConfig();
-  const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
+  const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
 
   // Live clock for iPhone Lock Screen header
   useEffect(() => {
@@ -205,14 +205,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
 
             {/* Lock Screen Clock & Crest */}
-            <div className="text-center space-y-1.5">
-              <div className="inline-flex items-center justify-center relative mb-1">
-                <img
-                  src={systemConfig.logoUrl || OFFICIAL_LOGO}
-                  alt="Logo Pondok Pesantren Salaf Al-Maliki"
-                  referrerPolicy="no-referrer"
-                  className="w-16 h-16 rounded-full object-cover border-2 border-[#d4af37] shadow-xl bg-[#031810]"
-                />
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center relative mb-1.5">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[22%] bg-[#041d13] border-2 border-[#d4af37]/80 p-0 shadow-[0_12px_35px_rgba(0,0,0,0.8),0_0_24px_rgba(212,175,55,0.3)] flex items-center justify-center overflow-hidden">
+                  <img
+                    src={
+                      !systemConfig.logoUrl ||
+                      systemConfig.logoUrl.includes('2026-11-11-7ffd46ad') ||
+                      systemConfig.logoUrl.includes('2026-11-14-03361e24') ||
+                      systemConfig.logoUrl.includes('logo_pesantren_almaliki')
+                        ? '/logo-fit.png'
+                        : systemConfig.logoUrl
+                    }
+                    alt="Logo Pondok Pesantren Salaf Al-Maliki"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      if (!img.dataset.fallbackApplied) {
+                        img.dataset.fallbackApplied = '1';
+                        img.src = '/logo-fit.png';
+                      }
+                    }}
+                    className="w-full h-full object-cover scale-[1.03]"
+                  />
+                </div>
               </div>
               <div className="text-4xl sm:text-5xl font-black text-white tracking-tight font-mono drop-shadow-[0_2px_12px_rgba(212,175,55,0.35)]">
                 {timeFormatted}

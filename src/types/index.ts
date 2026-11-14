@@ -306,7 +306,9 @@ export interface SuratIzinLayoutConfig {
 // System configuration options for Admin Control Panel
 export interface SystemConfig {
   namaPondok: string;
-  logoUrl: string; // Editable logo URL or Base64
+  logoUrl: string; // Editable Website logo URL or Base64 (Header, Login, Dashboard Utama)
+  logoDashboardKeamananUrl?: string; // Editable logo khusus Dashboard Tab Keamanan (terpisah)
+  logoSuratPerizinanUrl?: string; // Editable logo khusus Surat Perizinan & Sanksi Keamanan (terpisah)
   bgUrl: string; // Editable tactical background URL or Base64
   bgOpacity: number; // Background overlay opacity (0 to 100)
   gerbangStrictEnforcement: boolean; // Cannot leave without approved permit
@@ -544,11 +546,19 @@ export interface SuratSekretarisConfig {
   jabatanPenandatangan: string;
   namaPenandatangan: string;
   gelarPenandatangan: string;
+  ttdUrl1?: string; // Link URL atau DataURL gambar tanda tangan digital Penandatangan 1 (Sekretaris)
   jabatanPenandatangan2: string;
   namaPenandatangan2: string;
+  ttdUrl2?: string; // Link URL atau DataURL gambar tanda tangan digital Penandatangan 2 (Ketua Pondok)
+  stempelUrl?: string; // Link URL atau DataURL gambar stempel pondok opsional
   tampilkanPenandatangan2: boolean;
   tampilkanStempel: boolean;
   tampilkanBismillah: boolean;
+  ukuranLogoPx?: number; // Ukuran tinggi/lebar logo pada kop surat A4 (px)
+  ukuranFontSurat?: 'kecil' | 'sedang' | 'besar';
+  marginSuratMm?: number; // Margin halaman A4 dalam mm (15, 20, 25)
+  perataanIsi?: 'justify' | 'left';
+  posisiTanggal?: 'kanan_atas' | 'bawah_kanan';
   templates: Record<KodeJenisSurat, TemplateSuratConfig>;
 }
 
@@ -570,8 +580,10 @@ export interface ArsipSurat {
   kotaTerbit?: string;
   jabatanPenandatangan?: string;
   namaPenandatangan?: string;
+  ttdUrl1?: string;
   jabatanPenandatangan2?: string;
   namaPenandatangan2?: string;
+  ttdUrl2?: string;
   tampilkanPenandatangan2?: boolean;
   tembusan?: string;
   status: 'Draft' | 'Menunggu TTD' | 'Resmi / Terbit' | 'Diarsipkan';

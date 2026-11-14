@@ -238,10 +238,24 @@ class StorageService {
         suratSekretarisConfig: {
           ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
           ...(parsedCfg.suratSekretarisConfig || {}),
+          kopLogoUrl:
+            parsedCfg.suratSekretarisConfig?.kopLogoUrl &&
+            !parsedCfg.suratSekretarisConfig.kopLogoUrl.includes('2026-11-11-7ffd46ad')
+              ? parsedCfg.suratSekretarisConfig.kopLogoUrl
+              : 'https://cdn.phototourl.com/member/2026-11-14-49a0f8f3-f2e5-443e-8c1e-36ccad7a6009.png',
           kopLogoKananUrl:
-            parsedCfg.suratSekretarisConfig?.kopLogoKananUrl ||
-            INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.kopLogoKananUrl ||
-            INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.kopLogoUrl ||
+            parsedCfg.suratSekretarisConfig?.kopLogoKananUrl &&
+            parsedCfg.suratSekretarisConfig.kopLogoKananUrl.trim() !== '' &&
+            !parsedCfg.suratSekretarisConfig.kopLogoKananUrl.includes('2026-11-11-7ffd46ad')
+              ? parsedCfg.suratSekretarisConfig.kopLogoKananUrl
+              : 'https://cdn.phototourl.com/member/2026-11-14-6e57abdd-4666-430d-911c-7e8281c86140.jpg',
+          ttdUrl1:
+            parsedCfg.suratSekretarisConfig?.ttdUrl1 ??
+            INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.ttdUrl1 ??
+            '',
+          ttdUrl2:
+            parsedCfg.suratSekretarisConfig?.ttdUrl2 ??
+            INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.ttdUrl2 ??
             '',
           templates: {
             ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!.templates,
@@ -283,12 +297,30 @@ class StorageService {
       const pjm = localStorage.getItem(STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN);
       this.cache.peminjamanBarang = pjm ? JSON.parse(pjm) : INITIAL_PEMINJAMAN_BARANG;
 
-      // Enforce official logo Ponpes Salaf Al-Maliki & strip dummy photos from cache
-      const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
-      if (!this.cache.systemConfig.logoUrl || this.cache.systemConfig.logoUrl.includes('logo_pesantren_almaliki') || !this.cache.systemConfig.logoUrl.startsWith('http')) {
+      // Enforce official logo Ponpes Salaf Al-Maliki & preserve user DataURL/HTTP logos
+      const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
+      const isValidLogo = (u?: string) =>
+        Boolean(
+          u &&
+          !u.includes('logo_pesantren_almaliki') &&
+          !u.includes('2026-11-11-7ffd46ad') &&
+          (u.startsWith('http') || u.startsWith('data:') || u.startsWith('/'))
+        );
+
+      if (!isValidLogo(this.cache.systemConfig.logoUrl)) {
         this.cache.systemConfig.logoUrl = OFFICIAL_LOGO;
       }
-      if (!this.cache.systemConfig.appIconUrl || this.cache.systemConfig.appIconUrl === '/icon.svg') {
+      if (!isValidLogo(this.cache.systemConfig.logoDashboardKeamananUrl)) {
+        this.cache.systemConfig.logoDashboardKeamananUrl = OFFICIAL_LOGO;
+      }
+      if (!isValidLogo(this.cache.systemConfig.logoSuratPerizinanUrl)) {
+        this.cache.systemConfig.logoSuratPerizinanUrl = OFFICIAL_LOGO;
+      }
+      if (
+        !this.cache.systemConfig.appIconUrl ||
+        this.cache.systemConfig.appIconUrl === '/icon.svg' ||
+        this.cache.systemConfig.appIconUrl.includes('2026-11-11-7ffd46ad')
+      ) {
         this.cache.systemConfig.appIconUrl = OFFICIAL_LOGO;
       }
 
@@ -529,9 +561,32 @@ class StorageService {
                 gambarUrl: b.gambarUrl || seedItem?.gambarUrl || 'https://images.unsplash.com/photo-1584286595398-a59f21d313f5?auto=format&fit=crop&w=900&q=80',
               };
             });
+            const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
             const cfg: SystemConfig = {
               ...INITIAL_SYSTEM_CONFIG,
               ...cloudData,
+              logoUrl:
+                cloudData.logoUrl &&
+                !cloudData.logoUrl.includes('2026-11-11-7ffd46ad') &&
+                !cloudData.logoUrl.includes('logo_pesantren_almaliki')
+                  ? cloudData.logoUrl
+                  : OFFICIAL_LOGO,
+              logoDashboardKeamananUrl:
+                cloudData.logoDashboardKeamananUrl &&
+                !cloudData.logoDashboardKeamananUrl.includes('2026-11-11-7ffd46ad') &&
+                !cloudData.logoDashboardKeamananUrl.includes('logo_pesantren_almaliki')
+                  ? cloudData.logoDashboardKeamananUrl
+                  : OFFICIAL_LOGO,
+              logoSuratPerizinanUrl:
+                cloudData.logoSuratPerizinanUrl &&
+                !cloudData.logoSuratPerizinanUrl.includes('2026-11-11-7ffd46ad') &&
+                !cloudData.logoSuratPerizinanUrl.includes('logo_pesantren_almaliki')
+                  ? cloudData.logoSuratPerizinanUrl
+                  : OFFICIAL_LOGO,
+              appIconUrl:
+                cloudData.appIconUrl && !cloudData.appIconUrl.includes('2026-11-11-7ffd46ad')
+                  ? cloudData.appIconUrl
+                  : OFFICIAL_LOGO,
               beritaTerkini: mergedCloudBerita,
               ustadzList: cloudData.ustadzList?.length ? cloudData.ustadzList : INITIAL_SYSTEM_CONFIG.ustadzList,
               programKerjaList: cloudData.programKerjaList?.length ? cloudData.programKerjaList : INITIAL_SYSTEM_CONFIG.programKerjaList,
@@ -546,10 +601,24 @@ class StorageService {
               suratSekretarisConfig: {
                 ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
                 ...(cloudData.suratSekretarisConfig || {}),
+                kopLogoUrl:
+                  cloudData.suratSekretarisConfig?.kopLogoUrl &&
+                  !cloudData.suratSekretarisConfig.kopLogoUrl.includes('2026-11-11-7ffd46ad')
+                    ? cloudData.suratSekretarisConfig.kopLogoUrl
+                    : 'https://cdn.phototourl.com/member/2026-11-14-49a0f8f3-f2e5-443e-8c1e-36ccad7a6009.png',
                 kopLogoKananUrl:
-                  cloudData.suratSekretarisConfig?.kopLogoKananUrl ||
-                  INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.kopLogoKananUrl ||
-                  INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.kopLogoUrl ||
+                  cloudData.suratSekretarisConfig?.kopLogoKananUrl &&
+                  cloudData.suratSekretarisConfig.kopLogoKananUrl.trim() !== '' &&
+                  !cloudData.suratSekretarisConfig.kopLogoKananUrl.includes('2026-11-11-7ffd46ad')
+                    ? cloudData.suratSekretarisConfig.kopLogoKananUrl
+                    : 'https://cdn.phototourl.com/member/2026-11-14-6e57abdd-4666-430d-911c-7e8281c86140.jpg',
+                ttdUrl1:
+                  cloudData.suratSekretarisConfig?.ttdUrl1 ??
+                  INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.ttdUrl1 ??
+                  '',
+                ttdUrl2:
+                  cloudData.suratSekretarisConfig?.ttdUrl2 ??
+                  INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.ttdUrl2 ??
                   '',
                 templates: {
                   ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!.templates,
@@ -944,17 +1013,16 @@ class StorageService {
     this.notify();
   }
 
-  public getCurrentUser(): UserAccount {
+  public getCurrentUser(): UserAccount | null {
     try {
       const sessionData = sessionStorage.getItem(STORAGE_KEYS.CURRENT_USER);
       if (sessionData) {
         return JSON.parse(sessionData);
       }
+      return null;
     } catch {
-      // ignore
+      return null;
     }
-    const users = this.getUsers();
-    return users.find(u => u.role === 'admin') || INITIAL_USERS[0];
   }
 
   // ==========================================

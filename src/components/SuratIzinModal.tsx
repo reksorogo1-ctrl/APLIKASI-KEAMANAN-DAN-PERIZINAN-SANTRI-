@@ -198,11 +198,28 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           {/* Pesantren Official Letterhead (Kop Surat) */}
           <div className="avoid-break flex items-center justify-between pb-3 sm:pb-4 border-b-2 border-emerald-900 text-center relative gap-2 sm:gap-3">
 
-            <img 
-              src={systemConfig.logoUrl || "/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg"} 
-              alt={systemConfig.namaPondok || "Logo Al-Maliki"} 
-              className="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-full border border-amber-500 shadow-xs shrink-0"
-            />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border border-amber-500 shadow-xs shrink-0 overflow-hidden bg-white">
+              <img 
+                src={
+                  !systemConfig.logoSuratPerizinanUrl ||
+                  systemConfig.logoSuratPerizinanUrl.includes('2026-11-11-7ffd46ad') ||
+                  systemConfig.logoSuratPerizinanUrl.includes('2026-11-14-03361e24') ||
+                  systemConfig.logoSuratPerizinanUrl.includes('logo_pesantren_almaliki')
+                    ? '/logo-fit.png'
+                    : systemConfig.logoSuratPerizinanUrl
+                }
+                alt={systemConfig.namaPondok || "Logo Surat Perizinan"}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  if (!img.dataset.fallbackApplied) {
+                    img.dataset.fallbackApplied = '1';
+                    img.src = '/logo-fit.png';
+                  }
+                }}
+                className="w-full h-full object-cover"
+              />
+            </div>
             <div className="flex-1 px-1 sm:px-2 min-w-0">
               <p className="font-serif text-emerald-900 text-xs sm:text-sm mb-0.5 tracking-wider font-semibold">
                 {layout.teksBismillah || 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'}

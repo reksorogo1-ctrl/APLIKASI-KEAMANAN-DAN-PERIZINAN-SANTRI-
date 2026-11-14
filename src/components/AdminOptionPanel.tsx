@@ -22,9 +22,7 @@ import {
   Search, 
   ShieldAlert, 
   X,
-  FileCheck,
   FileText,
-  Printer,
   GraduationCap,
   Smartphone,
   Monitor,
@@ -35,7 +33,7 @@ import {
 import { storageService } from '../services/storageService';
 import { syncPWAIdentity } from '../services/pwaSyncService';
 import { INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
-import { SystemConfig, UserAccount, UserRole, Santri, DewanKeamanan, Gender, SuratIzinLayoutConfig, SuratSanksiLayoutConfig, KodeJenisSurat, SuratSekretarisConfig } from '../types';
+import { SystemConfig, UserAccount, UserRole, Santri, DewanKeamanan, Gender, KodeJenisSurat, SuratSekretarisConfig } from '../types';
 
 interface AdminOptionPanelProps {
   systemConfig: SystemConfig;
@@ -52,7 +50,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   dewanList,
   onConfigUpdated,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'control' | 'visual' | 'surat_layout' | 'surat_sanksi_layout' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database'>('control');
+  const [activeSubTab, setActiveSubTab] = useState<'control' | 'visual' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database'>('control');
   const [settingCategory, setSettingCategory] = useState<'all' | 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db'>('all');
   const [settingSearch, setSettingSearch] = useState('');
   const [selectedKodeSuratEdit, setSelectedKodeSuratEdit] = useState<KodeJenisSurat>('SK');
@@ -120,12 +118,30 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     statusAktif: true,
   });
 
-  // Save Config & Visual Options
+  // Save Config & Visual Options (strictly for Website — preserves Keamanan Option Panel settings)
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
-    storageService.updateSystemConfig(configForm);
-    syncPWAIdentity(configForm);
-    setSaveSuccessMsg('Konfigurasi sistem, logo resmi, dan identitas PWA berhasil disimpan & disinkronkan!');
+    const latest = storageService.getSystemConfig();
+    const mergedWebsiteConfig: SystemConfig = {
+      ...configForm,
+      logoDashboardKeamananUrl: latest.logoDashboardKeamananUrl,
+      logoSuratPerizinanUrl: latest.logoSuratPerizinanUrl,
+      suratIzinLayout: latest.suratIzinLayout,
+      suratSanksiLayout: latest.suratSanksiLayout,
+      kopSuratBaris1: latest.kopSuratBaris1,
+      kopSuratBaris2: latest.kopSuratBaris2,
+      alamatKopSurat: latest.alamatKopSurat,
+      judulSuratSanksi: latest.judulSuratSanksi,
+      pembukaSuratSanksi: latest.pembukaSuratSanksi,
+      penutupSuratSanksi: latest.penutupSuratSanksi,
+      catatanKakiSuratSanksi: latest.catatanKakiSuratSanksi,
+      ketuaKeamananPutra: latest.ketuaKeamananPutra,
+      ketuaKeamananPutri: latest.ketuaKeamananPutri,
+      hotlineWa: latest.hotlineWa,
+    };
+    storageService.updateSystemConfig(mergedWebsiteConfig);
+    syncPWAIdentity(mergedWebsiteConfig);
+    setSaveSuccessMsg('Konfigurasi website, logo website, dan identitas PWA berhasil disimpan & disinkronkan!');
     setTimeout(() => setSaveSuccessMsg(''), 4500);
     onConfigUpdated();
   };
@@ -312,7 +328,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   });
 
   const optionModules: {
-    key: 'control' | 'visual' | 'surat_layout' | 'surat_sanksi_layout' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database';
+    key: 'control' | 'visual' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database';
     category: 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db';
     categoryLabel: string;
     title: string;
@@ -324,8 +340,8 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     {
       key: 'control',
       category: 'sistem',
-      categoryLabel: 'Sistem & Visual',
-      title: 'Operasional, Gerbang & Berita Dashboard',
+      categoryLabel: 'Sistem & Visual Website',
+      title: 'Operasional, Gerbang & Berita Website',
       subtitle: 'Kelola Berita & Informasi Terkini di Dashboard Utama, aturan gerbang, dan toleransi waktu.',
       badge: 'OPERASIONAL & BERITA',
       keywords: 'berita informasi pengumuman maklumat dashboard gerbang operasional toleransi terlambat waktu wib',
@@ -334,39 +350,19 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     {
       key: 'visual',
       category: 'sistem',
-      categoryLabel: 'Sistem & Visual',
-      title: 'Identitas Pondok, Logo & PWA',
-      subtitle: 'Edit nama pondok, pimpinan, alamat, logo resmi, ikon instalasi PWA, & background.',
-      badge: 'BRANDING & PWA',
-      keywords: 'logo ikon pwa background nama pondok pimpinan pengasuh warna tema visual',
+      categoryLabel: 'Sistem & Visual Website',
+      title: 'Logo Website, Identitas Pondok & PWA',
+      subtitle: 'Edit nama pondok, logo website (Header, Dashboard Utama & Login), ikon PWA, & wallpaper.',
+      badge: 'LOGO WEBSITE & PWA',
+      keywords: 'logo website ikon pwa background nama pondok pimpinan pengasuh warna tema visual login',
       icon: Palette,
-    },
-    {
-      key: 'surat_layout',
-      category: 'persuratan',
-      categoryLabel: 'Format & Persuratan',
-      title: 'Layout Surat Izin Santri',
-      subtitle: 'Atur kop surat, stempel, QR code, & tanda tangan pada cetak surat izin keluar.',
-      badge: 'SURAT IZIN',
-      keywords: 'surat izin keluar pulang kop tanda tangan stempel qr cetak',
-      icon: FileCheck,
-    },
-    {
-      key: 'surat_sanksi_layout',
-      category: 'persuratan',
-      categoryLabel: 'Format & Persuratan',
-      title: 'Layout Surat Pelanggaran & Sanksi',
-      subtitle: 'Atur kop surat, pasal pelanggaran, & otorisasi pada surat pembinaan santri.',
-      badge: 'SURAT SANKSI',
-      keywords: 'surat sanksi pelanggaran tazir pembinaan skorsing kop tanda tangan',
-      icon: Printer,
     },
     {
       key: 'surat_sekretaris_config',
       category: 'persuratan',
-      categoryLabel: 'Format & Persuratan',
+      categoryLabel: 'Format Surat Sekretaris',
       title: 'Editor 15 Surat Resmi Sekretaris',
-      subtitle: 'Kustomisasi kode klasifikasi, kop, & pejabat penandatangan 15 jenis surat pondok.',
+      subtitle: 'Kustomisasi kop dua logo, kode klasifikasi, & pejabat penandatangan 15 jenis surat Sekretaris.',
       badge: '15 JENIS SURAT',
       keywords: 'sekretaris 15 surat sk undangan tugas izin pengantar keterangan edaran mou panggilan peringatan',
       icon: FileText,
@@ -396,9 +392,9 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       category: 'keamanan_db',
       categoryLabel: 'Hak Akses & Database',
       title: 'Akun RBAC & Password Pengurus',
-      subtitle: 'Kelola akun login seluruh divisi pengurus, password, role, dan otoritas akses.',
+      subtitle: 'Kelola akun login seluruh divisi pengurus, password, PIN 6 digit, role, dan otoritas akses.',
       badge: `${usersList.length} AKUN`,
-      keywords: 'akun login user password rbac role admin ketua sekretaris bendahara perlengkapan keamanan',
+      keywords: 'akun login user password pin rbac role admin ketua sekretaris bendahara perlengkapan keamanan',
       icon: KeyRound,
     },
     {
@@ -414,9 +410,9 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   ];
 
   const categoryTabs: { id: 'all' | 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db'; label: string; count: number }[] = [
-    { id: 'all', label: 'Semua Pengaturan', count: optionModules.length },
-    { id: 'sistem', label: 'Sistem & Visual PWA', count: 2 },
-    { id: 'persuratan', label: 'Format & Persuratan', count: 3 },
+    { id: 'all', label: 'Semua Pengaturan Website', count: optionModules.length },
+    { id: 'sistem', label: 'Visual Website & PWA', count: 2 },
+    { id: 'persuratan', label: 'Persuratan Sekretaris', count: 1 },
     { id: 'datamaster', label: 'Data Master Pondok', count: 2 },
     { id: 'keamanan_db', label: 'Hak Akses & Database', count: 2 },
   ];
@@ -1149,40 +1145,47 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               </div>
             </div>
 
-            {/* PANEL 3: PENGATURAN LOGO RESMI PONDOK PESANTREN */}
+            {/* PANEL 3: PENGATURAN LOGO WEBSITE UTAMA */}
             <div className="p-5 rounded-2xl bg-[#041d13]/90 border border-emerald-800/80 space-y-4 hover-rainbow-edge transition-all shadow-md">
               <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center justify-between font-mono">
                 <span className="flex items-center gap-2">
                   <Image className="w-4 h-4 text-emerald-400" />
-                  Logo Resmi Pondok Pesantren
+                  Logo Website &amp; Dashboard Login
                 </span>
                 <span className="text-[10px] text-amber-300 font-bold bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30 font-mono">
-                  IN-APP LOGO
+                  WEBSITE LOGO
                 </span>
               </h4>
 
               <div className="flex items-center gap-4 p-3 bg-black/60 rounded-xl border border-emerald-800">
-                <div className="relative shrink-0">
-                  <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-emerald-400 via-amber-400 to-emerald-500 opacity-60 blur-xs" />
+                <div className="relative shrink-0 w-16 h-16 rounded-[22%] border-2 border-amber-400 shadow-xl overflow-hidden bg-[#02100a]">
                   <img
-                    src={configForm.logoUrl || '/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg'}
-                    alt="Logo Preview"
-                    className="relative w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-xl"
+                    src={
+                      !configForm.logoUrl ||
+                      configForm.logoUrl.includes('2026-11-11-7ffd46ad') ||
+                      configForm.logoUrl.includes('2026-11-14-03361e24') ||
+                      configForm.logoUrl.includes('logo_pesantren_almaliki')
+                        ? '/logo-fit.png'
+                        : configForm.logoUrl
+                    }
+                    alt="Logo Website Preview"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover scale-[1.03]"
                   />
                 </div>
                 <div className="space-y-1 text-xs">
                   <p className="font-bold text-white font-mono flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Pratinjau Logo Aktif
+                    Pratinjau Logo Website Aktif
                   </p>
                   <p className="text-[11px] text-emerald-200/75">
-                    Otomatis sinkron ke <span className="text-emerald-300 font-semibold">Sidebar</span>, <span className="text-emerald-300 font-semibold">Header Bar</span>, <span className="text-emerald-300 font-semibold">Layar Login</span>, dan <span className="text-emerald-300 font-semibold">Kop Surat Resmi</span>.
+                    Otomatis sinkron ke <span className="text-emerald-300 font-semibold">Header Bar</span>, <span className="text-emerald-300 font-semibold">Dashboard Utama</span>, dan <span className="text-emerald-300 font-semibold">Layar Login</span>. Logo Tab Keamanan &amp; Surat Perizinan diatur terpisah di <span className="text-amber-300 font-semibold">Option Panel Tab Keamanan</span>.
                   </p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">URL Logo Baru</label>
+                <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">URL Logo Website Baru</label>
                 <input
                   type="text"
                   value={configForm.logoUrl}
@@ -1193,7 +1196,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Unggah Logo dari Komputer / HP</label>
+                <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Unggah Logo Website dari Komputer / HP</label>
                 <label className="w-full py-2.5 px-3 rounded-xl bg-[#072c1e] hover:bg-[#0b422d] border border-emerald-800 hover:border-emerald-500 text-slate-200 text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs">
                   <Upload className="w-4 h-4 text-amber-400" />
                   <span className="font-semibold">Pilih File Logo (PNG/JPG/WEBP)</span>
@@ -1204,7 +1207,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               <div className="pt-2 border-t border-emerald-800 flex items-center justify-between flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => setConfigForm({ ...configForm, logoUrl: '/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg' })}
+                  onClick={() => setConfigForm({ ...configForm, logoUrl: 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png' })}
                   className="text-xs text-amber-400 hover:text-amber-300 hover:underline cursor-pointer font-mono"
                 >
                   ↺ Reset ke Logo Bawaan Al-Maliki
@@ -1300,973 +1303,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
         </form>
       )}
 
-      {/* SUB-TAB 3: EDITOR LAYOUT SURAT IZIN DIGITAL RESMI */}
-      {activeSubTab === 'surat_layout' && (
-        <div className="space-y-6">
-          <form onSubmit={handleSaveConfig} className="metallic-glass-card rounded-3xl p-6 border border-emerald-800/80 shadow-2xl space-y-6 hover-rainbow-edge">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-800 pb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-widest uppercase bg-amber-400/10 text-amber-300 border border-amber-400/30 glow-gold">
-                    DOCUMENT ENGINE
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-300/60">· Official Digital Permit Layout Customizer</span>
-                </div>
-                <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
-                  <FileText className="w-4 h-4 text-amber-400" />
-                  Editor Layout & Format Dokumen Surat Izin Digital
-                </h3>
-                <p className="text-xs text-emerald-200/75 mt-1 font-mono">
-                  Sesuaikan teks kop instansi, kalimat pembuka, ketentuan disiplin santri, penomoran, dan stempel pejabat pengesah
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const defaultLayout: SuratIzinLayoutConfig = {
-                      teksBismillah: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
-                      kopNamaInstansi: configForm.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI',
-                      kopSubInstansi: 'DEWAN KEAMANAN DAN KETERTIBAN SANTRI (KAMTIB)',
-                      kopAlamatKontak: 'Jl. Pesantren Luhur No. 99, Telukjambe Timur, Karawang 41361 | Hotline: 0812-3456-7800',
-                      judulSurat: 'SURAT KETERANGAN IZIN KELUAR / PULANG',
-                      formatNomorSurat: 'IZIN/MALIKI/{TAHUN}/{ROMAN}/{NOMOR}',
-                      kalimatPembuka: 'Pengurus Dewan Keamanan Pondok Pesantren Salaf Al-Maliki dengan ini menerangkan bahwa santri yang tercantum di bawah ini telah mendapatkan izin resmi dengan ketentuan sebagai berikut:',
-                      ketentuanPoin1: 'Wajib menjaga akhlaqul karimah, adab santri, dan shalat lima waktu berjamaah.',
-                      ketentuanPoin2: 'Menunjukkan surat izin ini kepada Petugas Gerbang saat keluar dan kembali.',
-                      ketentuanPoin3: 'Wajib kembali tepat waktu. Keterlambatan tanpa keterangan akan dikenakan takzir edukatif.',
-                      kotaTerbit: 'Karawang',
-                      jabatanPenandatangan: 'Ketua Dewan Keamanan',
-                      namaPenandatangan: 'Abdul Rohman',
-                      gelarPenandatangan: 'Ustadz Abdul Rohman, S.Pd.I',
-                      tampilkanStempelSah: true,
-                      tampilkanQrCode: true,
-                    };
-                    setConfigForm(prev => ({ ...prev, suratIzinLayout: defaultLayout }));
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-[#041d13] border border-emerald-800 hover:border-slate-500 text-emerald-100/90 hover:text-white text-xs font-mono font-bold cursor-pointer transition-all"
-                >
-                  ↺ Reset Bawaan
-                </button>
-                <button
-                  type="submit"
-                  className="tactile-interactive px-5 py-2 font-mono font-bold text-xs uppercase tracking-wider text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 hover:from-amber-300 hover:to-yellow-300 rounded-xl shadow-lg border border-amber-300/60 cursor-pointer"
-                >
-                  Simpan Layout Surat Izin
-                </button>
-              </div>
-            </div>
-
-            {/* Split Grid: Form Editor (Left) & Real-time Live Letter Preview (Right) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-              
-              {/* Form Controls (Left Column 7 cols) */}
-              <div className="lg:col-span-7 space-y-5">
-                
-                {/* 1. Header & Kop Instansi */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>A. Kop Surat & Identitas Lembaga</span>
-                  </h4>
-                  
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Teks Bismillah (Kaligrafi / Arab)</label>
-                    <input
-                      type="text"
-                      value={configForm.suratIzinLayout?.teksBismillah || 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratIzinLayout: { ...prev.suratIzinLayout, teksBismillah: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Nama Lembaga di Kop</label>
-                      <input
-                        type="text"
-                        value={configForm.suratIzinLayout?.kopNamaInstansi || configForm.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, kopNamaInstansi: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Instansi / Bagian Keamanan</label>
-                      <input
-                        type="text"
-                        value={configForm.suratIzinLayout?.kopSubInstansi || 'DEWAN KEAMANAN DAN KETERTIBAN SANTRI (KAMTIB)'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, kopSubInstansi: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Alamat & Nomor Kontak Hotline di Kop</label>
-                    <input
-                      type="text"
-                      value={configForm.suratIzinLayout?.kopAlamatKontak || 'Jl. Pesantren Luhur No. 99, Telukjambe Timur, Karawang 41361 | Hotline: 0812-3456-7800'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratIzinLayout: { ...prev.suratIzinLayout, kopAlamatKontak: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                {/* 2. Judul Dokumen & Redaksi Pembuka */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>B. Judul Dokumen & Kalimat Pernyataan</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Judul Surat</label>
-                      <input
-                        type="text"
-                        value={configForm.suratIzinLayout?.judulSurat || 'SURAT KETERANGAN IZIN KELUAR / PULANG'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, judulSurat: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Format Nomor Surat</label>
-                      <input
-                        type="text"
-                        value={configForm.suratIzinLayout?.formatNomorSurat || 'IZIN/MALIKI/{TAHUN}/{ROMAN}/{NOMOR}'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, formatNomorSurat: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Kalimat Mukaddimah / Pembuka</label>
-                    <textarea
-                      rows={2}
-                      value={configForm.suratIzinLayout?.kalimatPembuka || 'Pengurus Dewan Keamanan Pondok Pesantren Salaf Al-Maliki dengan ini menerangkan bahwa santri yang tercantum di bawah ini telah mendapatkan izin resmi dengan ketentuan sebagai berikut:'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratIzinLayout: { ...prev.suratIzinLayout, kalimatPembuka: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                {/* 3. Ketentuan Santri di Luar Pondok */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>C. Butir Ketentuan & Tata Tertib</span>
-                  </h4>
-
-                  <div>
-                    <label className="block text-[10px] text-emerald-200/75 mb-1 font-mono">Ketentuan Poin 1 (Adab & Ibadah):</label>
-                    <input
-                      type="text"
-                      value={configForm.suratIzinLayout?.ketentuanPoin1 || 'Wajib menjaga akhlaqul karimah, adab santri, dan shalat lima waktu berjamaah.'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratIzinLayout: { ...prev.suratIzinLayout, ketentuanPoin1: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-emerald-200/75 mb-1 font-mono">Ketentuan Poin 2 (Prosedur Gerbang):</label>
-                    <input
-                      type="text"
-                      value={configForm.suratIzinLayout?.ketentuanPoin2 || 'Menunjukkan surat izin ini kepada Petugas Gerbang saat keluar dan kembali.'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratIzinLayout: { ...prev.suratIzinLayout, ketentuanPoin2: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-emerald-200/75 mb-1 font-mono">Ketentuan Poin 3 (Disiplin Waktu & Takzir):</label>
-                    <input
-                      type="text"
-                      value={configForm.suratIzinLayout?.ketentuanPoin3 || 'Wajib kembali tepat waktu. Keterlambatan tanpa keterangan akan dikenakan takzir edukatif.'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratIzinLayout: { ...prev.suratIzinLayout, ketentuanPoin3: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                {/* 4. Tanda Tangan & Pengesahan */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>D. Pejabat Pengesah & Tanda Tangan</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Kota Penerbitan Surat</label>
-                      <input
-                        type="text"
-                        value={configForm.suratIzinLayout?.kotaTerbit || 'Karawang'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, kotaTerbit: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Jabatan Penandatangan</label>
-                      <input
-                        type="text"
-                        value={configForm.suratIzinLayout?.jabatanPenandatangan || 'Ketua Dewan Keamanan'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, jabatanPenandatangan: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Nama Tanda Tangan (Singkat)</label>
-                      <input
-                        type="text"
-                        value={configForm.suratIzinLayout?.namaPenandatangan || 'Abdul Rohman'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, namaPenandatangan: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Nama Terang & Gelar Lengkap</label>
-                      <input
-                        type="text"
-                        value={configForm.suratIzinLayout?.gelarPenandatangan || 'Ustadz Abdul Rohman, S.Pd.I'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, gelarPenandatangan: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-emerald-800">
-                    <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer font-mono">
-                      <input
-                        type="checkbox"
-                        checked={configForm.suratIzinLayout?.tampilkanStempelSah !== false}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, tampilkanStempelSah: e.target.checked }
-                        }))}
-                        className="rounded border-emerald-800 accent-amber-400 cursor-pointer"
-                      />
-                      <span>Tampilkan Stempel Sah</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 text-xs text-slate-200 cursor-pointer font-mono">
-                      <input
-                        type="checkbox"
-                        checked={configForm.suratIzinLayout?.tampilkanQrCode !== false}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratIzinLayout: { ...prev.suratIzinLayout, tampilkanQrCode: e.target.checked }
-                        }))}
-                        className="rounded border-emerald-800 accent-amber-400 cursor-pointer"
-                      />
-                      <span>Tampilkan QR Code Verifikasi</span>
-                    </label>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Real-time Live Letter Preview (Right Column 5 cols) */}
-              <div className="lg:col-span-5 space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[11px] font-mono font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Live Preview Dokumen Cetak
-                  </span>
-                  <span className="text-[10px] text-emerald-200/75 font-mono">Format A4 Resmi</span>
-                </div>
-
-                <div className="bg-white border-2 border-emerald-800/80 rounded-2xl p-4 sm:p-5 text-slate-900 shadow-2xl text-[10px] leading-relaxed font-sans overflow-hidden">
-                  
-                  {/* Kop Preview */}
-                  <div className="flex items-center justify-between pb-2 border-b-2 border-emerald-900 text-center">
-                    <img
-                      src={configForm.logoUrl || '/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg'}
-                      alt=""
-                      className="w-10 h-10 object-contain rounded-full border border-amber-500"
-                    />
-                    <div className="flex-1 px-2 text-center">
-                      <p className="font-serif text-emerald-900 text-xs font-semibold">
-                        {configForm.suratIzinLayout?.teksBismillah || 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'}
-                      </p>
-                      <h4 className="font-bold text-emerald-950 uppercase text-[11px] tracking-tight">
-                        {configForm.suratIzinLayout?.kopNamaInstansi || configForm.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI'}
-                      </h4>
-                      <p className="text-[9px] text-amber-900 font-medium">
-                        {configForm.suratIzinLayout?.kopSubInstansi || 'DEWAN KEAMANAN DAN KETERTIBAN SANTRI (KAMTIB)'}
-                      </p>
-                      <p className="text-[8px] text-neutral-500 line-clamp-1">
-                        {configForm.suratIzinLayout?.kopAlamatKontak || 'Jl. Pesantren Luhur No. 99, Karawang'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="h-0.5 bg-amber-500 my-1"></div>
-
-                  {/* Title Preview */}
-                  <div className="text-center my-2">
-                    <p className="font-bold uppercase tracking-wide text-emerald-950 underline underline-offset-2 text-[11px]">
-                      {configForm.suratIzinLayout?.judulSurat || 'SURAT KETERANGAN IZIN KELUAR / PULANG'}
-                    </p>
-                    <p className="text-[9px] text-neutral-500 font-mono">
-                      Nomor: IZIN/MALIKI/2026/XI/042
-                    </p>
-                  </div>
-
-                  {/* Body Preview */}
-                  <p className="text-[9px] text-neutral-700 mb-2 leading-normal">
-                    {configForm.suratIzinLayout?.kalimatPembuka || 'Pengurus Dewan Keamanan menerangkan bahwa santri telah mendapatkan izin resmi.'}
-                  </p>
-
-                  {/* Mock Santri Details */}
-                  <div className="bg-amber-50/50 rounded-lg p-2 border border-emerald-900/10 mb-2 text-[9px] space-y-0.5">
-                    <div className="flex"><span className="w-20 text-neutral-500">Santri</span><span className="font-semibold text-neutral-900">: Muhammad Zaki Yamani (NIS: 202401)</span></div>
-                    <div className="flex"><span className="w-20 text-neutral-500">Kelas & Kamar</span><span>: 1 Ulya · Kamar K-01</span></div>
-                    <div className="flex"><span className="w-20 text-neutral-500">Jenis Izin</span><span className="font-semibold text-emerald-800">: Izin Pulang (Keluarga)</span></div>
-                  </div>
-
-                  {/* Rules preview */}
-                  <div className="bg-neutral-50 p-2 rounded border border-neutral-200 text-[8px] text-neutral-600 mb-3">
-                    <p className="font-bold text-neutral-800 mb-0.5">Ketentuan Santri Selama di Luar:</p>
-                    <ol className="list-decimal pl-3 space-y-0.5">
-                      <li className="line-clamp-1">{configForm.suratIzinLayout?.ketentuanPoin1 || 'Menjaga akhlaqul karimah.'}</li>
-                      <li className="line-clamp-1">{configForm.suratIzinLayout?.ketentuanPoin2 || 'Menunjukkan surat izin di gerbang.'}</li>
-                      <li className="line-clamp-1">{configForm.suratIzinLayout?.ketentuanPoin3 || 'Kembali tepat waktu.'}</li>
-                    </ol>
-                  </div>
-
-                  {/* Signatures Preview */}
-                  <div className="flex items-end justify-between pt-1 border-t border-neutral-200 text-[9px]">
-                    <div className="text-center w-28">
-                      <p className="text-[8px] text-neutral-500">Pengurus Pencatat</p>
-                      <p className="font-serif italic text-emerald-900 font-bold py-1">Kang Miftah</p>
-                      <p className="font-semibold text-neutral-800 underline text-[8px]">Kang Miftahul Falah</p>
-                    </div>
-
-                    <div className="text-center w-32">
-                      <p className="text-[8px] text-neutral-500">{configForm.suratIzinLayout?.kotaTerbit || 'Karawang'}, {new Date().toLocaleDateString('id-ID')}</p>
-                      <p className="text-[8px] font-medium text-neutral-800">{configForm.suratIzinLayout?.jabatanPenandatangan || 'Ketua Dewan Keamanan'}</p>
-                      
-                      <div className="relative py-1 flex items-center justify-center">
-                        {configForm.suratIzinLayout?.tampilkanStempelSah !== false && (
-                          <span className="absolute text-[7px] font-bold text-emerald-800/40 uppercase rotate-[-6deg] border border-emerald-600/40 px-1 rounded-xs">
-                            TERVERIFIKASI
-                          </span>
-                        )}
-                        <span className="font-serif italic text-emerald-950 font-bold text-[10px] z-10">
-                          {configForm.suratIzinLayout?.namaPenandatangan || 'Abdul Rohman'}
-                        </span>
-                      </div>
-
-                      <p className="font-bold text-neutral-900 underline text-[8px]">
-                        {configForm.suratIzinLayout?.gelarPenandatangan || 'Ustadz Abdul Rohman, S.Pd.I'}
-                      </p>
-                    </div>
-                  </div>
-
-                </div>
-
-                <div className="p-3 rounded-xl bg-[#041d13]/90 border border-emerald-800 text-xs text-emerald-100/90 font-mono space-y-1">
-                  <p className="font-bold text-amber-300 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    Sinkronisasi Otomatis
-                  </p>
-                  <p className="text-[11px] text-emerald-200/75">
-                    Format layout ini akan langsung diterapkan saat pengurus maupun admin menekan tombol "Cetak Surat Izin" di dashboard.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="flex justify-end pt-4 border-t border-emerald-800">
-              <button
-                type="submit"
-                className="tactile-interactive px-6 py-2.5 font-bold font-mono text-xs uppercase tracking-wider text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 hover:from-amber-300 hover:to-yellow-300 rounded-xl shadow-lg shadow-amber-500/20 cursor-pointer border border-amber-300/60"
-              >
-                Simpan & Terapkan Format Surat Izin
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* SUB-TAB 4: EDITOR LAYOUT SURAT PELANGGARAN & SANKSI EDUKATIF */}
-      {activeSubTab === 'surat_sanksi_layout' && (
-        <div className="space-y-6">
-          <form onSubmit={handleSaveConfig} className="metallic-glass-card rounded-3xl p-6 border border-emerald-800/80 shadow-2xl space-y-6 hover-rainbow-edge">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-800 pb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-widest uppercase bg-amber-400/10 text-amber-300 border border-amber-400/30 glow-gold">
-                    SANCTION DOCUMENT ENGINE
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-300/60">· Official Violation & Educational Sanction Customizer</span>
-                </div>
-                <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
-                  <GraduationCap className="w-4 h-4 text-amber-400" />
-                  Editor Layout & Format Dokumen Surat Pelanggaran & Sanksi Edukatif
-                </h3>
-                <p className="text-xs text-emerald-200/75 mt-1 font-mono">
-                  Sesuaikan kop surat, logo, redaksi kalimat takzir, kolom identitas santri, jumlah tanda tangan pejabat, dan footer pengesahan
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const defaultSanksiLayout: SuratSanksiLayoutConfig = {
-                      teksBismillah: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
-                      kopNamaInstansi: configForm.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI',
-                      kopSubInstansi: 'DEWAN KEAMANAN & PENEGAKAN KODIFIKASI QANUN KETERTIBAN',
-                      kopAlamatKontak: 'Jl. Pesantren Luhur No. 99, Telukjambe Timur, Karawang 41361 | Hotline: 0812-3456-7800',
-                      judulSurat: 'SURAT PELANGGARAN DAN SANKSI EDUKATIF',
-                      formatNomorSurat: 'SNK/MALIKI/{TAHUN}/{ROMAN}/{NOMOR}',
-                      kalimatPembuka: 'Berdasarkan sidang rekapitulasi kodifikasi qanun ketertiban santri Pondok Pesantren Salaf Al-Maliki, dengan ini diterbitkan Surat Pelanggaran dan Penetapan Sanksi Edukatif kepada santri:',
-                      tampilkanNis: true,
-                      tampilkanKelas: true,
-                      tampilkanKamar: true,
-                      tampilkanWali: true,
-                      tampilkanHariTanggal: true,
-                      tampilkanBatasWaktu: true,
-                      formatKalimatHukuman: 'Santri yang bersangkutan diwajibkan menyelesaikan takzir edukatif dan pembinaan ibadah/keilmuan sebagai berikut:',
-                      pesanEdukasi: 'Sanksi ini bersifat edukatif dan pembinaan ruhiyah semata tanpa kekerasan fisik. Santri wajib menyelesaikan dan menyetorkan tugas pembinaan sebelum batas waktu yang telah ditentukan.',
-                      kotaTerbit: 'Karawang',
-                      jumlahTandaTangan: 3,
-                      posisiTandaTangan: 'sejajar',
-                      jabatanPihak1: 'Santri Pelanggar',
-                      namaPihak1: 'Santri Bersangkutan',
-                      gelarPihak1: '(Tanda Tangan & Komitmen)',
-                      jabatanPihak2: 'Petugas / Dewan Keamanan',
-                      namaPihak2: 'Ustadz Abdul Rohman, S.Pd.I',
-                      gelarPihak2: 'Ketua Dewan Keamanan',
-                      jabatanPihak3: 'Ketua Pondok Pesantren',
-                      namaPihak3: 'K.H. Syarifuddin Malik',
-                      gelarPihak3: 'Pengasuh / Pimpinan Pondok',
-                      footerCatatan: 'Dokumen ini sah diterbitkan secara otomatis oleh SIM Kamtib Al-Maliki dan diarsipkan dalam pangkalan data kedisiplinan pondok.',
-                      tampilkanStempelSah: true,
-                    };
-                    setConfigForm(prev => ({ ...prev, suratSanksiLayout: defaultSanksiLayout }));
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-[#041d13] border border-emerald-800 hover:border-slate-500 text-emerald-100/90 hover:text-white text-xs font-mono font-bold cursor-pointer transition-all"
-                >
-                  ↺ Reset Bawaan
-                </button>
-                <button
-                  type="submit"
-                  className="tactile-interactive px-5 py-2 font-mono font-bold text-xs uppercase tracking-wider text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 hover:from-amber-300 hover:to-yellow-300 rounded-xl shadow-lg border border-amber-300/60 cursor-pointer"
-                >
-                  Simpan Layout Surat Sanksi
-                </button>
-              </div>
-            </div>
-
-            {/* Split Grid: Form Controls (Left 7 cols) & Live Preview (Right 5 cols) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
-              
-              {/* Form Controls Column */}
-              <div className="lg:col-span-7 space-y-5">
-                
-                {/* 1. Judul & Penomoran */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>A. Judul Surat & Format Penomoran</span>
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Judul Dokumen Surat</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.judulSurat || 'SURAT PELANGGARAN DAN SANKSI EDUKATIF'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, judulSurat: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Format Nomor Surat</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.formatNomorSurat || 'SNK/MALIKI/{TAHUN}/{ROMAN}/{NOMOR}'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, formatNomorSurat: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Kop Surat & Logo Pondok */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>B. Kop Surat & Identitas Pondok</span>
-                  </h4>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Teks Bismillah (Arab / Kaligrafi)</label>
-                    <input
-                      type="text"
-                      value={configForm.suratSanksiLayout?.teksBismillah || 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratSanksiLayout: { ...prev.suratSanksiLayout, teksBismillah: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Nama Lembaga Pondok</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.kopNamaInstansi || configForm.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, kopNamaInstansi: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Sub-Bagian / Divisi</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.kopSubInstansi || 'DEWAN KEAMANAN & PENEGAKAN KODIFIKASI QANUN KETERTIBAN'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, kopSubInstansi: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Alamat & Kontak di Kop</label>
-                    <input
-                      type="text"
-                      value={configForm.suratSanksiLayout?.kopAlamatKontak || 'Jl. Pesantren Luhur No. 99, Telukjambe Timur, Karawang 41361 | Hotline: 0812-3456-7800'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratSanksiLayout: { ...prev.suratSanksiLayout, kopAlamatKontak: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                {/* 3. Isi Redaksi & Format Kalimat Surat */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>C. Isi Redaksi & Kalimat Surat</span>
-                  </h4>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Kalimat Pembuka Sidang Qanun</label>
-                    <textarea
-                      rows={2}
-                      value={configForm.suratSanksiLayout?.kalimatPembuka || 'Berdasarkan sidang rekapitulasi kodifikasi qanun ketertiban santri Pondok Pesantren Salaf Al-Maliki, dengan ini diterbitkan Surat Pelanggaran dan Penetapan Sanksi Edukatif kepada santri:'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratSanksiLayout: { ...prev.suratSanksiLayout, kalimatPembuka: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-sans text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Kalimat Pengantar Hukuman / Takzir Edukatif</label>
-                    <textarea
-                      rows={2}
-                      value={configForm.suratSanksiLayout?.formatKalimatHukuman || 'Santri yang bersangkutan diwajibkan menyelesaikan takzir edukatif dan pembinaan ibadah/keilmuan sebagai berikut:'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratSanksiLayout: { ...prev.suratSanksiLayout, formatKalimatHukuman: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-sans text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Pesan Edukasi & Prinsip Pembinaan (Tanpa Kekerasan)</label>
-                    <textarea
-                      rows={2}
-                      value={configForm.suratSanksiLayout?.pesanEdukasi || 'Sanksi ini bersifat edukatif dan pembinaan ruhiyah semata tanpa kekerasan fisik. Santri wajib menyelesaikan dan menyetorkan tugas pembinaan sebelum batas waktu yang telah ditentukan.'}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratSanksiLayout: { ...prev.suratSanksiLayout, pesanEdukasi: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-sans text-xs focus:outline-none focus:border-amber-400"
-                    />
-                  </div>
-                </div>
-
-                {/* 4. Kolom Identitas yang Ditampilkan */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>D. Kolom Identitas Santri yang Ditampilkan</span>
-                  </h4>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono text-xs">
-                    <label className="flex items-center gap-2 cursor-pointer text-emerald-100/90 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={configForm.suratSanksiLayout?.tampilkanNis !== false}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, tampilkanNis: e.target.checked }
-                        }))}
-                        className="rounded accent-amber-400"
-                      />
-                      <span>Tampilkan NIS</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-emerald-100/90 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={configForm.suratSanksiLayout?.tampilkanKelas !== false}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, tampilkanKelas: e.target.checked }
-                        }))}
-                        className="rounded accent-amber-400"
-                      />
-                      <span>Tampilkan Kelas</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-emerald-100/90 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={configForm.suratSanksiLayout?.tampilkanKamar !== false}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, tampilkanKamar: e.target.checked }
-                        }))}
-                        className="rounded accent-amber-400"
-                      />
-                      <span>Tampilkan Kamar</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-emerald-100/90 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={configForm.suratSanksiLayout?.tampilkanWali !== false}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, tampilkanWali: e.target.checked }
-                        }))}
-                        className="rounded accent-amber-400"
-                      />
-                      <span>Nama Orang Tua / Wali</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-emerald-100/90 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={configForm.suratSanksiLayout?.tampilkanHariTanggal !== false}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, tampilkanHariTanggal: e.target.checked }
-                        }))}
-                        className="rounded accent-amber-400"
-                      />
-                      <span>Hari & Tgl Kasus</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer text-emerald-100/90 hover:text-white">
-                      <input
-                        type="checkbox"
-                        checked={configForm.suratSanksiLayout?.tampilkanBatasWaktu !== false}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, tampilkanBatasWaktu: e.target.checked }
-                        }))}
-                        className="rounded accent-amber-400"
-                      />
-                      <span>Batas Waktu Target</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* 5. Jumlah & Posisi Kolom Tanda Tangan */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>E. Kolom Tanda Tangan & Pejabat Pengesah</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Jumlah Kolom Tanda Tangan</label>
-                      <select
-                        value={configForm.suratSanksiLayout?.jumlahTandaTangan || 3}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, jumlahTandaTangan: Number(e.target.value) as any }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      >
-                        <option value={2}>2 Kolom (Dewan Keamanan & Ketua Pondok)</option>
-                        <option value={3}>3 Kolom (Santri, Dewan Keamanan & Ketua Pondok)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Kota Terbit</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.kotaTerbit || 'Karawang'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, kotaTerbit: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Pejabat 2: Dewan Keamanan */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Jabatan Pejabat Keamanan</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.jabatanPihak2 || 'Petugas / Dewan Keamanan'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, jabatanPihak2: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Nama & Gelar Pejabat Keamanan</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.namaPihak2 || 'Ustadz Abdul Rohman, S.Pd.I'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, namaPihak2: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Pejabat 3: Ketua Pondok */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Jabatan Pimpinan Pondok</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.jabatanPihak3 || 'Ketua Pondok Pesantren'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, jabatanPihak3: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-emerald-100/90 mb-1 font-mono">Nama & Gelar Ketua Pondok</label>
-                      <input
-                        type="text"
-                        value={configForm.suratSanksiLayout?.namaPihak3 || 'K.H. Syarifuddin Malik'}
-                        onChange={(e) => setConfigForm(prev => ({
-                          ...prev,
-                          suratSanksiLayout: { ...prev.suratSanksiLayout, namaPihak3: e.target.value }
-                        }))}
-                        className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  <label className="flex items-center gap-2 cursor-pointer text-emerald-100/90 hover:text-white pt-2">
-                    <input
-                      type="checkbox"
-                      checked={configForm.suratSanksiLayout?.tampilkanStempelSah !== false}
-                      onChange={(e) => setConfigForm(prev => ({
-                        ...prev,
-                        suratSanksiLayout: { ...prev.suratSanksiLayout, tampilkanStempelSah: e.target.checked }
-                      }))}
-                      className="rounded accent-amber-400"
-                    />
-                    <span className="font-mono text-xs">Tampilkan Stempel Digital Sah Pondok Pesantren</span>
-                  </label>
-                </div>
-
-                {/* 6. Footer Catatan */}
-                <div className="p-4 rounded-2xl bg-[#041d13]/90 border border-emerald-800 space-y-3">
-                  <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
-                    <span>F. Footer atau Keterangan Tambahan</span>
-                  </h4>
-                  <input
-                    type="text"
-                    value={configForm.suratSanksiLayout?.footerCatatan || 'Dokumen ini sah diterbitkan secara otomatis oleh SIM Kamtib Al-Maliki dan diarsipkan dalam pangkalan data kedisiplinan pondok.'}
-                    onChange={(e) => setConfigForm(prev => ({
-                      ...prev,
-                      suratSanksiLayout: { ...prev.suratSanksiLayout, footerCatatan: e.target.value }
-                    }))}
-                    className="w-full px-3 py-2 bg-black border border-emerald-800 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-
-              </div>
-
-              {/* Live Preview Column (Right 5 cols) */}
-              <div className="lg:col-span-5 space-y-4">
-                <div className="sticky top-20 bg-amber-50/20 text-neutral-900 rounded-2xl border-2 border-emerald-900/30 p-5 shadow-2xl overflow-hidden font-sans text-[10px] leading-tight">
-                  <div className="text-center pb-2 border-b-2 border-emerald-900">
-                    <p className="font-serif text-emerald-900 text-xs font-bold">
-                      {configForm.suratSanksiLayout?.teksBismillah || 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ'}
-                    </p>
-                    <p className="font-black text-emerald-950 uppercase text-[11px] tracking-tight">
-                      {configForm.suratSanksiLayout?.kopNamaInstansi || configForm.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI'}
-                    </p>
-                    <p className="font-bold text-amber-900 text-[8px] uppercase">
-                      {configForm.suratSanksiLayout?.kopSubInstansi || 'DEWAN KEAMANAN & PENEGAKAN KODIFIKASI QANUN KETERTIBAN'}
-                    </p>
-                    <p className="text-[7px] text-neutral-600 line-clamp-1">
-                      {configForm.suratSanksiLayout?.kopAlamatKontak || 'Jl. Pesantren Luhur No. 99, Karawang'}
-                    </p>
-                  </div>
-
-                  <div className="text-center py-2">
-                    <p className="font-black underline uppercase text-[9px]">
-                      {configForm.suratSanksiLayout?.judulSurat || 'SURAT PELANGGARAN DAN SANKSI EDUKATIF'}
-                    </p>
-                    <p className="text-[7px] font-mono text-neutral-600">Nomor: SNK/MALIKI/2026/XI/001</p>
-                  </div>
-
-                  <p className="text-[8px] text-neutral-700 italic mb-2 line-clamp-2">
-                    {configForm.suratSanksiLayout?.kalimatPembuka || 'Berdasarkan sidang rekapitulasi kodifikasi qanun ketertiban santri...'}
-                  </p>
-
-                  <div className="bg-white/80 border border-neutral-300 rounded p-2 mb-2 space-y-1">
-                    <div className="flex justify-between">
-                      <span className="font-bold text-neutral-600">Santri:</span>
-                      <span className="font-bold">Ahmad Zaki Mubarak</span>
-                    </div>
-                    {configForm.suratSanksiLayout?.tampilkanNis !== false && (
-                      <div className="flex justify-between">
-                        <span className="text-neutral-500">NIS:</span>
-                        <span className="font-mono">202401001</span>
-                      </div>
-                    )}
-                    {configForm.suratSanksiLayout?.tampilkanKelas !== false && (
-                      <div className="flex justify-between">
-                        <span className="text-neutral-500">Kelas:</span>
-                        <span>1 Ulya (Aliyah) - Banin</span>
-                      </div>
-                    )}
-                    {configForm.suratSanksiLayout?.tampilkanHariTanggal !== false && (
-                      <div className="flex justify-between text-rose-800">
-                        <span>Tanggal:</span>
-                        <span className="font-bold">Senin, 08 Nov 2026</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-amber-100/60 p-2 rounded border-l-2 border-amber-600 mb-2">
-                    <p className="font-bold text-[8px] text-neutral-900">
-                      Takzir: Menghafal Nadzom Al-Imrithi bait 1-30
-                    </p>
-                    <p className="text-[7px] text-rose-800 font-mono font-bold mt-0.5">
-                      Batas Pengumpulan: 15 Nov 2026, 17:00 WIB
-                    </p>
-                  </div>
-
-                  <div className="pt-2 text-right text-[7px] text-neutral-600">
-                    {configForm.suratSanksiLayout?.kotaTerbit || 'Karawang'}, {new Date().toISOString().split('T')[0]}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-center text-[7px] pt-2">
-                    <div>
-                      <p className="font-bold">{configForm.suratSanksiLayout?.jabatanPihak2 || 'Dewan Keamanan'}</p>
-                      <div className="h-6"></div>
-                      <p className="font-bold underline">{configForm.suratSanksiLayout?.namaPihak2 || 'Ustadz Abdul Rohman, S.Pd.I'}</p>
-                    </div>
-                    <div>
-                      <p className="font-bold">{configForm.suratSanksiLayout?.jabatanPihak3 || 'Ketua Pondok'}</p>
-                      <div className="h-6"></div>
-                      <p className="font-bold underline">{configForm.suratSanksiLayout?.namaPihak3 || 'K.H. Syarifuddin Malik'}</p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-neutral-300 mt-2 text-[6px] text-neutral-500 text-center line-clamp-1">
-                    {configForm.suratSanksiLayout?.footerCatatan || 'Dokumen sah SIM Kamtib Al-Maliki'}
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-[#041d13]/90 border border-emerald-800 text-xs text-emerald-100/90 font-mono space-y-1">
-                  <p className="font-bold text-amber-300 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    Penerapan Aman & Akuntabel
-                  </p>
-                  <p className="text-[11px] text-emerald-200/75 font-sans">
-                    Perubahan pengaturan layout ini akan langsung diterapkan pada surat sanksi berikutnya secara otomatis, tanpa mengubah arsip surat lama yang sudah diterbitkan.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-
-            <div className="flex justify-end pt-4 border-t border-emerald-800">
-              <button
-                type="submit"
-                className="tactile-interactive px-6 py-2.5 font-bold font-mono text-xs uppercase tracking-wider text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 hover:from-amber-300 hover:to-yellow-300 rounded-xl shadow-lg shadow-amber-500/20 cursor-pointer border border-amber-300/60"
-              >
-                Simpan & Terapkan Format Surat Sanksi
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* Layout Surat Perizinan & Surat Sanksi dikelola secara independen di Option Panel Tab Keamanan */}
 
       {/* SUB-TAB 5: EDITOR 15 SURAT SEKRETARIS */}
       {activeSubTab === 'surat_sekretaris_config' && (() => {
@@ -2412,7 +1449,27 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   />
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-4 pt-4">
+              <div>
+                <label className="block text-[#e5c158] font-bold mb-1">Link URL Gambar Tanda Tangan Digital 1 (Sekretaris)</label>
+                <input
+                  type="text"
+                  placeholder="https://... atau data:image/..."
+                  value={secCfg.ttdUrl1 || ''}
+                  onChange={(e) => updateSecCfg({ ttdUrl1: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#031810] border border-[#d4af37]/40 rounded-xl text-[#f4f9f5] font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-[#e5c158] font-bold mb-1">Link URL Gambar Tanda Tangan Digital 2 (Ketua Pondok)</label>
+                <input
+                  type="text"
+                  placeholder="https://... atau data:image/..."
+                  value={secCfg.ttdUrl2 || ''}
+                  onChange={(e) => updateSecCfg({ ttdUrl2: e.target.value })}
+                  className="w-full px-3 py-2 bg-[#031810] border border-[#d4af37]/40 rounded-xl text-[#f4f9f5] font-mono"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-4 pt-2">
                 <label className="inline-flex items-center gap-2 text-[#f4f9f5] cursor-pointer">
                   <input
                     type="checkbox"

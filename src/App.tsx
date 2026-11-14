@@ -37,6 +37,7 @@ import { SuratIzinModal } from './components/SuratIzinModal';
 import { NotificationModal } from './components/NotificationModal';
 import { QuickQRScannerModal } from './components/QuickQRScannerModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { LoginScreen } from './components/LoginScreen';
 import { syncPWAIdentity } from './services/pwaSyncService';
 
 const KEAMANAN_SUBTABS: KeamananSubTab[] = [
@@ -58,8 +59,8 @@ const KEAMANAN_SUBTABS: KeamananSubTab[] = [
 ];
 
 export default function App() {
-  // Authentication & Session (Masuk langsung ke Administrator tanpa layar login)
-  const [currentUser, setCurrentUser] = useState<UserAccount>(storageService.getCurrentUser());
+  // Authentication & Session
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(storageService.getCurrentUser());
 
   // Navigation & UI state
   const [activeMenu, setActiveMenu] = useState<ActiveMenu>('dashboard');
@@ -180,33 +181,34 @@ export default function App() {
   };
 
   // Filter based on gender scope (Otoritas Banin vs Banat)
+  const userGenderAccess = currentUser?.genderAccess || 'all';
   const scopedSantriList = santriList.filter((s) => {
-    if (currentUser.genderAccess !== 'all') {
-      return s.gender === currentUser.genderAccess;
+    if (userGenderAccess !== 'all') {
+      return s.gender === userGenderAccess;
     }
     if (genderScope === 'all') return true;
     return s.gender === genderScope;
   });
 
   const scopedPerizinanList = perizinanList.filter((p) => {
-    if (currentUser.genderAccess !== 'all') {
-      return p.santriGender === currentUser.genderAccess;
+    if (userGenderAccess !== 'all') {
+      return p.santriGender === userGenderAccess;
     }
     if (genderScope === 'all') return true;
     return p.santriGender === genderScope;
   });
 
   const scopedPelanggaranList = pelanggaranList.filter((p) => {
-    if (currentUser.genderAccess !== 'all') {
-      return p.santriGender === currentUser.genderAccess;
+    if (userGenderAccess !== 'all') {
+      return p.santriGender === userGenderAccess;
     }
     if (genderScope === 'all') return true;
     return p.santriGender === genderScope;
   });
 
   const scopedSanksiList = sanksiList.filter((s) => {
-    if (currentUser.genderAccess !== 'all') {
-      return s.santriGender === currentUser.genderAccess;
+    if (userGenderAccess !== 'all') {
+      return s.santriGender === userGenderAccess;
     }
     if (genderScope === 'all') return true;
     return s.santriGender === genderScope;
@@ -219,7 +221,9 @@ export default function App() {
   ).length;
   const lateSantriCount = scopedPerizinanList.filter((i) => i.status === 'Terlambat').length;
   const unreadNotifsCount = notifications.filter((n) => !n.dibaca).length;
-  const unreadKoordinasiCount = koordinasiList.filter((k) => !k.dibacaOleh.includes(currentUser.id)).length;
+  const unreadKoordinasiCount = currentUser
+    ? koordinasiList.filter((k) => !(k.dibacaOleh || []).includes(currentUser.id)).length
+    : 0;
 
   const handleOpenSanksiFromPelanggaran = (pelanggaran: Pelanggaran) => {
     setPreSelectedPelanggaran(pelanggaran);
@@ -229,6 +233,7 @@ export default function App() {
   };
 
   const handleNavigateFromNotification = (menuId: string) => {
+    if (!currentUser) return;
     if (menuId === 'dashboard_keamanan') {
       setActiveMenu('keamanan');
       setKeamananSubTab('ringkasan');
@@ -248,6 +253,31 @@ export default function App() {
       setActiveMenu(mainCandidate);
     }
   };
+
+  if (!currentUser) {
+    return (
+      <>
+        <LoginScreen
+          onLoginSuccess={(user) => {
+            setCurrentUser(user);
+            if (
+              user.role === 'ketua_keamanan' ||
+              user.role === 'anggota_keamanan' ||
+              user.role === 'petugas_gerbang'
+            ) {
+              setActiveMenu('keamanan');
+              setKeamananSubTab('ringkasan');
+              setActiveSubTab('ringkasan');
+            } else {
+              setActiveMenu('dashboard');
+              setActiveSubTab('');
+            }
+          }}
+        />
+        <OfflineIndicator />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-[#02100a] text-[#f4f9f5] flex flex-col font-sans antialiased selection:bg-[#d4af37] selection:text-[#02100a]">

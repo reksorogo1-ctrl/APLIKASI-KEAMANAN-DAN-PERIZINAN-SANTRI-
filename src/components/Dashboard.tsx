@@ -82,7 +82,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const systemConfig = storageService.getSystemConfig();
-  const logoBerlaku = systemConfig.logoUrl || "/src/assets/images/logo_pesantren_almaliki_1794050742981.jpg";
+  const rawKeamananLogo = systemConfig.logoDashboardKeamananUrl;
+  const logoBerlaku =
+    !rawKeamananLogo ||
+    rawKeamananLogo.includes('2026-11-11-7ffd46ad') ||
+    rawKeamananLogo.includes('2026-11-14-03361e24') ||
+    rawKeamananLogo.includes('logo_pesantren_almaliki')
+      ? '/logo-fit.png'
+      : rawKeamananLogo;
 
   return (
     <div className="space-y-6">
@@ -102,17 +109,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 sm:gap-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 max-w-3xl min-w-0">
               
-              {/* Logo Berlaku Resmi Pesantren Salaf Al-Maliki (Admin & Pengurus) - Ukuran Lebih Besar & Jelas */}
+              {/* Logo Dashboard Tab Keamanan (Diatur Terpisah via Option Panel Keamanan) */}
               <div className="relative shrink-0 group self-center sm:self-start">
-                <div className="absolute -inset-1.5 rounded-3xl bg-gradient-to-tr from-emerald-400 via-amber-400 to-emerald-400 opacity-90 blur-[5px] group-hover:opacity-100 transition-opacity" />
-                <div className="relative p-2 sm:p-2.5 rounded-3xl bg-[#02100a]/95 border-2 border-amber-400 shadow-2xl overflow-hidden glow-gold">
+                <div className="absolute -inset-1.5 rounded-[24%] bg-gradient-to-tr from-emerald-400 via-amber-400 to-emerald-400 opacity-90 blur-[5px] group-hover:opacity-100 transition-opacity" />
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 p-0 rounded-[22%] bg-[#02100a] border-2 border-amber-400 shadow-2xl overflow-hidden glow-gold">
                   <img
                     src={logoBerlaku}
-                    alt="Logo Pondok Pesantren Salaf Al-Maliki"
-                    className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-2xl object-cover filter contrast-125 brightness-110 shadow-2xl"
+                    alt="Logo Dashboard Keamanan Pondok Pesantren Salaf Al-Maliki"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      if (!img.dataset.fallbackApplied) {
+                        img.dataset.fallbackApplied = '1';
+                        img.src = '/logo-fit.png';
+                      }
+                    }}
+                    className="w-full h-full object-cover scale-[1.03]"
                   />
-                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-slate-950 animate-ping" />
-                  <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-slate-950 shadow-md shadow-emerald-400/80" />
+                  <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-950 animate-ping" />
+                  <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-950 shadow-md shadow-emerald-400/80" />
                 </div>
               </div>
 

@@ -222,6 +222,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: ClipboardList,
         },
         {
+          key: 'kp_data_santri',
+          menu: 'sekretaris',
+          subTab: 'data_santri_psb',
+          label: 'Tab Data Santri',
+          subtitle: 'Rekap per Kelas, NIS, Wali & Foto',
+          icon: Users,
+        },
+        {
           key: 'kp_biodata',
           menu: 'biodata_profil',
           label: 'Tab Biodata dan Profil',
@@ -268,9 +276,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {
           key: 'sek_data_santri',
           menu: 'sekretaris',
-          subTab: 'data_santri',
+          subTab: 'data_santri_psb',
           label: 'Tab Data Santri',
-          subtitle: 'Biodata Lengkap, Wali & PSB',
+          subtitle: 'Rekap per Kelas, NIS, Wali & Foto',
           icon: Users,
         },
         {
@@ -583,9 +591,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {
         key: 'adm_sekretaris',
         menu: 'sekretaris',
+        subTab: 'buat_surat',
         label: 'Sekretaris',
-        subtitle: '15 Jenis Surat, Santri & Ustadz',
+        subtitle: '15 Jenis Surat, Cetak & PDF A4',
         icon: FileSignature,
+      },
+      {
+        key: 'adm_data_santri',
+        menu: 'sekretaris',
+        subTab: 'data_santri_psb',
+        label: 'Tab Data Santri',
+        subtitle: 'Rekap per Kelas, NIS, Wali & Foto',
+        icon: Users,
       },
       {
         key: 'adm_bendahara',

@@ -61,12 +61,26 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Zone 1: Official Pesantren Brand Identity */}
       <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] border border-[#d4af37]/85 shadow-lg overflow-hidden bg-[#02100a]">
           <img
-            src={logoUrl || 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png'}
+            src={
+              !logoUrl ||
+              logoUrl.includes('2026-11-11-7ffd46ad') ||
+              logoUrl.includes('2026-11-14-03361e24') ||
+              logoUrl.includes('logo_pesantren_almaliki')
+                ? '/logo-fit.png'
+                : logoUrl
+            }
             alt="Logo Pondok Pesantren Salaf Al-Maliki"
             referrerPolicy="no-referrer"
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-[#d4af37]/85 shadow-lg object-cover bg-[#02100a]"
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              if (!img.dataset.fallbackApplied) {
+                img.dataset.fallbackApplied = '1';
+                img.src = '/logo-fit.png';
+              }
+            }}
+            className="w-full h-full object-cover scale-[1.03]"
           />
         </div>
         <div className="min-w-0">
