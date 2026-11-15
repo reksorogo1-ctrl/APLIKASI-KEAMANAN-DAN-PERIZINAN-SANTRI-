@@ -97,8 +97,25 @@ async function startServer() {
   if (!isProduction) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+        ws: false,
+      },
       appType: 'spa',
+    });
+    app.get('/@vite/client', async (_req: Request, res: Response, next) => {
+      try {
+        const result = await vite.transformRequest('/@vite/client');
+        if (!result) return next();
+        const patched = result.code.replace(
+          /const transport = normalizeModuleRunnerTransport\(\(\(\) => \{[\s\S]*?\}\)\(\)\);/,
+          'const transport = normalizeModuleRunnerTransport({ async connect() {}, async disconnect() {}, send() {} });'
+        );
+        res.type('application/javascript').send(patched);
+      } catch {
+        next();
+      }
     });
     app.use(vite.middlewares);
   } else {
