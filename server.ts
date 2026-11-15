@@ -60,19 +60,17 @@ async function startServer() {
         },
       });
 
-      const contents = {
-        parts: [
-          {
-            inlineData: {
-              mimeType,
-              data: base64Data,
-            },
+      const contents = [
+        {
+          inlineData: {
+            mimeType,
+            data: base64Data,
           },
-          {
-            text: TRANSCRIBE_SURAT_PROMPT,
-          },
-        ],
-      };
+        },
+        {
+          text: TRANSCRIBE_SURAT_PROMPT,
+        },
+      ];
 
       let response;
       try {
