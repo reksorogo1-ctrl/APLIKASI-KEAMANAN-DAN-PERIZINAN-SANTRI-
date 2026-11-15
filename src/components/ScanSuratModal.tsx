@@ -101,9 +101,31 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setCameraError(
-          'Browser atau perangkat tidak mendukung akses kamera langsung. Gunakan tombol "Kamera HP / Galeri" di bawah.'
+          'Browser atau perangkat tidak mendukung akses kamera langsung. Gunakan tombol "Kamera HP / Pilih Foto" di bawah.'
         );
         return;
+      }
+
+      let preferredDeviceId: string | undefined;
+      if (typeof navigator.mediaDevices.enumerateDevices === 'function') {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+          if (videoInputs.length === 0) {
+            setCameraError(
+              'Perangkat kamera tidak terdeteksi pada perangkat ini. Silakan gunakan tombol "Kamera HP / Pilih Foto" atau tempel/tarik gambar surat ke layar ini.'
+            );
+            return;
+          }
+          const rearCam = videoInputs.find((d) => /back|rear|environment/i.test(d.label));
+          const frontCam = videoInputs.find((d) => /front|user|face/i.test(d.label));
+          preferredDeviceId =
+            mode === 'environment'
+              ? (rearCam?.deviceId || videoInputs[0]?.deviceId || undefined)
+              : (frontCam?.deviceId || videoInputs[0]?.deviceId || undefined);
+        } catch {
+          // Continue with standard getUserMedia if enumerateDevices is restricted
+        }
       }
 
       const constraintCandidates: MediaStreamConstraints[] = [
@@ -123,9 +145,19 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
           },
           audio: false,
         },
+        ...(preferredDeviceId
+          ? [
+              {
+                video: {
+                  deviceId: { exact: preferredDeviceId },
+                },
+                audio: false,
+              } as MediaStreamConstraints,
+            ]
+          : []),
         {
           video: {
-            facingMode: mode,
+            facingMode: { ideal: mode },
           },
           audio: false,
         },
@@ -144,14 +176,28 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
           break;
         } catch (err) {
           lastError = err;
+          const errName = err instanceof DOMException ? err.name : '';
+          if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+            break;
+          }
         }
       }
 
       if (!acquiredStream) {
-        console.error('Camera start failed:', lastError);
-        setCameraError(
-          'Tidak dapat mengakses kamera. Pastikan izin kamera diaktifkan atau gunakan tombol "Kamera HP / Galeri".'
-        );
+        const errName = lastError instanceof DOMException ? lastError.name : '';
+        if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+          setCameraError(
+            'Izin kamera ditolak oleh browser. Aktifkan izin kamera pada pengaturan browser, atau gunakan tombol "Kamera HP / Pilih Foto".'
+          );
+        } else if (errName === 'NotReadableError' || errName === 'TrackStartError') {
+          setCameraError(
+            'Kamera sedang digunakan oleh aplikasi lain. Tutup aplikasi kamera lain lalu coba lagi, atau pilih foto surat dari galeri.'
+          );
+        } else {
+          setCameraError(
+            'Perangkat kamera tidak ditemukan atau tidak tersedia di browser ini. Silakan gunakan tombol "Kamera HP / Pilih Foto" atau tarik/tempel gambar surat.'
+          );
+        }
         return;
       }
 
@@ -307,41 +353,66 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
     await processImageWithGemini(dataUrl);
   };
 
+  const processImageFile = useCallback(
+    (file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = async () => {
+          const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
+          const targetW = Math.round(img.width * scale);
+          const targetH = Math.round(img.height * scale);
+
+          const canvas = canvasRef.current || document.createElement('canvas');
+          canvas.width = targetW;
+          canvas.height = targetH;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+          stopCamera();
+          await processImageWithGemini(compressedDataUrl);
+        };
+        img.onerror = () => {
+          setErrorMsg('File gambar tidak dapat dibaca. Pilih foto surat dengan format JPG/PNG.');
+        };
+        img.src = String(reader.result || '');
+      };
+      reader.readAsDataURL(file);
+    },
+    [stopCamera]
+  );
+
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = async () => {
-        const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
-        const targetW = Math.round(img.width * scale);
-        const targetH = Math.round(img.height * scale);
-
-        const canvas = canvasRef.current || document.createElement('canvas');
-        canvas.width = targetW;
-        canvas.height = targetH;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, targetW, targetH);
-
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-        stopCamera();
-        await processImageWithGemini(compressedDataUrl);
-      };
-      img.onerror = () => {
-        setErrorMsg('File gambar tidak dapat dibaca. Pilih foto surat dengan format JPG/PNG.');
-      };
-      img.src = String(reader.result || '');
-    };
-    reader.readAsDataURL(file);
+    processImageFile(file);
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            processImageFile(file);
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isOpen, processImageFile]);
 
   const handleRetryScan = () => {
     setCapturedPreview(null);
@@ -358,7 +429,17 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] w-screen h-[100dvh] bg-black flex flex-col overflow-hidden select-none">
+    <div
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+          processImageFile(file);
+        }
+      }}
+      className="fixed inset-0 z-[120] w-screen h-[100dvh] bg-black flex flex-col overflow-hidden select-none"
+    >
       {/* Top Floating HUD */}
       <div className="relative z-20 flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-b from-black/85 via-black/55 to-transparent">
         <div className="flex items-center gap-3 min-w-0">
@@ -436,17 +517,27 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
             className="w-full h-full object-contain bg-black"
           />
         ) : cameraError ? (
-          <div className="max-w-md mx-auto px-6 py-8 rounded-2xl bg-[#041d13] border border-[#d4af37]/40 text-center space-y-4">
+          <div className="max-w-md mx-4 px-6 py-8 rounded-2xl bg-[#041d13] border border-[#d4af37]/40 text-center space-y-4">
             <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
             <p className="text-sm text-[#e2f2e9] leading-relaxed">{cameraError}</p>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-2 cursor-pointer"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Buka Kamera HP / Pilih Foto</span>
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-2 cursor-pointer shadow-lg"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Kamera HP / Pilih Foto</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => startCamera(facingMode)}
+                className="px-4 py-3 rounded-xl bg-[#062a1d] hover:bg-[#083524] text-[#e5c158] border border-[#d4af37]/40 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Coba Kamera Lagi</span>
+              </button>
+            </div>
           </div>
         ) : (
           <>
