@@ -26,7 +26,9 @@ import {
   Printer,
   PieChart as PieChartIcon,
   Mail,
-  User
+  User,
+  Clock,
+  MapPin
 } from 'lucide-react';
 import {
   BarChart,
@@ -134,7 +136,12 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
   koordinasiList: propKoordinasiList,
   onNavigate,
 }) => {
+  const todayWibStr = useMemo(
+    () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }),
+    []
+  );
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(todayWibStr);
 
   const notifikasiList = storageService.getNotifications();
   const koordinasiList = propKoordinasiList || storageService.getKoordinasiList();
@@ -389,7 +396,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       agendas: AgendaPengurus[];
     }[] = [];
 
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = todayWibStr;
 
     for (let d = 1; d <= daysInMonth; d++) {
       const cellDate = new Date(year, month, d, 12, 0, 0);
@@ -412,7 +419,51 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       firstDayOfWeek,
       days,
     };
-  }, [calendarMonthOffset, agendaPengurus]);
+  }, [calendarMonthOffset, agendaPengurus, todayWibStr]);
+
+  const todayAgendas = useMemo(
+    () => agendaPengurus.filter((a) => a.tanggal === todayWibStr && a.status !== 'Selesai'),
+    [agendaPengurus, todayWibStr]
+  );
+
+  const selectedDateAgendas = useMemo(
+    () => agendaPengurus.filter((a) => a.tanggal === selectedCalendarDate),
+    [agendaPengurus, selectedCalendarDate]
+  );
+
+  const selectedDateInfo = useMemo(() => {
+    const dObj = new Date(`${selectedCalendarDate}T12:00:00`);
+    const valid = !isNaN(dObj.getTime()) ? dObj : new Date();
+    const masehiLabel = valid.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const hj = gregorianToHijri(valid);
+    return {
+      masehiLabel,
+      hijriLabel: `${hj.day} ${hj.monthName} ${hj.year} H`,
+    };
+  }, [selectedCalendarDate]);
+
+  const upcomingAgendas = useMemo(() => {
+    return [...agendaPengurus]
+      .filter((a) => a.status !== 'Selesai')
+      .sort((a, b) => (a.tanggal > b.tanggal ? 1 : -1))
+      .slice(0, 4);
+  }, [agendaPengurus]);
+
+  const handleJumpToAgendaDate = (dateStr: string) => {
+    setSelectedCalendarDate(dateStr);
+    const target = new Date(`${dateStr}T12:00:00`);
+    const now = new Date();
+    if (!isNaN(target.getTime())) {
+      const diffMonths =
+        (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth());
+      setCalendarMonthOffset(diffMonths);
+    }
+  };
 
   const formatRupiah = (val: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
@@ -1538,27 +1589,49 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       </div>
 
       {/* 8. KALENDER KEGIATAN PONDOK PESANTREN (HIJRIAH & MASEHI) */}
-      <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl">
+      <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-4 sm:p-5 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-emerald-800/70">
           <div>
             <h2 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Calendar className="w-5 h-5 text-[#f3d266]" />
-              Kalender Kegiatan Pondok Pesantren (Masehi & Hijriah)
+              Kalender Kegiatan Pondok (Masehi &amp; Hijriah)
             </h2>
             <p className="text-xs text-emerald-200/75 mt-0.5">
-              Penanggalan terpadu Masehi & Hijriah beserta jadwal rapat, pengajian akbar, dan kegiatan pengurus
+              Klik tanggal untuk melihat detail kegiatan. Agenda hari ini otomatis muncul sebagai notifikasi pengurus.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {currentUser.role === 'admin' && (
+              <button
+                type="button"
+                onClick={() => onNavigate('admin_options')}
+                className="px-3 py-1.5 rounded-xl bg-[#d4af37]/20 hover:bg-[#d4af37]/30 text-[#f3d266] border border-[#d4af37]/50 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                title="Tambah atau Edit Agenda di Option Panel Admin"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Atur Agenda</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setCalendarMonthOffset(0);
+                setSelectedCalendarDate(todayWibStr);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-[#072c1e] hover:bg-[#0b422d] text-emerald-100 border border-emerald-700/60 text-xs font-semibold cursor-pointer"
+            >
+              Hari Ini
+            </button>
             <button
               type="button"
               onClick={() => setCalendarMonthOffset(prev => prev - 1)}
               className="p-2 rounded-xl bg-[#03160f] hover:bg-[#072c1e] text-emerald-200 border border-emerald-800 cursor-pointer"
+              aria-label="Bulan Sebelumnya"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="px-4 py-1.5 rounded-xl bg-[#03160f] border border-[#d4af37]/50 text-center min-w-[200px]">
+            <div className="px-3.5 py-1.5 rounded-xl bg-[#03160f] border border-[#d4af37]/50 text-center min-w-[180px]">
               <p className="text-xs font-bold text-white">{calendarData.masehiMonthName}</p>
               <p className="text-[10px] font-mono text-[#f3d266]">{calendarData.hijriHeader}</p>
             </div>
@@ -1566,16 +1639,44 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               type="button"
               onClick={() => setCalendarMonthOffset(prev => prev + 1)}
               className="p-2 rounded-xl bg-[#03160f] hover:bg-[#072c1e] text-emerald-200 border border-emerald-800 cursor-pointer"
+              aria-label="Bulan Berikutnya"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
-          <div className="lg:col-span-8">
-            <div className="grid grid-cols-7 gap-1.5 text-center mb-2">
-              {['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((d, idx) => (
+        {/* Notifikasi Agenda Hari Ini (Otomatis Real-Time) */}
+        {todayAgendas.length > 0 && (
+          <div className="mt-4 p-3.5 rounded-xl bg-gradient-to-r from-[#d4af37]/20 via-emerald-950/80 to-[#03160f] border border-[#d4af37]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-[#d4af37] text-[#02120a] shrink-0">
+                <Bell className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-extrabold text-[#f3d266] uppercase tracking-wider">
+                  Pengingat Agenda Hari Ini ({todayAgendas.length} Kegiatan)
+                </p>
+                <p className="text-xs text-white mt-0.5">
+                  {todayAgendas.map((a) => `${a.judul} (${a.waktu} WIB · ${a.tempat})`).join(' • ')}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleJumpToAgendaDate(todayWibStr)}
+              className="px-3 py-1.5 rounded-lg bg-[#d4af37] text-[#02120a] text-[11px] font-bold cursor-pointer shrink-0 self-start sm:self-center"
+            >
+              Lihat Detail
+            </button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-4">
+          {/* Grid Kalender Kompak & Interaktif */}
+          <div className="lg:col-span-7">
+            <div className="grid grid-cols-7 gap-1.5 text-center mb-1.5">
+              {['Aha', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((d, idx) => (
                 <div
                   key={d}
                   className={`py-1.5 text-[10px] font-mono font-bold uppercase rounded-lg ${
@@ -1589,73 +1690,165 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
 
             <div className="grid grid-cols-7 gap-1.5">
               {Array.from({ length: calendarData.firstDayOfWeek }).map((_, i) => (
-                <div key={`empty-${i}`} className="h-16 sm:h-20 rounded-xl bg-[#02100a]/40 border border-emerald-950/40" />
+                <div key={`empty-${i}`} className="h-12 sm:h-14 rounded-xl bg-[#02100a]/35 border border-emerald-950/30" />
               ))}
               {calendarData.days.map((item) => {
                 const hasAgenda = item.agendas.length > 0;
+                const isSelected = item.dateStr === selectedCalendarDate;
                 return (
-                  <div
+                  <button
                     key={item.dateStr}
-                    className={`h-16 sm:h-20 p-1.5 sm:p-2 rounded-xl border flex flex-col justify-between transition-all ${
-                      item.isToday
-                        ? 'bg-gradient-to-br from-[#0b422d] to-[#06281c] border-[#d4af37] shadow-md'
+                    type="button"
+                    onClick={() => setSelectedCalendarDate(item.dateStr)}
+                    className={`h-12 sm:h-14 p-1.5 rounded-xl border flex flex-col justify-between text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#0c4a32] border-[#f3d266] ring-1 ring-[#f3d266]/60 shadow-lg'
+                        : item.isToday
+                        ? 'bg-[#083825] border-[#d4af37]/80'
                         : hasAgenda
-                        ? 'bg-[#072c1e]/90 border-emerald-500/60'
-                        : 'bg-[#03160f]/80 border-emerald-900/50 hover:border-emerald-700/60'
+                        ? 'bg-[#06291c] border-emerald-500/60 hover:border-[#d4af37]/60'
+                        : 'bg-[#03160f]/80 border-emerald-900/45 hover:border-emerald-700/70'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <span className={`text-xs sm:text-sm font-bold font-mono ${item.isToday ? 'text-[#f3d266]' : 'text-white'}`}>
+                    <div className="flex items-start justify-between w-full">
+                      <span
+                        className={`text-xs sm:text-sm font-bold font-mono leading-none ${
+                          item.isToday || isSelected ? 'text-[#f3d266]' : 'text-white'
+                        }`}
+                      >
                         {item.masehiDay}
                       </span>
-                      <span className="text-[9px] font-mono text-emerald-300/80 bg-emerald-950/80 px-1 rounded">
+                      <span className="text-[9px] font-mono text-emerald-300/75 leading-none">
                         {item.hijriDay}H
                       </span>
                     </div>
 
-                    {hasAgenda ? (
-                      <div className="truncate text-[9px] px-1.5 py-0.5 rounded bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/40 font-semibold">
-                        {item.agendas[0].judul}
-                      </div>
-                    ) : (
-                      <span className="text-[8px] font-mono text-emerald-400/50 truncate">
-                        {item.hijriMonth}
-                      </span>
-                    )}
-                  </div>
+                    <div className="flex items-center justify-between w-full">
+                      {hasAgenda ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#d4af37]/20 text-[#f3d266] text-[9px] font-mono font-bold truncate max-w-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#f3d266] shrink-0" />
+                          <span>{item.agendas.length} Agenda</span>
+                        </span>
+                      ) : item.isToday ? (
+                        <span className="text-[8px] font-mono font-bold text-emerald-300">Hari Ini</span>
+                      ) : (
+                        <span className="text-[8px] font-mono text-emerald-400/40 truncate">
+                          {item.hijriMonth.split(' ')[0]}
+                        </span>
+                      )}
+                    </div>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          <div className="lg:col-span-4 space-y-3">
-            <h3 className="text-xs font-bold text-[#f3d266] uppercase tracking-wider font-mono">
-              Agenda Kegiatan & Musyawarah Terjadwal
-            </h3>
-            <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
-              {agendaPengurus.map((agd) => {
-                const dObj = new Date(agd.tanggal + 'T12:00:00');
-                const hj = gregorianToHijri(dObj);
-                return (
-                  <div
-                    key={agd.id}
-                    className="p-3.5 rounded-2xl bg-[#03160f] border border-emerald-800/70 space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-mono text-[#f3d266] font-bold">
-                        {agd.tanggal} · {hj.day} {hj.monthName} {hj.year} H
-                      </span>
-                      <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-700/40">
-                        {agd.status}
-                      </span>
+          {/* Panel Ringkas Detail Tanggal Terpilih & Jadwal Terdekat */}
+          <div className="lg:col-span-5 space-y-3.5">
+            {/* Detail Tanggal Terpilih */}
+            <div className="p-4 rounded-2xl bg-[#03160f] border border-[#d4af37]/35 space-y-2.5">
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-emerald-800/60">
+                <div>
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">
+                    Detail Tanggal Terpilih
+                  </p>
+                  <p className="text-xs sm:text-sm font-bold text-white mt-0.5">
+                    {selectedDateInfo.masehiLabel}
+                  </p>
+                  <p className="text-[11px] font-mono text-[#f3d266]">{selectedDateInfo.hijriLabel}</p>
+                </div>
+                {selectedCalendarDate === todayWibStr && (
+                  <span className="px-2 py-0.5 rounded-lg bg-[#d4af37]/20 text-[#f3d266] border border-[#d4af37]/40 text-[10px] font-mono font-bold">
+                    HARI INI
+                  </span>
+                )}
+              </div>
+
+              {selectedDateAgendas.length === 0 ? (
+                <p className="text-xs text-emerald-200/65 py-2">
+                  Belum ada kegiatan terjadwal pada tanggal ini.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedDateAgendas.map((agd) => (
+                    <div
+                      key={agd.id}
+                      className="p-3 rounded-xl bg-[#052318] border border-emerald-700/60 space-y-1"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#d4af37]/20 text-[#f3d266]">
+                          {agd.kategori || 'Kegiatan Pondok'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-700/40">
+                          {agd.status}
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-white">{agd.judul}</p>
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-emerald-200/80">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#f3d266]" /> {agd.waktu} WIB
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-emerald-400" /> {agd.tempat}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-emerald-300/75 font-mono">
+                        Divisi: {agd.divisiTerkait}
+                      </p>
+                      {agd.catatan && (
+                        <p className="text-[11px] text-emerald-100/75 pt-0.5">{agd.catatan}</p>
+                      )}
                     </div>
-                    <p className="text-xs font-bold text-white">{agd.judul}</p>
-                    <p className="text-[11px] text-emerald-200/75">
-                      Pukul {agd.waktu} WIB · {agd.tempat} ({agd.divisiTerkait})
-                    </p>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Daftar Agenda Mendatang / Aktif */}
+            <div className="p-4 rounded-2xl bg-[#03160f]/85 border border-emerald-800/70 space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-bold text-[#f3d266] uppercase tracking-wider font-mono">
+                  Jadwal Agenda Pondok ({agendaPengurus.length})
+                </h3>
+                <span className="text-[10px] font-mono text-emerald-300/70">Klik untuk buka</span>
+              </div>
+
+              <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                {upcomingAgendas.length === 0 ? (
+                  <p className="text-xs text-emerald-200/60 py-2">Semua agenda telah selesai.</p>
+                ) : (
+                  upcomingAgendas.map((agd) => {
+                    const dObj = new Date(agd.tanggal + 'T12:00:00');
+                    const hj = gregorianToHijri(dObj);
+                    const isTodayItem = agd.tanggal === todayWibStr;
+                    return (
+                      <button
+                        key={agd.id}
+                        type="button"
+                        onClick={() => handleJumpToAgendaDate(agd.tanggal)}
+                        className={`w-full text-left p-2.5 rounded-xl border transition-all cursor-pointer space-y-1 ${
+                          isTodayItem
+                            ? 'bg-[#093625] border-[#d4af37]/70'
+                            : 'bg-[#02120c] border-emerald-800/60 hover:border-[#d4af37]/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-mono text-[#f3d266] font-bold">
+                            {agd.tanggal} · {hj.day} {hj.monthName} {hj.year} H
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-950 text-emerald-300">
+                            {isTodayItem ? 'HARI INI' : agd.status}
+                          </span>
+                        </div>
+                        <p className="text-xs font-bold text-white truncate">{agd.judul}</p>
+                        <p className="text-[10px] text-emerald-200/75 truncate">
+                          {agd.waktu} WIB · {agd.tempat} ({agd.divisiTerkait})
+                        </p>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>

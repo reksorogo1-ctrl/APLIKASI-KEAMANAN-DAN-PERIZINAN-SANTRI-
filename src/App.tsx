@@ -111,8 +111,10 @@ export default function App() {
     document.documentElement.classList.add('dark');
 
     storageService.checkAndDetectLatePermits();
+    storageService.checkAndDetectTodayAgendas();
     const lateTimer = setInterval(() => {
       storageService.checkAndDetectLatePermits();
+      storageService.checkAndDetectTodayAgendas();
     }, 15000);
 
     const unsubscribe = storageService.subscribe(() => {
@@ -284,7 +286,15 @@ export default function App() {
       {/* Luxury Top Header Bar */}
       <Header
         currentUser={currentUser}
-        logoUrl={systemConfig.logoUrl}
+        logoUrl={
+          activeMenu === 'keamanan' ||
+          currentUser.role === 'ketua_keamanan' ||
+          currentUser.role === 'anggota_keamanan' ||
+          currentUser.role === 'petugas_gerbang'
+            ? (systemConfig.logoDashboardKeamananUrl ||
+               'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png')
+            : systemConfig.logoUrl
+        }
         namaPondok={systemConfig.namaPondok}
         namaAplikasi={systemConfig.namaAplikasi}
         namaPendekAplikasi={systemConfig.namaPendekAplikasi}
@@ -475,11 +485,13 @@ export default function App() {
                 usersList={usersList}
                 santriList={santriList}
                 dewanList={dewanList}
+                agendaPengurus={agendaPengurus}
                 onConfigUpdated={() => {
                   setSystemConfig(storageService.getSystemConfig());
                   setUsersList(storageService.getUsers());
                   setSantriList(storageService.getSantriList());
                   setDewanList(storageService.getDewanKeamananList());
+                  setAgendaPengurus(storageService.getAgendaPengurus());
                 }}
               />
             )}

@@ -45,7 +45,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           <div className="flex items-center gap-2.5">
             <Bell className="w-5 h-5 text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
             <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide">
-              Notifikasi Keamanan & Perizinan
+              Notifikasi Sistem &amp; Agenda Pondok
             </h3>
           </div>
           <div className="flex items-center gap-2.5">

@@ -308,24 +308,32 @@ class StorageService {
       const pjm = localStorage.getItem(STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN);
       this.cache.peminjamanBarang = pjm ? JSON.parse(pjm) : INITIAL_PEMINJAMAN_BARANG;
 
-      // Enforce official logo Ponpes Salaf Al-Maliki & preserve user DataURL/HTTP logos
+      // Enforce official website logo & separate Keamanan logo while preserving custom DataURL/HTTP logos
       const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
-      const isValidLogo = (u?: string) =>
+      const OFFICIAL_KEAMANAN_LOGO = 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
+      const isValidWebsiteLogo = (u?: string) =>
         Boolean(
           u &&
           !u.includes('logo_pesantren_almaliki') &&
           !u.includes('2026-11-11-7ffd46ad') &&
           (u.startsWith('http') || u.startsWith('data:') || u.startsWith('/'))
         );
+      const isValidKeamananLogo = (u?: string) =>
+        Boolean(
+          u &&
+          !u.includes('logo_pesantren_almaliki') &&
+          !u.includes('2026-11-14-03361e24') &&
+          (u.startsWith('http') || u.startsWith('data:') || u.startsWith('/'))
+        );
 
-      if (!isValidLogo(this.cache.systemConfig.logoUrl)) {
+      if (!isValidWebsiteLogo(this.cache.systemConfig.logoUrl)) {
         this.cache.systemConfig.logoUrl = OFFICIAL_LOGO;
       }
-      if (!isValidLogo(this.cache.systemConfig.logoDashboardKeamananUrl)) {
-        this.cache.systemConfig.logoDashboardKeamananUrl = OFFICIAL_LOGO;
+      if (!isValidKeamananLogo(this.cache.systemConfig.logoDashboardKeamananUrl)) {
+        this.cache.systemConfig.logoDashboardKeamananUrl = OFFICIAL_KEAMANAN_LOGO;
       }
-      if (!isValidLogo(this.cache.systemConfig.logoSuratPerizinanUrl)) {
-        this.cache.systemConfig.logoSuratPerizinanUrl = OFFICIAL_LOGO;
+      if (!isValidKeamananLogo(this.cache.systemConfig.logoSuratPerizinanUrl)) {
+        this.cache.systemConfig.logoSuratPerizinanUrl = OFFICIAL_KEAMANAN_LOGO;
       }
       if (
         !this.cache.systemConfig.appIconUrl ||
@@ -573,6 +581,7 @@ class StorageService {
               };
             });
             const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
+            const OFFICIAL_KEAMANAN_LOGO = 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
             const cfg: SystemConfig = {
               ...INITIAL_SYSTEM_CONFIG,
               ...cloudData,
@@ -584,16 +593,16 @@ class StorageService {
                   : OFFICIAL_LOGO,
               logoDashboardKeamananUrl:
                 cloudData.logoDashboardKeamananUrl &&
-                !cloudData.logoDashboardKeamananUrl.includes('2026-11-11-7ffd46ad') &&
+                !cloudData.logoDashboardKeamananUrl.includes('2026-11-14-03361e24') &&
                 !cloudData.logoDashboardKeamananUrl.includes('logo_pesantren_almaliki')
                   ? cloudData.logoDashboardKeamananUrl
-                  : OFFICIAL_LOGO,
+                  : OFFICIAL_KEAMANAN_LOGO,
               logoSuratPerizinanUrl:
                 cloudData.logoSuratPerizinanUrl &&
-                !cloudData.logoSuratPerizinanUrl.includes('2026-11-11-7ffd46ad') &&
+                !cloudData.logoSuratPerizinanUrl.includes('2026-11-14-03361e24') &&
                 !cloudData.logoSuratPerizinanUrl.includes('logo_pesantren_almaliki')
                   ? cloudData.logoSuratPerizinanUrl
-                  : OFFICIAL_LOGO,
+                  : OFFICIAL_KEAMANAN_LOGO,
               appIconUrl:
                 cloudData.appIconUrl && !cloudData.appIconUrl.includes('2026-11-11-7ffd46ad')
                   ? cloudData.appIconUrl
@@ -778,7 +787,10 @@ class StorageService {
       CLOUD_COLLECTIONS.AGENDA_PENGURUS,
       STORAGE_KEYS.AGENDA_PENGURUS,
       () => this.cache.agendaPengurus,
-      (items) => { this.cache.agendaPengurus = items; },
+      (items) => {
+        this.cache.agendaPengurus = items;
+        setTimeout(() => this.checkAndDetectTodayAgendas(), 50);
+      },
       (a, b) => (b.tanggal > a.tanggal ? 1 : -1)
     );
     attachCollectionListener<EvaluasiKepengurusan>(
@@ -1900,6 +1912,56 @@ class StorageService {
     return this.cache.agendaPengurus.length > 0 ? this.cache.agendaPengurus : INITIAL_AGENDA_PENGURUS;
   }
 
+  public checkAndDetectTodayAgendas(): number {
+    const todayWib = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+    const agendas = this.getAgendaPengurus();
+    const todayAgendas = agendas.filter((a) => a.tanggal === todayWib && a.status !== 'Selesai');
+    if (todayAgendas.length === 0) return 0;
+
+    let currentNotifs = [...this.getNotifications()];
+    let addedCount = 0;
+
+    for (const agd of todayAgendas) {
+      const detId = `notif_agenda_${agd.id}_${todayWib}`;
+      const judul = `Agenda Hari Ini: ${agd.judul}`;
+      const pesan = `Jadwal hari ini (${todayWib}) pukul ${agd.waktu || '08:00'} WIB di ${agd.tempat || 'Aula Pondok'} · Divisi: ${agd.divisiTerkait || 'Semua Pengurus'}.`;
+      const existingIdx = currentNotifs.findIndex((n) => n.id === detId);
+
+      if (existingIdx === -1) {
+        const newNotif: NotifikasiApp = {
+          id: detId,
+          judul,
+          pesan,
+          waktu: `Hari Ini · ${agd.waktu || 'WIB'}`,
+          dibaca: false,
+          tipe: agd.status === 'Berlangsung' ? 'warning' : 'info',
+          linkMenu: 'dashboard',
+        };
+        currentNotifs = [newNotif, ...currentNotifs].slice(0, 60);
+        addedCount++;
+        setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, detId), sanitizeForFirestore(newNotif), { merge: true }).catch(() => {});
+      } else if (currentNotifs[existingIdx].judul !== judul || currentNotifs[existingIdx].pesan !== pesan) {
+        const updatedNotif: NotifikasiApp = {
+          ...currentNotifs[existingIdx],
+          judul,
+          pesan,
+          waktu: `Hari Ini · ${agd.waktu || 'WIB'}`,
+          dibaca: false,
+        };
+        currentNotifs[existingIdx] = updatedNotif;
+        addedCount++;
+        setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, detId), sanitizeForFirestore(updatedNotif), { merge: true }).catch(() => {});
+      }
+    }
+
+    if (addedCount > 0) {
+      this.cache.notifikasi = currentNotifs;
+      localStorage.setItem(STORAGE_KEYS.NOTIFIKASI, JSON.stringify(currentNotifs));
+      this.notify();
+    }
+    return addedCount;
+  }
+
   public saveAgendaPengurus(agenda: AgendaPengurus) {
     const list = [...this.getAgendaPengurus()];
     const idx = list.findIndex(a => a.id === agenda.id);
@@ -1907,11 +1969,13 @@ class StorageService {
     else list.unshift(agenda);
     this.cache.agendaPengurus = list;
     localStorage.setItem(STORAGE_KEYS.AGENDA_PENGURUS, JSON.stringify(list));
-    this.addLog('Agenda Pengurus', `Menyimpan agenda kepengurusan: ${agenda.judul}`, 'admin');
+    this.addLog('Agenda Pengurus', `Menyimpan agenda kepengurusan: ${agenda.judul} (${agenda.tanggal})`, 'admin');
     this.notify();
 
     setDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, agenda.id), sanitizeForFirestore(agenda), { merge: true })
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${agenda.id}`));
+
+    this.checkAndDetectTodayAgendas();
   }
 
   public deleteAgendaPengurus(id: string) {

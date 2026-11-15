@@ -30,6 +30,8 @@ async function loadImageWithAspect(url?: string): Promise<LoadedImageInfo | null
     cleanUrl = `${window.location.origin}/kop-logo-1.png`;
   } else if (cleanUrl.includes('2026-11-14-6e57abdd') || cleanUrl === '/kop-logo-2.jpg') {
     cleanUrl = `${window.location.origin}/kop-logo-2.jpg`;
+  } else if (cleanUrl.includes('2026-11-11-7ffd46ad') || cleanUrl === '/logo-keamanan.png') {
+    cleanUrl = `${window.location.origin}/logo-keamanan.png`;
   } else if (cleanUrl.includes('2026-11-14-03361e24') || cleanUrl === '/logo-fit.png' || cleanUrl === '/pwa-512x512.png') {
     cleanUrl = `${window.location.origin}/logo-fit.png`;
   } else if (cleanUrl.startsWith('/') && !cleanUrl.startsWith('//')) {
@@ -233,9 +235,13 @@ export async function downloadSuratIzinPDF(izin: Perizinan): Promise<void> {
   let y = 18;
 
   // Load Official Logo Surat Perizinan Keamanan
+  const effectiveSecurityLogo =
+    config.logoSuratPerizinanUrl && !config.logoSuratPerizinanUrl.includes('2026-11-14-03361e24')
+      ? config.logoSuratPerizinanUrl
+      : '/logo-keamanan.png';
   const logoInfo =
-    (await loadImageWithAspect(config.logoSuratPerizinanUrl)) ||
-    (await loadImageWithAspect('/logo-fit.png')) ||
+    (await loadImageWithAspect(effectiveSecurityLogo)) ||
+    (await loadImageWithAspect('/logo-keamanan.png')) ||
     (await loadImageWithAspect(OFFICIAL_PONDOK_LOGO));
   if (logoInfo) {
     addProportionalImageToPdf(doc, logoInfo, margin, y - 3, 22, 22);
@@ -417,9 +423,13 @@ export async function downloadSuratSanksiPDF(sanksi: Sanksi): Promise<void> {
   const margin = 20;
   let y = 18;
 
+  const effectiveSecurityLogo =
+    config.logoSuratPerizinanUrl && !config.logoSuratPerizinanUrl.includes('2026-11-14-03361e24')
+      ? config.logoSuratPerizinanUrl
+      : '/logo-keamanan.png';
   const logoInfo =
-    (await loadImageWithAspect(config.logoSuratPerizinanUrl)) ||
-    (await loadImageWithAspect('/logo-fit.png')) ||
+    (await loadImageWithAspect(effectiveSecurityLogo)) ||
+    (await loadImageWithAspect('/logo-keamanan.png')) ||
     (await loadImageWithAspect(OFFICIAL_PONDOK_LOGO));
   if (logoInfo) {
     addProportionalImageToPdf(doc, logoInfo, margin, y - 3, 22, 22);

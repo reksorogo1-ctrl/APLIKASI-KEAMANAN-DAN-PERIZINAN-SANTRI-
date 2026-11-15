@@ -251,8 +251,8 @@ export const INITIAL_BENDAHARA_CONFIG: BendaharaConfig = {
 export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
   namaPondok: 'Pondok Pesantren Salaf Al-Maliki',
   logoUrl: 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png',
-  logoDashboardKeamananUrl: 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png',
-  logoSuratPerizinanUrl: 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png',
+  logoDashboardKeamananUrl: 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png',
+  logoSuratPerizinanUrl: 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png',
   appIconUrl: 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png',
   bgUrl: '/src/assets/images/tactical_hq_background_1794052517484.jpg',
   bgOpacity: 25,

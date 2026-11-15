@@ -28,18 +28,34 @@ import {
   Monitor,
   Sparkles,
   RefreshCw,
-  User
+  User,
+  Calendar,
+  Clock,
+  MapPin,
+  Bell
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { syncPWAIdentity } from '../services/pwaSyncService';
 import { INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
-import { SystemConfig, UserAccount, UserRole, Santri, DewanKeamanan, Gender, KodeJenisSurat, SuratSekretarisConfig } from '../types';
+import {
+  SystemConfig,
+  UserAccount,
+  UserRole,
+  Santri,
+  DewanKeamanan,
+  Gender,
+  KodeJenisSurat,
+  SuratSekretarisConfig,
+  AgendaPengurus,
+  DivisiPondok,
+} from '../types';
 
 interface AdminOptionPanelProps {
   systemConfig: SystemConfig;
   usersList: UserAccount[];
   santriList: Santri[];
   dewanList: DewanKeamanan[];
+  agendaPengurus?: AgendaPengurus[];
   onConfigUpdated: () => void;
 }
 
@@ -48,9 +64,11 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   usersList,
   santriList,
   dewanList,
+  agendaPengurus: propAgendaPengurus,
   onConfigUpdated,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'control' | 'visual' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database'>('control');
+  const effectiveAgendaList = propAgendaPengurus || storageService.getAgendaPengurus();
+  const [activeSubTab, setActiveSubTab] = useState<'control' | 'visual' | 'agenda_crud' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database'>('control');
   const [settingCategory, setSettingCategory] = useState<'all' | 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db'>('all');
   const [settingSearch, setSettingSearch] = useState('');
   const [selectedKodeSuratEdit, setSelectedKodeSuratEdit] = useState<KodeJenisSurat>('SK');
@@ -60,6 +78,21 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   });
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+
+  // Agenda CRUD state
+  const todayWibIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+  const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
+  const [editingAgenda, setEditingAgenda] = useState<AgendaPengurus | null>(null);
+  const [agendaForm, setAgendaForm] = useState<Partial<AgendaPengurus>>({
+    judul: '',
+    tanggal: todayWibIso,
+    waktu: '08:00',
+    tempat: 'Aula Utama Pondok',
+    divisiTerkait: 'Seluruh Pengurus',
+    kategori: 'Kegiatan Pondok',
+    status: 'Terjadwal',
+    catatan: '',
+  });
 
   // Search in CRUD tabs
   const [searchSantri, setSearchSantri] = useState('');
@@ -175,10 +208,11 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.fillStyle = configForm.backgroundColor || '#02100a';
+          ctx.fillStyle = '#013d1a';
           ctx.fillRect(0, 0, 512, 512);
 
-          const targetSize = 410;
+          // Full-bleed edge-to-edge scale for installed iOS/Android/Desktop app icon
+          const targetSize = 512;
           let drawWidth = targetSize;
           let drawHeight = targetSize;
 
@@ -331,8 +365,33 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     return d.nama.toLowerCase().includes(q) || d.nrp.toLowerCase().includes(q) || d.jabatan.toLowerCase().includes(q);
   });
 
+  const handleSaveAgenda = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!agendaForm.judul || !agendaForm.tanggal) return;
+    const saved: AgendaPengurus = {
+      id: editingAgenda ? editingAgenda.id : `agd_${Date.now()}`,
+      judul: agendaForm.judul.trim(),
+      tanggal: agendaForm.tanggal,
+      waktu: agendaForm.waktu || '08:00',
+      tempat: agendaForm.tempat || 'Aula Pondok',
+      divisiTerkait: (agendaForm.divisiTerkait as DivisiPondok | 'Seluruh Pengurus') || 'Seluruh Pengurus',
+      kategori: agendaForm.kategori || 'Kegiatan Pondok',
+      status: (agendaForm.status as AgendaPengurus['status']) || 'Terjadwal',
+      catatan: agendaForm.catatan || '',
+    };
+    storageService.saveAgendaPengurus(saved);
+    setIsAgendaModalOpen(false);
+    setSaveSuccessMsg(
+      saved.tanggal === todayWibIso
+        ? `Agenda "${saved.judul}" disimpan & notifikasi hari ini langsung dikirim ke seluruh Pengurus!`
+        : `Agenda "${saved.judul}" (${saved.tanggal}) berhasil disimpan ke kalender & Cloud Firestore!`
+    );
+    setTimeout(() => setSaveSuccessMsg(''), 4500);
+    onConfigUpdated();
+  };
+
   const optionModules: {
-    key: 'control' | 'visual' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database';
+    key: 'control' | 'visual' | 'agenda_crud' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database';
     category: 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db';
     categoryLabel: string;
     title: string;
@@ -360,6 +419,16 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       badge: 'LOGO WEBSITE & PWA',
       keywords: 'logo website ikon pwa background nama pondok pimpinan pengasuh warna tema visual login',
       icon: Palette,
+    },
+    {
+      key: 'agenda_crud',
+      category: 'sistem',
+      categoryLabel: 'Kalender & Notifikasi',
+      title: 'Agenda & Kalender Kegiatan Pondok',
+      subtitle: 'Buat, edit, dan jadwalkan agenda Masehi/Hijriah dengan notifikasi otomatis di hari-H.',
+      badge: `${effectiveAgendaList.length} AGENDA`,
+      keywords: 'agenda kalender kegiatan rapat pengajian jadwal hijriah masehi notifikasi hari ini',
+      icon: Calendar,
     },
     {
       key: 'surat_sekretaris_config',
@@ -415,7 +484,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
 
   const categoryTabs: { id: 'all' | 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db'; label: string; count: number }[] = [
     { id: 'all', label: 'Semua Pengaturan Website', count: optionModules.length },
-    { id: 'sistem', label: 'Visual Website & PWA', count: 2 },
+    { id: 'sistem', label: 'Visual, Kalender & PWA', count: 3 },
     { id: 'persuratan', label: 'Persuratan Sekretaris', count: 1 },
     { id: 'datamaster', label: 'Data Master Pondok', count: 2 },
     { id: 'keamanan_db', label: 'Hak Akses & Database', count: 2 },
@@ -953,11 +1022,17 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 <div className="grid grid-cols-3 gap-3 text-center">
                   {/* Preview 1: Android Squircle Maskable */}
                   <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#041d13]/60 border border-emerald-800">
-                    <div className="w-14 h-14 rounded-[22%] p-1.5 bg-[#02100a] border border-amber-400/60 shadow-lg flex items-center justify-center overflow-hidden">
+                    <div className="w-14 h-14 rounded-[22%] p-0 bg-[#013d1a] border border-amber-400/60 shadow-lg flex items-center justify-center overflow-hidden">
                       <img
-                        src={configForm.appIconUrl || '/icon.svg'}
+                        src={
+                          !configForm.appIconUrl ||
+                          configForm.appIconUrl.includes('2026-11-14-03361e24') ||
+                          configForm.appIconUrl === '/icon.svg'
+                            ? '/pwa-maskable-512x512.png'
+                            : configForm.appIconUrl
+                        }
                         alt="Android Icon"
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                     <span className="text-[9px] font-mono text-emerald-200/75">Android (Maskable)</span>
@@ -965,11 +1040,17 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
 
                   {/* Preview 2: iOS Rounded App Icon */}
                   <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#041d13]/60 border border-emerald-800">
-                    <div className="w-14 h-14 rounded-2xl p-1.5 bg-[#02100a] border border-emerald-400/60 shadow-lg flex items-center justify-center overflow-hidden">
+                    <div className="w-14 h-14 rounded-2xl p-0 bg-[#013d1a] border border-emerald-400/60 shadow-lg flex items-center justify-center overflow-hidden">
                       <img
-                        src={configForm.appIconUrl || '/icon.svg'}
+                        src={
+                          !configForm.appIconUrl ||
+                          configForm.appIconUrl.includes('2026-11-14-03361e24') ||
+                          configForm.appIconUrl === '/icon.svg'
+                            ? '/apple-touch-icon.png'
+                            : configForm.appIconUrl
+                        }
                         alt="iOS Icon"
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                     <span className="text-[9px] font-mono text-emerald-200/75">iPhone / iPad</span>
@@ -977,18 +1058,24 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
 
                   {/* Preview 3: Desktop Taskbar / Chrome */}
                   <div className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#041d13]/60 border border-emerald-800">
-                    <div className="w-14 h-14 rounded-xl p-1.5 bg-[#02100a] border border-amber-400/60 shadow-lg flex items-center justify-center overflow-hidden">
+                    <div className="w-14 h-14 rounded-xl p-0 bg-[#013d1a] border border-amber-400/60 shadow-lg flex items-center justify-center overflow-hidden">
                       <img
-                        src={configForm.appIconUrl || '/icon.svg'}
+                        src={
+                          !configForm.appIconUrl ||
+                          configForm.appIconUrl.includes('2026-11-14-03361e24') ||
+                          configForm.appIconUrl === '/icon.svg'
+                            ? '/pwa-512x512.png'
+                            : configForm.appIconUrl
+                        }
                         alt="Desktop Icon"
-                        className="w-full h-full object-contain"
+                        className="w-full h-full object-cover"
                       />
                     </div>
                     <span className="text-[9px] font-mono text-emerald-200/75">PC / Desktop</span>
                   </div>
                 </div>
                 <p className="text-[10px] text-emerald-200/75 leading-relaxed font-mono">
-                  * Gambar otomatis dinormalisasi ke rasio 1:1 (512x512) dengan margin aman 15% agar logo tidak terpotong saat dipasang di HP.
+                  * Ikon aplikasi diperbesar penuh (full-bleed 512×512 &amp; 180×180) agar langsung memenuhi bingkai ikon Android, iPhone/iOS, Laptop, dan PC tanpa ruang kosong.
                 </p>
               </div>
 
@@ -2590,6 +2677,290 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                   className="tactile-interactive px-5 py-2.5 font-mono font-bold text-xs text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 rounded-xl cursor-pointer shadow-lg border border-amber-300/60"
                 >
                   Simpan Akun & PIN 6 Digit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-TAB AGENDA & KALENDER KEGIATAN PONDOK */}
+      {activeSubTab === 'agenda_crud' && (
+        <div className="metallic-glass-card rounded-3xl p-6 border border-emerald-800/80 shadow-2xl space-y-5 hover-rainbow-edge">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-800/70 pb-4">
+            <div>
+              <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
+                <Calendar className="w-4 h-4 text-[#f3d266]" />
+                Manajemen Kalender &amp; Agenda Kegiatan Pondok
+              </h3>
+              <p className="text-xs text-emerald-200/75 mt-1">
+                Setiap agenda yang dijadwalkan pada tanggal hari ini ({todayWibIso}) otomatis memunculkan notifikasi real-time di seluruh dashboard Pengurus.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingAgenda(null);
+                setAgendaForm({
+                  judul: '',
+                  tanggal: todayWibIso,
+                  waktu: '08:00',
+                  tempat: 'Aula Utama Pondok',
+                  divisiTerkait: 'Seluruh Pengurus',
+                  kategori: 'Kegiatan Pondok',
+                  status: 'Terjadwal',
+                  catatan: '',
+                });
+                setIsAgendaModalOpen(true);
+              }}
+              className="tactile-interactive inline-flex items-center gap-2 px-4 py-2.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 rounded-2xl transition-all cursor-pointer shadow-xl border border-amber-300/60 shrink-0"
+            >
+              <Plus className="w-4 h-4 text-slate-950" />
+              <span>Tambah Agenda Baru</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {effectiveAgendaList.map((agd) => {
+              const isToday = agd.tanggal === todayWibIso;
+              return (
+                <div
+                  key={agd.id}
+                  className={`p-4 rounded-2xl border space-y-2.5 ${
+                    isToday
+                      ? 'bg-[#083222]/90 border-[#d4af37]'
+                      : 'bg-[#03160f]/90 border-emerald-800/75'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded bg-[#d4af37]/20 text-[#f3d266] text-[10px] font-mono font-bold">
+                          {agd.tanggal}
+                        </span>
+                        {isToday && (
+                          <span className="px-2 py-0.5 rounded bg-amber-400 text-slate-950 text-[9px] font-mono font-black inline-flex items-center gap-1">
+                            <Bell className="w-3 h-3" /> NOTIFIKASI HARI INI AKTIF
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 text-[10px] font-mono">
+                          {agd.kategori || 'Kegiatan Pondok'}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-white">{agd.judul}</h4>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingAgenda(agd);
+                          setAgendaForm({ ...agd });
+                          setIsAgendaModalOpen(true);
+                        }}
+                        className="p-1.5 rounded-lg text-emerald-200 hover:text-amber-300 hover:bg-[#072c1e] cursor-pointer"
+                        title="Edit Agenda"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Hapus agenda "${agd.judul}"?`)) {
+                            storageService.deleteAgendaPengurus(agd.id);
+                            onConfigUpdated();
+                          }
+                        }}
+                        className="p-1.5 rounded-lg text-emerald-200 hover:text-rose-400 hover:bg-[#072c1e] cursor-pointer"
+                        title="Hapus Agenda"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-emerald-200/80 font-mono">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-[#f3d266]" /> {agd.waktu} WIB
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-400" /> {agd.tempat}
+                    </span>
+                    <span className="text-emerald-300">· {agd.divisiTerkait}</span>
+                  </div>
+
+                  {agd.catatan && (
+                    <p className="text-xs text-emerald-100/75 leading-relaxed">{agd.catatan}</p>
+                  )}
+
+                  <div className="pt-2 border-t border-emerald-800/50 flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-emerald-300/70">Status Pelaksanaan:</span>
+                    <select
+                      value={agd.status}
+                      onChange={(e) => {
+                        storageService.saveAgendaPengurus({
+                          ...agd,
+                          status: e.target.value as AgendaPengurus['status'],
+                        });
+                        onConfigUpdated();
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[#02100a] border border-emerald-700 text-[11px] font-mono text-white cursor-pointer"
+                    >
+                      <option value="Terjadwal">Terjadwal</option>
+                      <option value="Berlangsung">Berlangsung</option>
+                      <option value="Selesai">Selesai</option>
+                    </select>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Agenda Add/Edit Modal */}
+      {isAgendaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-lg metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
+              <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
+                <Calendar className="w-4 h-4 text-[#f3d266]" />
+                {editingAgenda ? 'Edit Agenda Kegiatan Pondok' : 'Tambah Agenda Kegiatan Baru'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAgendaModalOpen(false)}
+                className="w-7 h-7 rounded-lg bg-[#072c1e]/80 text-emerald-200/75 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAgenda} className="p-6 space-y-4 text-xs font-mono max-h-[82vh] overflow-y-auto">
+              <div>
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  Judul Kegiatan / Musyawarah
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={agendaForm.judul || ''}
+                  onChange={(e) => setAgendaForm({ ...agendaForm, judul: e.target.value })}
+                  placeholder="Contoh: Rapat Koordinasi Pengurus Mingguan"
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
+                    Tanggal Kegiatan (Masehi)
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={agendaForm.tanggal || todayWibIso}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, tanggal: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-mono focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                <div>
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
+                    Waktu (WIB)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={agendaForm.waktu || ''}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, waktu: e.target.value })}
+                    placeholder="08:00"
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-mono focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  Lokasi / Tempat
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={agendaForm.tempat || ''}
+                  onChange={(e) => setAgendaForm({ ...agendaForm, tempat: e.target.value })}
+                  placeholder="Aula Pondok / Masjid Jami'"
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
+                    Kategori Agenda
+                  </label>
+                  <select
+                    value={agendaForm.kategori || 'Kegiatan Pondok'}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, kategori: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="Kegiatan Pondok">Kegiatan Pondok</option>
+                    <option value="Rapat Pengurus">Rapat Pengurus</option>
+                    <option value="Pengajian Akbar">Pengajian Akbar</option>
+                    <option value="Koordinasi Keamanan">Koordinasi Keamanan</option>
+                    <option value="Evaluasi Bulanan">Evaluasi Bulanan</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
+                    Divisi Terkait
+                  </label>
+                  <select
+                    value={agendaForm.divisiTerkait || 'Seluruh Pengurus'}
+                    onChange={(e) => setAgendaForm({ ...agendaForm, divisiTerkait: e.target.value as DivisiPondok | 'Seluruh Pengurus' })}
+                    className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400"
+                  >
+                    <option value="Seluruh Pengurus">Seluruh Pengurus</option>
+                    <option value="Ketua Pondok">Ketua Pondok</option>
+                    <option value="Sekretaris">Sekretaris</option>
+                    <option value="Bendahara">Bendahara</option>
+                    <option value="Perlengkapan">Perlengkapan</option>
+                    <option value="Keamanan">Keamanan</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
+                  Catatan / Keterangan Tambahan
+                </label>
+                <textarea
+                  rows={2}
+                  value={agendaForm.catatan || ''}
+                  onChange={(e) => setAgendaForm({ ...agendaForm, catatan: e.target.value })}
+                  placeholder="Rincian agenda atau perlengkapan yang perlu disiapkan..."
+                  className="w-full px-3.5 py-2.5 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white font-sans focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              {agendaForm.tanggal === todayWibIso && (
+                <div className="p-3 rounded-xl bg-amber-400/15 border border-amber-400/40 text-amber-200 text-[11px] flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-amber-300 shrink-0" />
+                  <span>Tanggal cocok dengan hari ini — notifikasi otomatis akan tampil di dashboard seluruh Pengurus.</span>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-emerald-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAgendaModalOpen(false)}
+                  className="px-4 py-2 text-emerald-200/75 hover:text-white cursor-pointer font-bold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="tactile-interactive px-5 py-2.5 font-mono font-bold text-xs text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 rounded-xl cursor-pointer shadow-lg border border-amber-300/60"
+                >
+                  Simpan &amp; Sinkronkan Agenda
                 </button>
               </div>
             </form>

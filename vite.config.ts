@@ -25,6 +25,18 @@ export default defineConfig(() => {
           orientation: 'any',
           icons: [
             {
+              src: '/favicon.png',
+              sizes: '64x64',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: '/apple-touch-icon.png',
+              sizes: '180x180',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
               src: '/pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',

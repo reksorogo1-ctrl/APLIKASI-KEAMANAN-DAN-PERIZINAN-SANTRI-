@@ -144,15 +144,19 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
   const [periodeLaporan, setPeriodeLaporan] = useState<'Harian' | 'Mingguan' | 'Bulanan'>('Bulanan');
 
   const OFFICIAL_KEAMANAN_LOGO =
-    'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
+    'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
 
-  const resolveKeamananDisplayLogo = (url?: string) =>
-    !url ||
-    url.includes('2026-11-11-7ffd46ad') ||
-    url.includes('2026-11-14-03361e24') ||
-    url.includes('logo_pesantren_almaliki')
-      ? '/logo-fit.png'
-      : url;
+  const resolveKeamananDisplayLogo = (url?: string) => {
+    if (
+      !url ||
+      url.includes('2026-11-11-7ffd46ad') ||
+      url.includes('2026-11-14-03361e24') ||
+      url.includes('logo_pesantren_almaliki')
+    ) {
+      return '/logo-keamanan.png';
+    }
+    return url;
+  };
 
   // Sub-tab inside Option Panel Keamanan
   const [keamananOptionTab, setKeamananOptionTab] = useState<
@@ -161,8 +165,16 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
 
   // State for Option Panel Keamanan: Separate Logos + Surat Izin + Surat Sanksi
   const [logoKeamananForm, setLogoKeamananForm] = useState({
-    logoDashboardKeamananUrl: systemConfig.logoDashboardKeamananUrl || OFFICIAL_KEAMANAN_LOGO,
-    logoSuratPerizinanUrl: systemConfig.logoSuratPerizinanUrl || OFFICIAL_KEAMANAN_LOGO,
+    logoDashboardKeamananUrl:
+      systemConfig.logoDashboardKeamananUrl &&
+      !systemConfig.logoDashboardKeamananUrl.includes('2026-11-14-03361e24')
+        ? systemConfig.logoDashboardKeamananUrl
+        : OFFICIAL_KEAMANAN_LOGO,
+    logoSuratPerizinanUrl:
+      systemConfig.logoSuratPerizinanUrl &&
+      !systemConfig.logoSuratPerizinanUrl.includes('2026-11-14-03361e24')
+        ? systemConfig.logoSuratPerizinanUrl
+        : OFFICIAL_KEAMANAN_LOGO,
   });
 
   const [suratIzinLayoutForm, setSuratIzinLayoutForm] = useState<SuratIzinLayoutConfig>({
@@ -407,7 +419,7 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
       <div className="luxury-3d-card rounded-2xl p-3 sm:p-4 border border-[#d4af37]/30">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-emerald-800/40">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-[10px] border border-[#d4af37]/75 bg-[#02100a] overflow-hidden shrink-0 shadow-md">
+            <div className="w-11 h-11 rounded-[10px] border border-[#d4af37]/75 bg-white overflow-hidden shrink-0 shadow-md p-0.5">
               <img
                 src={resolveKeamananDisplayLogo(systemConfig.logoDashboardKeamananUrl)}
                 alt="Logo Dashboard Keamanan"
@@ -416,10 +428,10 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                   const img = e.currentTarget as HTMLImageElement;
                   if (!img.dataset.fallbackApplied) {
                     img.dataset.fallbackApplied = '1';
-                    img.src = '/logo-fit.png';
+                    img.src = '/logo-keamanan.png';
                   }
                 }}
-                className="w-full h-full object-cover scale-[1.03]"
+                className="w-full h-full object-contain"
               />
             </div>
             <div>
@@ -1097,12 +1109,12 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                 className="bg-white text-black rounded-2xl p-6 max-w-4xl mx-auto shadow-xl border border-zinc-300 space-y-4 text-xs"
               >
                 <div className="flex items-center justify-between gap-3 border-b-4 border-double border-black pb-3 text-center">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden border border-black/30 shrink-0 bg-white">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden border border-black/30 shrink-0 bg-white p-0.5">
                     <img
                       src={resolveKeamananDisplayLogo(systemConfig.logoSuratPerizinanUrl)}
                       alt="Logo Surat Keamanan"
                       referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   </div>
                   <div className="flex-1">
@@ -1300,12 +1312,12 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                     </div>
 
                     <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-black/55 border border-emerald-800/80">
-                      <div className="w-20 h-20 rounded-[22%] border-2 border-[#d4af37] overflow-hidden shrink-0 bg-[#02100a] shadow-lg">
+                      <div className="w-20 h-20 rounded-[22%] border-2 border-[#d4af37] overflow-hidden shrink-0 bg-white shadow-lg p-0.5">
                         <img
                           src={resolveKeamananDisplayLogo(logoKeamananForm.logoDashboardKeamananUrl)}
                           alt="Preview Logo Dashboard Keamanan"
                           referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover scale-[1.03]"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                       <div className="space-y-1 text-xs">
@@ -1372,12 +1384,12 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                     </div>
 
                     <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-white text-slate-900 border-2 border-[#d4af37]/60 shadow-inner">
-                      <div className="w-16 h-16 rounded-2xl border border-amber-500 overflow-hidden shrink-0 bg-white">
+                      <div className="w-16 h-16 rounded-2xl border border-amber-500 overflow-hidden shrink-0 bg-white p-0.5">
                         <img
                           src={resolveKeamananDisplayLogo(logoKeamananForm.logoSuratPerizinanUrl)}
                           alt="Preview Logo Surat Perizinan"
                           referrerPolicy="no-referrer"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1665,12 +1677,12 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                   <div className="lg:col-span-5">
                     <div className="bg-white border-2 border-[#d4af37]/60 rounded-2xl p-4 text-slate-900 shadow-2xl text-[10px] space-y-2.5">
                       <div className="flex items-center gap-3 pb-2 border-b-2 border-emerald-900 text-center">
-                        <div className="w-12 h-12 rounded-xl border border-amber-500 overflow-hidden shrink-0 bg-white">
+                        <div className="w-12 h-12 rounded-xl border border-amber-500 overflow-hidden shrink-0 bg-white p-0.5">
                           <img
                             src={resolveKeamananDisplayLogo(logoKeamananForm.logoSuratPerizinanUrl)}
                             alt="Logo Surat Perizinan"
                             referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
                           />
                         </div>
                         <div className="flex-1 min-w-0">

@@ -463,6 +463,7 @@ export interface AgendaPengurus {
   tempat: string;
   lokasi?: string;
   divisiTerkait: DivisiPondok | 'Seluruh Pengurus';
+  kategori?: string;
   penanggungJawab?: string;
   pimpinanRapat?: string;
   deskripsi?: string;

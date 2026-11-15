@@ -61,28 +61,39 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Zone 1: Official Pesantren Brand Identity */}
       <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-        <div className="relative shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] border border-[#d4af37]/85 shadow-lg overflow-hidden bg-[#02100a]">
-          <img
-            src={
-              !logoUrl ||
-              logoUrl.includes('2026-11-11-7ffd46ad') ||
+        {(() => {
+          const isKeamananLogo = Boolean(
+            logoUrl && (logoUrl.includes('2026-11-11-7ffd46ad') || logoUrl.includes('logo-keamanan'))
+          );
+          const resolvedSrc = isKeamananLogo
+            ? '/logo-keamanan.png'
+            : !logoUrl ||
               logoUrl.includes('2026-11-14-03361e24') ||
               logoUrl.includes('logo_pesantren_almaliki')
-                ? '/logo-fit.png'
-                : logoUrl
-            }
-            alt="Logo Pondok Pesantren Salaf Al-Maliki"
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              if (!img.dataset.fallbackApplied) {
-                img.dataset.fallbackApplied = '1';
-                img.src = '/logo-fit.png';
-              }
-            }}
-            className="w-full h-full object-cover scale-[1.03]"
-          />
-        </div>
+            ? '/logo-fit.png'
+            : logoUrl;
+          return (
+            <div
+              className={`relative shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] border border-[#d4af37]/85 shadow-lg overflow-hidden ${
+                isKeamananLogo ? 'bg-white p-0.5' : 'bg-[#02100a]'
+              }`}
+            >
+              <img
+                src={resolvedSrc}
+                alt={isKeamananLogo ? 'Logo Keamanan Pondok Pesantren Salaf Al-Maliki' : 'Logo Pondok Pesantren Salaf Al-Maliki'}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  if (!img.dataset.fallbackApplied) {
+                    img.dataset.fallbackApplied = '1';
+                    img.src = isKeamananLogo ? '/logo-keamanan.png' : '/logo-fit.png';
+                  }
+                }}
+                className={isKeamananLogo ? 'w-full h-full object-contain' : 'w-full h-full object-cover scale-[1.03]'}
+              />
+            </div>
+          );
+        })()}
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-nowrap">
             <span className="text-xs sm:text-sm font-black tracking-tight text-[#f4f9f5] uppercase truncate">

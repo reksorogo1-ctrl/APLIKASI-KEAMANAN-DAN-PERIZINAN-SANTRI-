@@ -423,14 +423,14 @@ Wassalamu'alaikum Wr. Wb.
           {/* 1. Official Letterhead (Kop Surat) */}
           <div className="avoid-break flex items-center justify-between pb-3 sm:pb-4 border-b-2 border-emerald-900 text-center relative gap-2 sm:gap-4">
 
-            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border border-amber-500 shadow-xs shrink-0 overflow-hidden bg-white">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl border border-amber-500 shadow-xs shrink-0 overflow-hidden bg-white p-0.5">
               <img 
                 src={
                   !systemConfig.logoSuratPerizinanUrl ||
                   systemConfig.logoSuratPerizinanUrl.includes('2026-11-11-7ffd46ad') ||
                   systemConfig.logoSuratPerizinanUrl.includes('2026-11-14-03361e24') ||
                   systemConfig.logoSuratPerizinanUrl.includes('logo_pesantren_almaliki')
-                    ? '/logo-fit.png'
+                    ? '/logo-keamanan.png'
                     : systemConfig.logoSuratPerizinanUrl
                 }
                 alt={systemConfig.namaPondok || "Logo Surat Keamanan"}
@@ -439,10 +439,10 @@ Wassalamu'alaikum Wr. Wb.
                   const img = e.currentTarget as HTMLImageElement;
                   if (!img.dataset.fallbackApplied) {
                     img.dataset.fallbackApplied = '1';
-                    img.src = '/logo-fit.png';
+                    img.src = '/logo-keamanan.png';
                   }
                 }}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
             <div className="flex-1 px-1 sm:px-2 min-w-0">

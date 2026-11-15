@@ -14,10 +14,16 @@ export function syncPWAIdentity(config: SystemConfig): void {
   const themeColor = config.themeColor || '#030712';
   const bgColor = config.backgroundColor || '#030712';
   const OFFICIAL_LOGO_URL = 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
-  const appIcon =
+  const rawIcon =
     config.appIconUrl && !config.appIconUrl.includes('2026-11-11-7ffd46ad')
       ? config.appIconUrl
       : OFFICIAL_LOGO_URL;
+  const isDefaultOfficialAppIcon =
+    rawIcon === OFFICIAL_LOGO_URL ||
+    rawIcon.includes('2026-11-14-03361e24') ||
+    rawIcon === '/icon.svg' ||
+    rawIcon === '/pwa-512x512.png' ||
+    rawIcon === '/logo-fit.png';
 
   // 1. Update Document Title
   document.title = `${appName} | Pusat Komando & Pengawasan`;
@@ -37,18 +43,18 @@ export function syncPWAIdentity(config: SystemConfig): void {
     appleTitleMeta.setAttribute('content', shortName);
   }
 
-  // 4. Update Favicon & Apple Touch Icon Links
+  // 4. Update Favicon & Apple Touch Icon Links (enlarged edge-to-edge full-bleed PNGs for installed apps)
   let iconLink = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
   if (!iconLink) {
     iconLink = document.createElement('link');
     iconLink.rel = 'icon';
     document.head.appendChild(iconLink);
   }
-  iconLink.href = appIcon;
+  iconLink.href = isDefaultOfficialAppIcon ? '/favicon.png' : rawIcon;
 
   let shortcutIconLink = document.querySelector<HTMLLinkElement>('link[rel="shortcut icon"]');
   if (shortcutIconLink) {
-    shortcutIconLink.href = appIcon;
+    shortcutIconLink.href = isDefaultOfficialAppIcon ? '/pwa-192x192.png' : rawIcon;
   }
 
   let appleIconLink = document.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]');
@@ -57,7 +63,7 @@ export function syncPWAIdentity(config: SystemConfig): void {
     appleIconLink.rel = 'apple-touch-icon';
     document.head.appendChild(appleIconLink);
   }
-  appleIconLink.href = appIcon;
+  appleIconLink.href = isDefaultOfficialAppIcon ? '/apple-touch-icon.png' : rawIcon;
 
   // 5. Generate and inject Dynamic Web App Manifest Blob
   try {
@@ -72,60 +78,59 @@ export function syncPWAIdentity(config: SystemConfig): void {
       orientation: 'any',
       theme_color: themeColor,
       background_color: bgColor,
-      icons:
-        appIcon === OFFICIAL_LOGO_URL
-          ? [
-              {
-                src: `${window.location.origin}/favicon.png`,
-                sizes: '64x64',
-                type: 'image/png',
-                purpose: 'any',
-              },
-              {
-                src: `${window.location.origin}/apple-touch-icon.png`,
-                sizes: '180x180',
-                type: 'image/png',
-                purpose: 'any',
-              },
-              {
-                src: `${window.location.origin}/pwa-192x192.png`,
-                sizes: '192x192',
-                type: 'image/png',
-                purpose: 'any',
-              },
-              {
-                src: `${window.location.origin}/pwa-512x512.png`,
-                sizes: '512x512',
-                type: 'image/png',
-                purpose: 'any',
-              },
-              {
-                src: `${window.location.origin}/pwa-maskable-512x512.png`,
-                sizes: '512x512',
-                type: 'image/png',
-                purpose: 'maskable',
-              },
-            ]
-          : [
-              {
-                src: appIcon,
-                sizes: '192x192',
-                type: 'image/png',
-                purpose: 'any',
-              },
-              {
-                src: appIcon,
-                sizes: '512x512',
-                type: 'image/png',
-                purpose: 'any',
-              },
-              {
-                src: `${window.location.origin}/pwa-maskable-512x512.png`,
-                sizes: '512x512',
-                type: 'image/png',
-                purpose: 'maskable',
-              },
-            ],
+      icons: isDefaultOfficialAppIcon
+        ? [
+            {
+              src: `${window.location.origin}/favicon.png`,
+              sizes: '64x64',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: `${window.location.origin}/apple-touch-icon.png`,
+              sizes: '180x180',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: `${window.location.origin}/pwa-192x192.png`,
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: `${window.location.origin}/pwa-512x512.png`,
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: `${window.location.origin}/pwa-maskable-512x512.png`,
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ]
+        : [
+            {
+              src: rawIcon,
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: rawIcon,
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: rawIcon,
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
     };
 
     const manifestBlob = new Blob([JSON.stringify(dynamicManifest, null, 2)], {

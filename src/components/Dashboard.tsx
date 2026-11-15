@@ -88,7 +88,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     rawKeamananLogo.includes('2026-11-11-7ffd46ad') ||
     rawKeamananLogo.includes('2026-11-14-03361e24') ||
     rawKeamananLogo.includes('logo_pesantren_almaliki')
-      ? '/logo-fit.png'
+      ? '/logo-keamanan.png'
       : rawKeamananLogo;
 
   return (
@@ -112,7 +112,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {/* Logo Dashboard Tab Keamanan (Diatur Terpisah via Option Panel Keamanan) */}
               <div className="relative shrink-0 group self-center sm:self-start">
                 <div className="absolute -inset-1.5 rounded-[24%] bg-gradient-to-tr from-emerald-400 via-amber-400 to-emerald-400 opacity-90 blur-[5px] group-hover:opacity-100 transition-opacity" />
-                <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 p-0 rounded-[22%] bg-[#02100a] border-2 border-amber-400 shadow-2xl overflow-hidden glow-gold">
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 p-1 rounded-[22%] bg-white border-2 border-amber-400 shadow-2xl overflow-hidden glow-gold">
                   <img
                     src={logoBerlaku}
                     alt="Logo Dashboard Keamanan Pondok Pesantren Salaf Al-Maliki"
@@ -121,10 +121,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       const img = e.currentTarget as HTMLImageElement;
                       if (!img.dataset.fallbackApplied) {
                         img.dataset.fallbackApplied = '1';
-                        img.src = '/logo-fit.png';
+                        img.src = '/logo-keamanan.png';
                       }
                     }}
-                    className="w-full h-full object-cover scale-[1.03]"
+                    className="w-full h-full object-contain"
                   />
                   <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-950 animate-ping" />
                   <span className="absolute bottom-1 right-1 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-slate-950 shadow-md shadow-emerald-400/80" />
