@@ -4,17 +4,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import type { Request, Response } from 'express';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const TRANSCRIBE_SURAT_PROMPT = `Ekstrak dan transkripsikan SELURUH teks yang ada di dalam gambar surat ini menjadi teks digital yang rapi dan akurat.
-Aturan wajib:
-1. Baca semua teks huruf Latin (Bahasa Indonesia/daerah) MAUPUN huruf Arab (Arab gundul, berharakat, atau Arab Pegon) jika ada, termasuk basmalah, salam, kop surat, isi, dan penutup.
-2. Perhatikan konteks kalimat dalam Bahasa Indonesia dan Bahasa Arab untuk membaca kata-kata tulisan tangan yang kurang jelas atau bersambung.
-3. Pertahankan nomor surat, nama orang, nama instansi, tanggal, dan angka dengan sangat teliti.
-4. Pertahankan susunan paragraf yang rapi. Tampilkan langsung hasil transkripsi teksnya saja tanpa tambahan kalimat pembuka, penjelasan, atau format markdown code block.`;
+const TRANSCRIBE_SURAT_PROMPT =
+  'Transkripsikan seluruh teks dalam surat ini (huruf Latin dan Arab) dengan rapi dan akurat. Tampilkan teks hasilnya saja tanpa pembuka, penutup, atau format markdown.';
 
 async function startServer() {
   const app = express();
@@ -83,6 +79,11 @@ async function startServer() {
         response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents,
+          config: {
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
+          },
         });
       } catch (primaryErr) {
         const errMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
@@ -90,6 +91,11 @@ async function startServer() {
           response = await ai.models.generateContent({
             model: 'gemini-4-hydrogen',
             contents,
+            config: {
+              thinkingConfig: {
+                thinkingLevel: ThinkingLevel.LOW,
+              },
+            },
           });
         } else {
           throw primaryErr;

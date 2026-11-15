@@ -18,8 +18,8 @@ interface ScanSuratModalProps {
   onTranscribed: (text: string) => void;
 }
 
-const MAX_DIMENSION = 2400;
-const JPEG_QUALITY = 0.94;
+const MAX_WIDTH = 1024;
+const JPEG_QUALITY = 0.7;
 
 export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
   isOpen,
@@ -333,7 +333,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
     setShutterFlash(true);
     setTimeout(() => setShutterFlash(false), 180);
 
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(vw, vh));
+    const scale = vw > MAX_WIDTH ? MAX_WIDTH / vw : 1;
     const targetW = Math.round(vw * scale);
     const targetH = Math.round(vh * scale);
 
@@ -359,7 +359,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
       reader.onload = () => {
         const img = new Image();
         img.onload = async () => {
-          const scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
+          const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
           const targetW = Math.round(img.width * scale);
           const targetH = Math.round(img.height * scale);
 
