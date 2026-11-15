@@ -9,16 +9,18 @@ import { GoogleGenAI } from '@google/genai';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const TRANSCRIBE_SURAT_PROMPT = `Transkripsikan surat tulisandalam gambar ini menjadi teks digital yang rapi.
-Perhatikan konteks kalimat dalam Bahasa Indonesia untuk menebak kata-kata yang tulisannya kurang jelas atau bersambung. 
-Pertahankan nama orang, tanggal, dan angka dengan sangat teliti. 
-Tampilkan langsung hasil transkripsi teksnya saja tanpa tambahan kalimat pembuka atau penutup.`;
+const TRANSCRIBE_SURAT_PROMPT = `Ekstrak dan transkripsikan SELURUH teks yang ada di dalam gambar surat ini menjadi teks digital yang rapi dan akurat.
+Aturan wajib:
+1. Baca semua teks huruf Latin (Bahasa Indonesia/daerah) MAUPUN huruf Arab (Arab gundul, berharakat, atau Arab Pegon) jika ada, termasuk basmalah, salam, kop surat, isi, dan penutup.
+2. Perhatikan konteks kalimat dalam Bahasa Indonesia dan Bahasa Arab untuk membaca kata-kata tulisan tangan yang kurang jelas atau bersambung.
+3. Pertahankan nomor surat, nama orang, nama instansi, tanggal, dan angka dengan sangat teliti.
+4. Pertahankan susunan paragraf yang rapi. Tampilkan langsung hasil transkripsi teksnya saja tanpa tambahan kalimat pembuka, penjelasan, atau format markdown code block.`;
 
 async function startServer() {
   const app = express();
   const port = Number(process.env.PORT) || 3000;
 
-  app.use(express.json({ limit: '15mb' }));
+  app.use(express.json({ limit: '20mb' }));
 
   app.get('/api/health', (_req: Request, res: Response) => {
     res.json({ ok: true });
@@ -26,10 +28,13 @@ async function startServer() {
 
   app.post('/api/scan-surat', async (req: Request, res: Response) => {
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey =
+        process.env.GEMINI_API_KEY ||
+        process.env.VITE_GEMINI_API_KEY ||
+        process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       if (!apiKey) {
         res.status(500).json({
-          error: 'GEMINI_API_KEY belum dikonfigurasi pada server.',
+          error: 'API Key Gemini belum dikonfigurasi pada environment server (Settings > Secrets).',
         });
         return;
       }
@@ -59,22 +64,37 @@ async function startServer() {
         },
       });
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-4-hydrogen',
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                mimeType,
-                data: base64Data,
-              },
+      const contents = {
+        parts: [
+          {
+            inlineData: {
+              mimeType,
+              data: base64Data,
             },
-            {
-              text: TRANSCRIBE_SURAT_PROMPT,
-            },
-          ],
-        },
-      });
+          },
+          {
+            text: TRANSCRIBE_SURAT_PROMPT,
+          },
+        ],
+      };
+
+      let response;
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents,
+        });
+      } catch (primaryErr) {
+        const errMsg = primaryErr instanceof Error ? primaryErr.message : String(primaryErr);
+        if (errMsg.includes('404') || errMsg.toLowerCase().includes('not found')) {
+          response = await ai.models.generateContent({
+            model: 'gemini-4-hydrogen',
+            contents,
+          });
+        } else {
+          throw primaryErr;
+        }
+      }
 
       const transcribedText = (response.text || '').trim();
       if (!transcribedText) {

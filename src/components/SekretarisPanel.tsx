@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   FileText,
   Printer,
@@ -52,7 +52,7 @@ import { openPrintWindow } from '../utils/printDocument';
 import { downloadSuratSekretarisPDF, loadImageAsDataUrl } from '../utils/pdfGenerator';
 import { downloadWordDocument } from '../utils/wordExport';
 import { DivisiKotakMasuk } from './DivisiKotakMasuk';
-import { ScanSuratModal, ScanSuratResult } from './ScanSuratModal';
+import { ScanSuratModal } from './ScanSuratModal';
 
 interface SekretarisPanelProps {
   arsipSurat?: ArsipSurat[];
@@ -192,6 +192,8 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     perihal: '',
     isiSurat: '',
   });
+  const [manualMasukFromScan, setManualMasukFromScan] = useState(false);
+  const isiSuratMasukRef = useRef<HTMLTextAreaElement | null>(null);
   const [editingMasukId, setEditingMasukId] = useState<string | null>(null);
   const [editingMasukText, setEditingMasukText] = useState('');
 
@@ -599,9 +601,9 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     }
   };
 
-  // Handler OCR Scan Kamera via Google Docs -> Simpan HANYA Teks Digital ke Tabel 1 Surat Masuk
-  const handleScanTranscribed = (scanResult: ScanSuratResult) => {
-    const cleanText = scanResult.text.trim();
+  // Handler OCR Scan Kamera Gemini -> Otomatis isi Formulir Surat Masuk (termasuk Latin & Arab)
+  const handleScanTranscribed = (transcribedText: string) => {
+    const cleanText = transcribedText.trim();
     const lines = cleanText
       .split('\n')
       .map((l) => l.trim())
@@ -612,39 +614,39 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     const perihalMatch = cleanText.match(/(?:perihal|hal)\s*[:\-]\s*([^\n]+)/i);
 
     const masukCount = arsipList.filter((s) => s.arah === 'Masuk').length + 1;
-    const detectedNomor = nomorMatch?.[1]?.trim() || `SM-GDOC-${String(masukCount).padStart(3, '0')}/${new Date().getFullYear()}`;
+    const detectedNomor =
+      nomorMatch?.[1]?.trim() ||
+      `SM-SCAN-${String(masukCount).padStart(3, '0')}/${new Date().getFullYear()}`;
     const detectedPerihal =
       perihalMatch?.[1]?.trim() ||
-      (lines.find((l) => !/^(?:bismillah|assalamu|nomor|no\.|tanggal)/i.test(l)) || lines[0] || 'Surat Masuk Hasil Scan Google Docs').slice(0, 80);
-    const detectedPengirim = pengirimMatch?.[1]?.trim() || 'Pengirim Surat (Scan Google Docs)';
+      (
+        lines.find((l) => !/^(?:bismillah|assalamu|nomor|no\.|tanggal|بسم)/i.test(l)) ||
+        lines[0] ||
+        'Surat Masuk Hasil Scan Kamera'
+      ).slice(0, 80);
+    const detectedPengirim = pengirimMatch?.[1]?.trim() || '';
 
-    const newSuratMasuk: ArsipSurat = {
-      id: `srt_in_${Date.now()}`,
-      arah: 'Masuk',
-      kodeJenis: 'SPeng',
-      namaJenis: 'Surat Masuk (Google Docs OCR)',
+    setManualMasukForm((prev) => ({
       nomorSurat: detectedNomor,
-      tanggalSurat: new Date().toISOString().split('T')[0],
-      lampiran: '-',
-      perihal: detectedPerihal,
+      tanggalSurat: prev.tanggalSurat || new Date().toISOString().split('T')[0],
       tujuanAtauPengirim: detectedPengirim,
-      alamatTujuan: 'Sekretariat Pondok Pesantren Salaf Al-Maliki',
+      perihal: detectedPerihal,
       isiSurat: cleanText,
-      status: 'Diarsipkan',
-      dibuatOleh: currentUser.nama,
-      createdAt: new Date().toLocaleString('id-ID'),
-      dikirimKeKetua: false,
-      sumberScanKamera: true,
-      googleDocId: scanResult.googleDocId,
-      googleDocUrl: scanResult.googleDocUrl,
-      metodeScan: scanResult.googleDocId ? 'google_docs' : 'kamera_ocr',
-    };
-
-    storageService.saveArsipSurat(newSuratMasuk);
-    onDataChanged();
+    }));
+    setManualMasukFromScan(true);
+    setShowManualMasukForm(true);
     setShowScanModal(false);
     setActiveTab('riwayat_surat');
-    showToast('Isi surat berhasil dipindai via Google Docs OCR & masuk sebagai teks ke Tabel Surat Masuk.');
+    showToast(
+      'Teks surat (Latin/Arab) berhasil diekstrak ke formulir Surat Masuk. Silakan periksa & klik Simpan.'
+    );
+
+    setTimeout(() => {
+      document
+        .getElementById('form-surat-masuk-sekretaris')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      isiSuratMasukRef.current?.focus();
+    }, 120);
   };
 
   const handleSaveManualSuratMasuk = (e: React.FormEvent) => {
@@ -656,7 +658,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       id: `srt_in_${Date.now()}`,
       arah: 'Masuk',
       kodeJenis: 'SPeng',
-      namaJenis: 'Surat Masuk',
+      namaJenis: manualMasukFromScan ? 'Surat Masuk (Scan Gemini OCR)' : 'Surat Masuk',
       nomorSurat:
         manualMasukForm.nomorSurat.trim() ||
         `SM-${String(masukCount).padStart(3, '0')}/${new Date().getFullYear()}`,
@@ -670,6 +672,8 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       dibuatOleh: currentUser.nama,
       createdAt: new Date().toLocaleString('id-ID'),
       dikirimKeKetua: false,
+      sumberScanKamera: manualMasukFromScan,
+      metodeScan: manualMasukFromScan ? 'kamera_ocr' : undefined,
     };
 
     storageService.saveArsipSurat(newSuratMasuk);
@@ -681,6 +685,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       perihal: '',
       isiSurat: '',
     });
+    setManualMasukFromScan(false);
     setShowManualMasukForm(false);
     showToast(`Surat Masuk ${newSuratMasuk.nomorSurat} berhasil ditambahkan ke Tabel 1.`);
   };
@@ -1760,7 +1765,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                     <span>Tabel 1: Surat Masuk ({suratMasukAktif.length} Baru)</span>
                   </h2>
                   <p className="text-xs text-[#9ec5b0] mt-0.5">
-                    Gunakan tombol Scan Surat untuk memotret surat dengan kamera HP/Laptop; teknologi Google Docs OCR otomatis membaca isinya menjadi teks digital ke tabel ini dan dapat langsung dikirim ke Kotak Masuk Ketua Pondok.
+                    Gunakan tombol Scan Surat untuk memotret surat dengan kamera layar penuh HP/Laptop; Gemini OCR otomatis mengekstrak teks Latin maupun Arab langsung ke kolom formulir Surat Masuk.
                   </p>
                 </div>
 
@@ -1771,7 +1776,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-2 shadow-lg cursor-pointer hover:brightness-105"
                   >
                     <Camera className="w-4 h-4" />
-                    <span>Scan Surat (Google Docs)</span>
+                    <span>Scan Surat (Kamera)</span>
                   </button>
                   <button
                     type="button"
@@ -1779,16 +1784,39 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                     className="px-3.5 py-2.5 rounded-xl bg-[#031810] hover:bg-[#083524] text-[#e5c158] border border-[#d4af37]/40 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>{showManualMasukForm ? 'Tutup Form Manual' : 'Input Manual'}</span>
+                    <span>{showManualMasukForm ? 'Tutup Form' : 'Input Formulir Surat Masuk'}</span>
                   </button>
                 </div>
               </div>
 
               {showManualMasukForm && (
                 <form
+                  id="form-surat-masuk-sekretaris"
                   onSubmit={handleSaveManualSuratMasuk}
-                  className="p-4 rounded-2xl bg-[#031810] border border-[#d4af37]/35 space-y-3"
+                  className="p-4 rounded-2xl bg-[#031810] border border-[#d4af37]/40 space-y-3"
                 >
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#d4af37]/20">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-[#f3d266]">
+                        Formulir Surat Masuk
+                      </span>
+                      {manualMasukFromScan && (
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-900/70 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold inline-flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          <span>Hasil Scan Kamera (Latin &amp; Arab)</span>
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowScanModal(true)}
+                      className="px-2.5 py-1.5 rounded-lg bg-[#052419] hover:bg-[#083524] text-[#e5c158] border border-[#d4af37]/35 text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Scan Ulang Kamera</span>
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                     <div>
                       <label className="block text-[#d1e7da] font-semibold mb-1">Nomor Surat Masuk</label>
@@ -1833,6 +1861,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                       <input
                         type="text"
                         required
+                        dir="auto"
                         placeholder="Perihal atau inti surat masuk..."
                         value={manualMasukForm.perihal}
                         onChange={(e) =>
@@ -1842,20 +1871,34 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                       />
                     </div>
                     <div className="sm:col-span-3">
-                      <label className="block text-[#d1e7da] font-semibold mb-1">Isi Surat (Teks Digital) *</label>
+                      <label className="block text-[#d1e7da] font-semibold mb-1">
+                        Isi Surat (Teks Digital — Mendukung Huruf Latin &amp; Arab) *
+                      </label>
                       <textarea
-                        rows={3}
+                        ref={isiSuratMasukRef}
+                        rows={6}
                         required
-                        placeholder="Tuliskan isi surat masuk..."
+                        dir="auto"
+                        placeholder="Hasil ekstraksi kamera akan otomatis muncul di sini, atau ketik isi surat masuk..."
                         value={manualMasukForm.isiSurat}
                         onChange={(e) =>
                           setManualMasukForm({ ...manualMasukForm, isiSurat: e.target.value })
                         }
-                        className="w-full px-3 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/30 text-[#f4f9f5]"
+                        className="w-full px-3 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/30 text-[#f4f9f5] leading-relaxed"
                       />
                     </div>
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowManualMasukForm(false);
+                        setManualMasukFromScan(false);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-[#052419] text-[#d1e7da] border border-[#d4af37]/30 font-bold text-xs cursor-pointer"
+                    >
+                      Batal
+                    </button>
                     <button
                       type="submit"
                       className="px-4 py-2 rounded-xl bg-[#d4af37] text-[#03140d] font-bold text-xs cursor-pointer"
@@ -1922,6 +1965,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                               <div className="space-y-2">
                                 <textarea
                                   rows={4}
+                                  dir="auto"
                                   value={editingMasukText}
                                   onChange={(e) => setEditingMasukText(e.target.value)}
                                   className="w-full px-2.5 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/40 text-[#f4f9f5] text-xs"
@@ -1954,7 +1998,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                                 </div>
                               </div>
                             ) : (
-                              <div className="whitespace-pre-line text-[#e2f2e9] leading-relaxed max-h-40 overflow-y-auto pr-1">
+                              <div dir="auto" className="whitespace-pre-line text-[#e2f2e9] leading-relaxed max-h-40 overflow-y-auto pr-1">
                                 {srt.isiSurat}
                               </div>
                             )}
@@ -2056,7 +2100,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                               <div className="text-[11px] text-[#d1e7da]">{srt.tujuanAtauPengirim || '-'}</div>
                             </td>
                             <td className="py-3 px-3 min-w-[220px] max-w-md">
-                              <div className="whitespace-pre-line text-[#d1e7da] line-clamp-3">
+                              <div dir="auto" className="whitespace-pre-line text-[#d1e7da] line-clamp-3">
                                 {srt.isiSurat}
                               </div>
                             </td>
