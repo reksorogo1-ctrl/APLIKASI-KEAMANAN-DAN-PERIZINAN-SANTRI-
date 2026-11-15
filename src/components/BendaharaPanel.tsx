@@ -42,6 +42,7 @@ import {
   LuxuryChartTooltip,
 } from './LuxuryChartComponents';
 import { D3CandlestickChart } from './D3CandlestickChart';
+import { DivisiKotakMasuk } from './DivisiKotakMasuk';
 import {
   TransaksiKeuangan,
   TipeTransaksiKeuangan,
@@ -2174,26 +2175,11 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
       {/* TAB 5: KOTAK MASUK & PESAN                                            */}
       {/* ===================================================================== */}
       {activeTab === 'kotak_masuk' && (
-        <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl space-y-4">
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-[#f3d266]" />
-            Kotak Masuk Pemberitahuan &amp; Permintaan dari Seluruh Pengurus ({koordinasiList.length})
-          </h2>
-          <div className="space-y-3">
-            {koordinasiList.map((msg) => (
-              <div key={msg.id} className="p-4 rounded-2xl bg-[#03160f] border border-emerald-800/70 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-[#f3d266] font-bold">
-                    {msg.nomorTiket} · Dari: {msg.pengirimNama} ({msg.pengirimJabatan || msg.pengirimRole})
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-300">{msg.waktu}</span>
-                </div>
-                <h3 className="text-xs sm:text-sm font-bold text-white">{msg.judul}</h3>
-                <p className="text-xs text-emerald-100/85 whitespace-pre-line">{msg.isi}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <DivisiKotakMasuk
+          currentUser={currentUser}
+          koordinasiList={koordinasiList}
+          viewerDivision="Bendahara"
+        />
       )}
 
       {/* ===================================================================== */}

@@ -593,6 +593,12 @@ export interface ArsipSurat {
   fileLampiranNama?: string;
   dibuatOleh: string;
   createdAt: string;
+  dikirimKeKetua?: boolean;
+  waktuKirimKetua?: string;
+  statusRiwayatKeluar?: boolean;
+  aksiRiwayatKeluar?: string;
+  waktuRiwayatKeluar?: string;
+  sumberScanKamera?: boolean;
 }
 
 // -------------------------------------------------------------
@@ -691,6 +697,7 @@ export interface ProgramKerja {
   penanggungJawab: string;
   tenggat: string;
   status: 'Berjalan' | 'Tercapai' | 'Evaluasi';
+  tanggalTercapai?: string;
 }
 
 export interface IzinPengurus {

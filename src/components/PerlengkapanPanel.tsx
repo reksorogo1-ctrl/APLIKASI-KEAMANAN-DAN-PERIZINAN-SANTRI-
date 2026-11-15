@@ -30,6 +30,7 @@ import {
 } from '../types';
 import { storageService } from '../services/storageService';
 import { openPrintWindow } from '../utils/printDocument';
+import { DivisiKotakMasuk } from './DivisiKotakMasuk';
 
 export type PerlengkapanSubTab =
   | 'kotak_masuk'
@@ -70,14 +71,6 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
   }, [initialSubTab]);
 
   const [toastMsg, setToastMsg] = useState('');
-
-  // Form Pesan Koordinasi / Kotak Masuk
-  const [pesanForm, setPesanForm] = useState({
-    judul: '',
-    tujuan: 'Sekretaris Pondok',
-    kategori: 'Permintaan Surat Peminjaman / Sarpras',
-    isi: '',
-  });
 
   // Form Inventaris Baru
   const [formBarang, setFormBarang] = useState<Partial<BarangInventaris>>({
@@ -170,31 +163,6 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
   }, [barangInventaris]);
 
   // Handlers
-  const handleKirimPesanKoordinasi = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pesanForm.judul || !pesanForm.isi) return;
-    storageService.saveKoordinasi({
-      id: `krd_prl_${Date.now()}`,
-      nomorTiket: `PRL-MSG-${Math.floor(100 + Math.random() * 900)}`,
-      waktu: new Date().toLocaleString('id-ID'),
-      tanggal: new Date().toLocaleString('id-ID'),
-      pengirimId: currentUser.id,
-      pengirimNama: currentUser.nama,
-      pengirimRole: currentUser.role,
-      pengirimJabatan: `${currentUser.jabatan} (${currentUser.divisi || 'Perlengkapan'})`,
-      tujuan: pesanForm.tujuan,
-      kategori: 'Kendala & Kebutuhan',
-      prioritas: 'Penting',
-      judul: pesanForm.judul,
-      isi: pesanForm.isi,
-      status: 'Terkirim',
-      dibacaOleh: [currentUser.id],
-      balasan: [],
-    });
-    setToastMsg(`Pesan koordinasi ke "${pesanForm.tujuan}" berhasil dikirim!`);
-    setTimeout(() => setToastMsg(''), 4000);
-    setPesanForm({ ...pesanForm, judul: '', isi: '' });
-  };
 
   const handleSimpanInventaris = (e: React.FormEvent) => {
     e.preventDefault();
@@ -628,76 +596,13 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
         </div>
       )}
 
-      {/* TAB KOTAK MASUK & PESAN DARI SELURUH PENGURUS */}
+      {/* TAB KOTAK MASUK & PESAN LINTAS DIVISI */}
       {activeTab === 'kotak_masuk' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <form
-            onSubmit={handleKirimPesanKoordinasi}
-            className="lg:col-span-4 rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl space-y-3 h-fit"
-          >
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Send className="w-4 h-4 text-[#f3d266]" />
-              Kirim Pemberitahuan / Permintaan ke Divisi Lain
-            </h2>
-            <select
-              value={pesanForm.tujuan}
-              onChange={(e) => setPesanForm({ ...pesanForm, tujuan: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
-            >
-              <option value="Sekretaris Pondok">Ke: Sekretaris Pondok (Permintaan Surat)</option>
-              <option value="Bendahara Pondok">Ke: Bendahara Pondok (Pencairan Pengadaan)</option>
-              <option value="Ketua Pondok">Ke: Ketua Pondok (Laporan Sarpras)</option>
-              <option value="Dewan Keamanan">Ke: Dewan Keamanan (Fasilitas Pos & Asrama)</option>
-              <option value="Seluruh Pengurus">Ke: Seluruh Pengurus Pondok</option>
-            </select>
-            <input
-              type="text"
-              required
-              placeholder="Judul Pemberitahuan / Permintaan..."
-              value={pesanForm.judul}
-              onChange={(e) => setPesanForm({ ...pesanForm, judul: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
-            />
-            <textarea
-              rows={4}
-              required
-              placeholder="Isi pesan koordinasi atau permintaan perlengkapan..."
-              value={pesanForm.isi}
-              onChange={(e) => setPesanForm({ ...pesanForm, isi: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
-            />
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#02120a] font-bold text-xs cursor-pointer"
-            >
-              Kirim Pesan Koordinasi
-            </button>
-          </form>
-
-          <div className="lg:col-span-8 rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl space-y-3">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Inbox className="w-4 h-4 text-[#f3d266]" />
-              Kotak Masuk Pemberitahuan & Permintaan dari Seluruh Pengurus ({koordinasiList.length})
-            </h2>
-            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
-              {koordinasiList.map((k) => (
-                <div
-                  key={k.id}
-                  className="p-4 rounded-2xl bg-[#03160f] border border-emerald-800/70 space-y-1.5"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="px-2 py-0.5 rounded bg-[#d4af37]/20 text-[#f3d266] text-[10px] font-mono font-bold">
-                      Dari: {k.pengirimNama} ({k.pengirimJabatan}) → Kepada: {k.tujuan}
-                    </span>
-                    <span className="text-[11px] font-mono text-emerald-300">{k.tanggal}</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-white">{k.judul}</h3>
-                  <p className="text-xs text-emerald-100/85 whitespace-pre-line">{k.isi}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <DivisiKotakMasuk
+          currentUser={currentUser}
+          koordinasiList={koordinasiList}
+          viewerDivision="Perlengkapan"
+        />
       )}
 
       {/* TAB 1: DAFTAR INVENTARIS & PERINGATAN STOK MINIMAL */}

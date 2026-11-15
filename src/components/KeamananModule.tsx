@@ -64,7 +64,7 @@ import {
 } from '../types';
 import { KeamananSubTab } from './Sidebar';
 import { Dashboard } from './Dashboard';
-import { KoordinasiList } from './KoordinasiList';
+import { DivisiKotakMasuk } from './DivisiKotakMasuk';
 import { SantriPerKelas } from './SantriPerKelas';
 import { SantriList } from './SantriList';
 import { DewanKeamananList } from './DewanKeamananList';
@@ -852,7 +852,11 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
 
         {/* 2. TAB KOTAK MASUK & PESAN */}
         {subTab === 'koordinasi' && (
-          <KoordinasiList currentUser={currentUser} koordinasiList={koordinasiList} />
+          <DivisiKotakMasuk
+            currentUser={currentUser}
+            koordinasiList={koordinasiList}
+            viewerDivision="Keamanan"
+          />
         )}
 
         {/* 3. TAB SANTRI PER KELAS */}

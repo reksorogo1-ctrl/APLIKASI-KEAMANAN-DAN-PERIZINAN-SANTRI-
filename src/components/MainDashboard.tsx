@@ -84,7 +84,7 @@ interface MainDashboardProps {
   agendaPengurus: AgendaPengurus[];
   pengajuanDivisi: PengajuanDivisi[];
   koordinasiList?: PesanKoordinasi[];
-  onNavigate: (menu: ActiveMenu) => void;
+  onNavigate: (menu: ActiveMenu, subTab?: string) => void;
 }
 
 const HIJRI_MONTHS = [
@@ -647,61 +647,236 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
           </div>
         </div>
 
-        {/* Panel Notifikasi Perizinan / Permintaan Surat / Pesan Koordinasi dari Divisi Lain */}
-        <div className="pt-4 border-t border-emerald-800/60 grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div className="p-3.5 rounded-2xl bg-[#03160f]/90 border border-[#d4af37]/30 flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-[#d4af37]/20 text-[#f3d266] border border-[#d4af37]/40 shrink-0">
-              <Bell className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-[#f3d266] uppercase tracking-wider">
-                  Notifikasi Perizinan & Permintaan Lintas Divisi
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-700/40">
-                  {notifikasiList.filter(n => !n.dibaca).length} Baru
-                </span>
-              </div>
-              {notifikasiList.length > 0 ? (
-                <div className="mt-1.5 space-y-1">
-                  {notifikasiList.slice(0, 2).map(n => (
-                    <p key={n.id} className="text-xs text-emerald-50 truncate">
-                      • <strong className="text-white">{n.judul}:</strong> {n.pesan}
-                    </p>
-                  ))}
+        {/* Panel Notifikasi Simpel, Agenda Kalender Akademik di Atas & Klik Langsung Pindah Halaman */}
+        <div className="pt-4 border-t border-emerald-800/60 space-y-2.5">
+          {/* 1. Notifikasi Agenda Kalender Akademik Hari Ini (Muncul di Atas Saat Ada Agenda Aktif) */}
+          {todayAgendas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                handleJumpToAgendaDate(todayWibStr);
+                document.getElementById('kalender-akademik')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+              className="w-full text-left px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-[#d4af37]/20 via-[#072c1e]/95 to-[#03160f] border border-[#d4af37]/65 hover:border-[#f3d266] flex items-center justify-between gap-3 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-[#d4af37] text-[#02120a] shrink-0">
+                  <Calendar className="w-4 h-4" />
                 </div>
-              ) : (
-                <p className="text-xs text-emerald-200/70 mt-1">Belum ada notifikasi perizinan atau permintaan baru.</p>
-              )}
-            </div>
-          </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-extrabold text-[#f3d266] uppercase tracking-wider truncate">
+                    Agenda Kalender Akademik Hari Ini ({todayAgendas.length})
+                  </p>
+                  <p className="text-xs text-white truncate">
+                    {todayAgendas.map((a) => `${a.judul} · ${a.waktu} WIB (${a.tempat})`).join(' | ')}
+                  </p>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#f3d266] group-hover:translate-x-0.5 transition-transform shrink-0 whitespace-nowrap">
+                <span>Lihat Kalender</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </span>
+            </button>
+          )}
 
-          <div className="p-3.5 rounded-2xl bg-[#03160f]/90 border border-emerald-700/40 flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
-              <Mail className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
-                  Pesan Koordinasi & Permintaan Surat dari Pengurus
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#d4af37]/15 text-[#f3d266] border border-[#d4af37]/30">
-                  {koordinasiList.length} Pesan
-                </span>
-              </div>
-              {koordinasiList.length > 0 ? (
-                <div className="mt-1.5 space-y-1">
-                  {koordinasiList.slice(0, 2).map(k => (
-                    <p key={k.id} className="text-xs text-emerald-50 truncate">
-                      • <strong className="text-[#f3d266]">[{k.pengirimJabatan || k.pengirimNama}]</strong> {k.judul}
-                    </p>
-                  ))}
+          {/* 2. Daftar Notifikasi Pesan Masuk & Sistem (Simpel — Klik Otomatis Pindah ke Halaman Terkait) */}
+          {(() => {
+            type SimpleNotifItem = {
+              key: string;
+              kind: 'pesan' | 'sistem';
+              title: string;
+              detail: string;
+              isUnread: boolean;
+              targetLabel: string;
+              onClick: () => void;
+            };
+
+            const resolveMsgTarget = (msg: PesanKoordinasi): { menu: ActiveMenu; subTab?: string; label: string } => {
+              if (currentUser.role === 'ketua_pondok') {
+                return { menu: 'ketua_pondok', subTab: 'sk_koordinasi', label: 'Kotak Masuk Ketua' };
+              }
+              if (currentUser.role === 'sekretaris') {
+                return { menu: 'sekretaris', subTab: 'kotak_masuk', label: 'Kotak Masuk Sekretaris' };
+              }
+              if (currentUser.role === 'bendahara') {
+                return { menu: 'bendahara', subTab: 'kotak_masuk', label: 'Kotak Masuk Bendahara' };
+              }
+              if (currentUser.role === 'perlengkapan') {
+                return { menu: 'perlengkapan', subTab: 'kotak_masuk', label: 'Kotak Masuk Perlengkapan' };
+              }
+              if (
+                currentUser.role === 'ketua_keamanan' ||
+                currentUser.role === 'anggota_keamanan' ||
+                currentUser.role === 'petugas_gerbang'
+              ) {
+                return { menu: 'keamanan', subTab: 'koordinasi', label: 'Kotak Masuk Keamanan' };
+              }
+              // Admin routing based on message origin/context
+              const text = `${msg.judul} ${msg.pengirimJabatan || ''} ${msg.tujuan}`.toLowerCase();
+              if (msg.tujuan === 'ketua_pondok' || msg.pengirimRole === 'ketua_pondok') {
+                return { menu: 'ketua_pondok', subTab: 'sk_koordinasi', label: 'Kotak Masuk Ketua' };
+              }
+              if (msg.pengirimRole === 'sekretaris' || text.includes('sekretaris')) {
+                return { menu: 'sekretaris', subTab: 'kotak_masuk', label: 'Kotak Masuk Sekretaris' };
+              }
+              if (msg.pengirimRole === 'bendahara' || text.includes('bendahara')) {
+                return { menu: 'bendahara', subTab: 'kotak_masuk', label: 'Kotak Masuk Bendahara' };
+              }
+              if (msg.pengirimRole === 'perlengkapan' || text.includes('perlengkapan')) {
+                return { menu: 'perlengkapan', subTab: 'kotak_masuk', label: 'Kotak Masuk Perlengkapan' };
+              }
+              return { menu: 'keamanan', subTab: 'koordinasi', label: 'Kotak Masuk Keamanan' };
+            };
+
+            const resolveSysNotifTarget = (nId: string, linkMenu?: string): { menu: ActiveMenu; subTab?: string; label: string; isCalendar?: boolean } => {
+              if (nId.startsWith('notif_agenda_') || linkMenu === 'kalender_akademik') {
+                return { menu: 'dashboard', label: 'Kalender Akademik', isCalendar: true };
+              }
+              if (linkMenu === 'ketua_pondok' || linkMenu === 'ketua_pondok_persetujuan') {
+                return currentUser.role === 'admin' || currentUser.role === 'ketua_pondok'
+                  ? { menu: 'ketua_pondok', subTab: 'persetujuan', label: 'Persetujuan Ketua' }
+                  : { menu: 'dashboard', label: 'Dashboard' };
+              }
+              if (linkMenu === 'ketua_pondok_koordinasi') {
+                return currentUser.role === 'admin' || currentUser.role === 'ketua_pondok'
+                  ? { menu: 'ketua_pondok', subTab: 'sk_koordinasi', label: 'Kotak Masuk Ketua' }
+                  : { menu: 'dashboard', label: 'Dashboard' };
+              }
+              if (linkMenu === 'sekretaris' || linkMenu === 'sekretaris_inbox') {
+                return { menu: 'sekretaris', subTab: linkMenu === 'sekretaris_inbox' ? 'kotak_masuk' : undefined, label: 'Halaman Sekretaris' };
+              }
+              if (linkMenu === 'bendahara' || linkMenu === 'bendahara_inbox') {
+                return { menu: 'bendahara', subTab: linkMenu === 'bendahara_inbox' ? 'kotak_masuk' : undefined, label: 'Halaman Bendahara' };
+              }
+              if (linkMenu === 'perlengkapan' || linkMenu === 'perlengkapan_inbox') {
+                return { menu: 'perlengkapan', subTab: linkMenu === 'perlengkapan_inbox' ? 'kotak_masuk' : undefined, label: 'Halaman Perlengkapan' };
+              }
+              if (linkMenu === 'koordinasi') {
+                if (currentUser.role === 'ketua_pondok') return { menu: 'ketua_pondok', subTab: 'sk_koordinasi', label: 'Kotak Masuk' };
+                if (currentUser.role === 'sekretaris') return { menu: 'sekretaris', subTab: 'kotak_masuk', label: 'Kotak Masuk' };
+                if (currentUser.role === 'bendahara') return { menu: 'bendahara', subTab: 'kotak_masuk', label: 'Kotak Masuk' };
+                if (currentUser.role === 'perlengkapan') return { menu: 'perlengkapan', subTab: 'kotak_masuk', label: 'Kotak Masuk' };
+                return { menu: 'keamanan', subTab: 'koordinasi', label: 'Kotak Masuk' };
+              }
+              if (linkMenu === 'perizinan' || linkMenu === 'monitoring' || linkMenu === 'pelanggaran' || linkMenu === 'pos_gerbang' || linkMenu === 'sanksi') {
+                const mapLabel: Record<string, string> = {
+                  perizinan: 'Perizinan Santri',
+                  monitoring: 'Radar Monitoring',
+                  pelanggaran: 'Pelanggaran Santri',
+                  pos_gerbang: 'Pos Gerbang',
+                  sanksi: 'Sanksi Santri',
+                };
+                return { menu: 'keamanan', subTab: linkMenu, label: mapLabel[linkMenu] || 'Keamanan' };
+              }
+              return { menu: 'dashboard', label: 'Dashboard' };
+            };
+
+            const pesanItems: SimpleNotifItem[] = koordinasiList
+              .filter((k) => k.pengirimId !== currentUser.id)
+              .slice(0, 3)
+              .map((k) => {
+                const target = resolveMsgTarget(k);
+                const isUnread = !(k.dibacaOleh || []).includes(currentUser.id);
+                return {
+                  key: `msg_${k.id}`,
+                  kind: 'pesan',
+                  title: k.judul,
+                  detail: `Dari ${k.pengirimNama} (${k.pengirimJabatan || k.kategori})`,
+                  isUnread,
+                  targetLabel: target.label,
+                  onClick: () => {
+                    storageService.markKoordinasiAsRead(k.id, currentUser.id);
+                    onNavigate(target.menu, target.subTab);
+                  },
+                };
+              });
+
+            const sysItems: SimpleNotifItem[] = notifikasiList
+              .filter((n) => !n.id.startsWith('notif_agenda_') && !n.judul.startsWith('Pesan Masuk:') && !n.judul.startsWith('Balasan Pesan:'))
+              .slice(0, 3)
+              .map((n) => {
+                const target = resolveSysNotifTarget(n.id, n.linkMenu);
+                return {
+                  key: `sys_${n.id}`,
+                  kind: 'sistem',
+                  title: n.judul,
+                  detail: n.pesan,
+                  isUnread: !n.dibaca,
+                  targetLabel: target.label,
+                  onClick: () => {
+                    storageService.markNotificationRead(n.id);
+                    if (target.isCalendar) {
+                      handleJumpToAgendaDate(todayWibStr);
+                      document.getElementById('kalender-akademik')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      onNavigate(target.menu, target.subTab);
+                    }
+                  },
+                };
+              });
+
+            const combinedItems = [...pesanItems, ...sysItems]
+              .sort((a, b) => Number(b.isUnread) - Number(a.isUnread))
+              .slice(0, 4);
+
+            const totalUnread = combinedItems.filter((i) => i.isUnread).length;
+
+            return (
+              <div className="p-3.5 rounded-2xl bg-[#03160f]/90 border border-emerald-800/75 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-[#f3d266] uppercase tracking-wider">
+                    <Bell className="w-3.5 h-3.5" />
+                    <span>Notifikasi Pesan Masuk &amp; Sistem</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-300">
+                    {totalUnread > 0 ? `${totalUnread} Belum Dibaca · Klik untuk buka` : 'Semua terbaca'}
+                  </span>
                 </div>
-              ) : (
-                <p className="text-xs text-emerald-200/70 mt-1">Belum ada pesan koordinasi masuk.</p>
-              )}
-            </div>
-          </div>
+
+                {combinedItems.length === 0 ? (
+                  <p className="text-xs text-emerald-200/65">Belum ada pesan masuk atau notifikasi terbaru.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {combinedItems.map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={item.onClick}
+                        className={`w-full text-left px-3 py-2 rounded-xl border flex items-center justify-between gap-2.5 transition-all cursor-pointer group ${
+                          item.isUnread
+                            ? 'bg-[#072c1e]/95 border-[#d4af37]/55 hover:border-[#f3d266]'
+                            : 'bg-[#02120c]/85 border-emerald-900/70 hover:border-emerald-700/80'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={`p-1.5 rounded-lg shrink-0 ${
+                              item.kind === 'pesan'
+                                ? 'bg-[#d4af37]/15 text-[#f3d266]'
+                                : 'bg-emerald-500/15 text-emerald-300'
+                            }`}
+                          >
+                            {item.kind === 'pesan' ? <Mail className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
+                              {item.isUnread && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />}
+                              <span className="truncate">{item.title}</span>
+                            </p>
+                            <p className="text-[11px] text-emerald-200/75 truncate">{item.detail}</p>
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#f3d266] group-hover:translate-x-0.5 transition-transform shrink-0 whitespace-nowrap">
+                          <span>{item.targetLabel}</span>
+                          <ArrowUpRight className="w-3 h-3" />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -1589,7 +1764,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       </div>
 
       {/* 8. KALENDER KEGIATAN PONDOK PESANTREN (HIJRIAH & MASEHI) */}
-      <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-4 sm:p-5 shadow-xl">
+      <div id="kalender-akademik" className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-4 sm:p-5 shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-emerald-800/70">
           <div>
             <h2 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">

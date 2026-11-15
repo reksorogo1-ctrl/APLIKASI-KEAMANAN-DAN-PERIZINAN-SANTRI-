@@ -27,7 +27,7 @@ import {
   BookOpen,
   BarChart3,
   UserCircle,
-  Edit3,
+  History,
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -230,6 +230,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: FileSignature,
         },
         {
+          key: 'kp_option_panel',
+          menu: 'ketua_pondok',
+          subTab: 'option_ketua_pondok',
+          label: 'Options Panel Ketua Pondok',
+          subtitle: 'Edit Proker, Evaluasi, Rapat & Piket',
+          icon: Sliders,
+        },
+        {
           key: 'kp_biodata',
           menu: 'biodata_profil',
           label: 'Tab Biodata dan Profil',
@@ -272,6 +280,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: 'Tab Sekretaris & Surat',
           subtitle: '15 Jenis Surat & Data Santri',
           icon: FileSignature,
+        },
+        {
+          key: 'sek_riwayat_surat',
+          menu: 'sekretaris',
+          subTab: 'riwayat_surat',
+          label: 'Tab Riwayat Surat',
+          subtitle: 'Surat Masuk, Scan OCR & Keluar',
+          icon: History,
         },
         {
           key: 'sek_data_ustadz',
@@ -687,9 +703,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <User className="w-5 h-5" />
                   </div>
                 )}
-                <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#d4af37] text-[#02100a] flex items-center justify-center shadow">
-                  <Edit3 className="w-2.5 h-2.5" />
-                </span>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold text-[#f4f9f5] group-hover:text-[#f3d266] truncate leading-snug transition-colors">
@@ -714,21 +727,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <X className="w-5 h-5" />
             </button>
           </div>
-
-          <button
-            onClick={() => {
-              onSelectMenu('biodata_profil');
-              onClose();
-            }}
-            className={`w-full py-1.5 px-2.5 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
-              activeMenu === 'biodata_profil'
-                ? 'bg-[#d4af37] text-[#02120a] border-[#f3d266]'
-                : 'bg-[#03160f]/90 text-[#f3d266] hover:bg-[#072c1e] border-[#d4af37]/35'
-            }`}
-          >
-            <Edit3 className="w-3 h-3" />
-            <span>Edit Foto, Nama & Jabatan (Biodata)</span>
-          </button>
         </div>
 
         {/* Scrollable Primary Navigation */}

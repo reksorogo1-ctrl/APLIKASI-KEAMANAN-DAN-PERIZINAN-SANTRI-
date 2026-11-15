@@ -27,6 +27,10 @@ import {
   MapPin,
   Phone,
   BookOpen,
+  Camera,
+  History,
+  Save,
+  X,
 } from 'lucide-react';
 import {
   ArsipSurat,
@@ -45,7 +49,9 @@ import { storageService } from '../services/storageService';
 import { INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
 import { openPrintWindow } from '../utils/printDocument';
 import { downloadSuratSekretarisPDF, loadImageAsDataUrl } from '../utils/pdfGenerator';
-import { KoordinasiList } from './KoordinasiList';
+import { downloadWordDocument } from '../utils/wordExport';
+import { DivisiKotakMasuk } from './DivisiKotakMasuk';
+import { ScanSuratModal } from './ScanSuratModal';
 
 interface SekretarisPanelProps {
   arsipSurat?: ArsipSurat[];
@@ -99,6 +105,7 @@ function getRomanMonth(monthIndex: number): string {
 type SekretarisTabKey =
   | 'kotak_masuk'
   | 'buat_surat'
+  | 'riwayat_surat'
   | 'arsip_surat'
   | 'data_santri_psb'
   | 'data_ustadz'
@@ -112,6 +119,7 @@ function normalizeSekretarisSubTab(subTab?: string): SekretarisTabKey {
   if (
     subTab === 'kotak_masuk' ||
     subTab === 'buat_surat' ||
+    subTab === 'riwayat_surat' ||
     subTab === 'arsip_surat' ||
     subTab === 'data_ustadz' ||
     subTab === 'notulen_agenda'
@@ -172,6 +180,19 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
   const [filterKode, setFilterKode] = useState<string>('Semua');
   const [toastMsg, setToastMsg] = useState('');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  // State Riwayat Surat (Scan Kamera OCR, Surat Masuk & Surat Keluar)
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [showManualMasukForm, setShowManualMasukForm] = useState(false);
+  const [manualMasukForm, setManualMasukForm] = useState({
+    nomorSurat: '',
+    tanggalSurat: new Date().toISOString().split('T')[0],
+    tujuanAtauPengirim: '',
+    perihal: '',
+    isiSurat: '',
+  });
+  const [editingMasukId, setEditingMasukId] = useState<string | null>(null);
+  const [editingMasukText, setEditingMasukText] = useState('');
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -485,9 +506,28 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     `;
   };
 
+  const recordSuratKeluarRiwayat = (
+    srt: ArsipSurat,
+    aksi: 'Dikirim' | 'Dicetak' | 'Didownload PDF' | 'Didownload Word'
+  ) => {
+    if (srt.arah !== 'Keluar') return;
+    const updated: ArsipSurat = {
+      ...srt,
+      statusRiwayatKeluar: true,
+      aksiRiwayatKeluar: aksi,
+      waktuRiwayatKeluar: new Date().toLocaleString('id-ID') + ' WIB',
+    };
+    storageService.saveArsipSurat(updated);
+    onDataChanged();
+  };
+
   const handlePrintA4 = async () => {
     try {
       const currentSurat = buildCurrentArsipSuratObject();
+      if (currentSurat.arah === 'Keluar') {
+        recordSuratKeluarRiwayat(currentSurat, 'Dicetak');
+        setEditingSuratId(currentSurat.id);
+      }
       const printableHtml = await buildPrintableSuratHtml(currentSurat, suratConfig, selectedKode);
       openPrintWindow(
         `Cetak Surat - ${currentSurat.nomorSurat || 'Sekretariat'}`,
@@ -509,6 +549,9 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
 
   const handlePrintArsipSurat = async (srt: ArsipSurat) => {
     try {
+      if (srt.arah === 'Keluar') {
+        recordSuratKeluarRiwayat(srt, 'Dicetak');
+      }
       const printableHtml = await buildPrintableSuratHtml(srt, suratConfig, srt.kodeJenis);
       openPrintWindow(
         `Cetak Surat - ${srt.nomorSurat}`,
@@ -525,6 +568,10 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     try {
       setIsDownloadingPdf(true);
       const currentSurat = buildCurrentArsipSuratObject();
+      if (currentSurat.arah === 'Keluar') {
+        recordSuratKeluarRiwayat(currentSurat, 'Didownload PDF');
+        setEditingSuratId(currentSurat.id);
+      }
       await downloadSuratSekretarisPDF(currentSurat, suratConfig, systemConfig.logoUrl);
       showToast('Dokumen PDF Kertas A4 (lengkap dengan Logo Kop & TTD Digital) berhasil diunduh.');
     } catch (err) {
@@ -538,6 +585,9 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
   const handleDownloadArsipPdf = async (srt: ArsipSurat) => {
     try {
       setIsDownloadingPdf(true);
+      if (srt.arah === 'Keluar') {
+        recordSuratKeluarRiwayat(srt, 'Didownload PDF');
+      }
       await downloadSuratSekretarisPDF(srt, suratConfig, systemConfig.logoUrl);
       showToast(`PDF Surat ${srt.nomorSurat} berhasil diunduh.`);
     } catch (err) {
@@ -546,6 +596,212 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     } finally {
       setIsDownloadingPdf(false);
     }
+  };
+
+  // Handler OCR Scan Kamera -> Simpan HANYA Teks Digital ke Tabel 1 Surat Masuk
+  const handleScanTranscribed = (transcribedText: string) => {
+    const cleanText = transcribedText.trim();
+    const lines = cleanText
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    const nomorMatch = cleanText.match(/(?:nomor|no\.?)\s*[:\-]\s*([^\n]+)/i);
+    const pengirimMatch = cleanText.match(/(?:dari|pengirim|atas nama)\s*[:\-]\s*([^\n]+)/i);
+    const perihalMatch = cleanText.match(/(?:perihal|hal)\s*[:\-]\s*([^\n]+)/i);
+
+    const masukCount = arsipList.filter((s) => s.arah === 'Masuk').length + 1;
+    const detectedNomor = nomorMatch?.[1]?.trim() || `SM-SCAN-${String(masukCount).padStart(3, '0')}/${new Date().getFullYear()}`;
+    const detectedPerihal =
+      perihalMatch?.[1]?.trim() ||
+      (lines.find((l) => !/^(?:bismillah|assalamu|nomor|no\.|tanggal)/i.test(l)) || lines[0] || 'Surat Masuk Hasil Scan Kamera').slice(0, 80);
+    const detectedPengirim = pengirimMatch?.[1]?.trim() || 'Pengirim Surat (Hasil Scan Kamera)';
+
+    const newSuratMasuk: ArsipSurat = {
+      id: `srt_in_${Date.now()}`,
+      arah: 'Masuk',
+      kodeJenis: 'SPeng',
+      namaJenis: 'Surat Masuk (Scan OCR)',
+      nomorSurat: detectedNomor,
+      tanggalSurat: new Date().toISOString().split('T')[0],
+      lampiran: '-',
+      perihal: detectedPerihal,
+      tujuanAtauPengirim: detectedPengirim,
+      alamatTujuan: 'Sekretariat Pondok Pesantren Salaf Al-Maliki',
+      isiSurat: cleanText,
+      status: 'Diarsipkan',
+      dibuatOleh: currentUser.nama,
+      createdAt: new Date().toLocaleString('id-ID'),
+      dikirimKeKetua: false,
+      sumberScanKamera: true,
+    };
+
+    storageService.saveArsipSurat(newSuratMasuk);
+    onDataChanged();
+    setShowScanModal(false);
+    setActiveTab('riwayat_surat');
+    showToast('Isi surat berhasil dibaca & dimasukkan sebagai teks ke Tabel Surat Masuk.');
+  };
+
+  const handleSaveManualSuratMasuk = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualMasukForm.perihal.trim() || !manualMasukForm.isiSurat.trim()) return;
+
+    const masukCount = arsipList.filter((s) => s.arah === 'Masuk').length + 1;
+    const newSuratMasuk: ArsipSurat = {
+      id: `srt_in_${Date.now()}`,
+      arah: 'Masuk',
+      kodeJenis: 'SPeng',
+      namaJenis: 'Surat Masuk',
+      nomorSurat:
+        manualMasukForm.nomorSurat.trim() ||
+        `SM-${String(masukCount).padStart(3, '0')}/${new Date().getFullYear()}`,
+      tanggalSurat: manualMasukForm.tanggalSurat || new Date().toISOString().split('T')[0],
+      lampiran: '-',
+      perihal: manualMasukForm.perihal.trim(),
+      tujuanAtauPengirim: manualMasukForm.tujuanAtauPengirim.trim() || 'Pengirim Eksternal',
+      alamatTujuan: 'Sekretariat Pondok',
+      isiSurat: manualMasukForm.isiSurat.trim(),
+      status: 'Diarsipkan',
+      dibuatOleh: currentUser.nama,
+      createdAt: new Date().toLocaleString('id-ID'),
+      dikirimKeKetua: false,
+    };
+
+    storageService.saveArsipSurat(newSuratMasuk);
+    onDataChanged();
+    setManualMasukForm({
+      nomorSurat: '',
+      tanggalSurat: new Date().toISOString().split('T')[0],
+      tujuanAtauPengirim: '',
+      perihal: '',
+      isiSurat: '',
+    });
+    setShowManualMasukForm(false);
+    showToast(`Surat Masuk ${newSuratMasuk.nomorSurat} berhasil ditambahkan ke Tabel 1.`);
+  };
+
+  // Kirim Surat Masuk -> Masuk ke Tab Ketua Pondok (Kotak Masuk Pesan & Laporan) & Riwayat Surat Masuk
+  const handleKirimSuratMasukKeKetua = (srt: ArsipSurat) => {
+    const waktuNow = new Date().toLocaleString('id-ID') + ' WIB';
+    const pesan: PesanKoordinasi = {
+      id: `krd_srt_${Date.now()}`,
+      nomorTiket: `SEK-IN-${Math.floor(1000 + Math.random() * 9000)}`,
+      judul: `[SURAT MASUK] ${srt.perihal} (${srt.nomorSurat})`,
+      isi: `Pengirim: ${srt.tujuanAtauPengirim || '-'}\nTanggal Surat: ${srt.tanggalSurat}\nNomor Surat: ${srt.nomorSurat}\n\nIsi Surat:\n${srt.isiSurat}`,
+      prioritas: 'Penting',
+      kategori: 'Laporan Kejadian',
+      pengirimId: currentUser.id,
+      pengirimNama: currentUser.nama,
+      pengirimRole: 'sekretaris',
+      pengirimJabatan: currentUser.jabatan || 'Sekretaris Umum Pondok',
+      pengirimAvatar: currentUser.avatar || '',
+      tujuan: 'ketua_pondok',
+      waktu: waktuNow,
+      tanggal: new Date().toISOString().split('T')[0],
+      status: 'Terkirim',
+      dibacaOleh: [currentUser.id],
+      balasan: [],
+    };
+
+    storageService.saveKoordinasi(pesan);
+    storageService.saveArsipSurat({
+      ...srt,
+      dikirimKeKetua: true,
+      waktuKirimKetua: waktuNow,
+      status: 'Diarsipkan',
+    });
+    onDataChanged();
+    showToast(
+      `Surat Masuk "${srt.perihal}" berhasil dikirim ke Kotak Masuk Ketua Pondok dan masuk ke Riwayat Surat Masuk.`
+    );
+  };
+
+  // Kirim Surat Keluar -> Masuk ke Riwayat Surat Keluar & notif ke Ketua Pondok
+  const handleKirimSuratKeluar = (srt: ArsipSurat) => {
+    const waktuNow = new Date().toLocaleString('id-ID') + ' WIB';
+    const pesan: PesanKoordinasi = {
+      id: `krd_out_${Date.now()}`,
+      nomorTiket: `SEK-OUT-${Math.floor(1000 + Math.random() * 9000)}`,
+      judul: `[SURAT KELUAR] ${srt.perihal} (${srt.nomorSurat})`,
+      isi: `Tujuan: ${srt.tujuanAtauPengirim || '-'}\nTanggal: ${srt.tanggalSurat}\nNomor: ${srt.nomorSurat}\n\nRingkasan Isi:\n${srt.isiSurat}`,
+      prioritas: 'Normal',
+      kategori: 'Instruksi Admin',
+      pengirimId: currentUser.id,
+      pengirimNama: currentUser.nama,
+      pengirimRole: 'sekretaris',
+      pengirimJabatan: currentUser.jabatan || 'Sekretaris Umum Pondok',
+      pengirimAvatar: currentUser.avatar || '',
+      tujuan: 'ketua_pondok',
+      waktu: waktuNow,
+      tanggal: new Date().toISOString().split('T')[0],
+      status: 'Terkirim',
+      dibacaOleh: [currentUser.id],
+      balasan: [],
+    };
+    storageService.saveKoordinasi(pesan);
+    recordSuratKeluarRiwayat({ ...srt, status: 'Resmi / Terbit' }, 'Dikirim');
+    showToast(`Surat Keluar ${srt.nomorSurat} berhasil dikirim dan tercatat di Riwayat Surat Keluar.`);
+  };
+
+  const handleDownloadRiwayatMasukWord = (rowsList: ArsipSurat[]) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    downloadWordDocument({
+      filename: `Riwayat_Surat_Masuk_Sekretaris_${todayStr}.doc`,
+      title: 'RIWAYAT SURAT MASUK SEKRETARIAT PONDOK',
+      subtitle: `Rekapitulasi Surat Masuk yang Diteruskan ke Ketua Pondok (${rowsList.length} Surat)`,
+      namaPondok: suratConfig.kopNamaPondok || systemConfig.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI',
+      alamatPondok: suratConfig.kopAlamatKontak || systemConfig.alamatPondok,
+      kotaInstansi: suratConfig.kotaTerbit || 'Karawang',
+      penandatanganNama: currentUser.nama,
+      penandatanganJabatan: currentUser.jabatan || 'Sekretaris Umum Pondok',
+      summaryLines: [`Total Riwayat Surat Masuk: ${rowsList.length} dokumen`],
+      columns: [
+        { header: 'No', width: '5%', align: 'center' },
+        { header: 'Tanggal & Nomor Surat', width: '18%' },
+        { header: 'Pengirim & Perihal', width: '24%' },
+        { header: 'Isi Surat (Teks Digital)', width: '38%' },
+        { header: 'Waktu Kirim Ketua', width: '15%' },
+      ],
+      rows: rowsList.map((s, idx) => [
+        String(idx + 1),
+        `${s.tanggalSurat}\n${s.nomorSurat}`,
+        `${s.tujuanAtauPengirim || '-'}\nPerihal: ${s.perihal}`,
+        s.isiSurat || '-',
+        s.waktuKirimKetua || s.createdAt || '-',
+      ]),
+    });
+    showToast('File Word (.doc) Riwayat Surat Masuk berhasil diunduh.');
+  };
+
+  const handleDownloadRiwayatKeluarWord = (rowsList: ArsipSurat[]) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    downloadWordDocument({
+      filename: `Riwayat_Surat_Keluar_Sekretaris_${todayStr}.doc`,
+      title: 'RIWAYAT SURAT KELUAR SEKRETARIAT PONDOK',
+      subtitle: `Rekapitulasi Surat Keluar yang Dikirim, Dicetak, & Diunduh (${rowsList.length} Surat)`,
+      namaPondok: suratConfig.kopNamaPondok || systemConfig.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI',
+      alamatPondok: suratConfig.kopAlamatKontak || systemConfig.alamatPondok,
+      kotaInstansi: suratConfig.kotaTerbit || 'Karawang',
+      penandatanganNama: currentUser.nama,
+      penandatanganJabatan: currentUser.jabatan || 'Sekretaris Umum Pondok',
+      summaryLines: [`Total Riwayat Surat Keluar: ${rowsList.length} dokumen`],
+      columns: [
+        { header: 'No', width: '5%', align: 'center' },
+        { header: 'Tanggal & Nomor Surat', width: '20%' },
+        { header: 'Jenis & Perihal', width: '25%' },
+        { header: 'Tujuan Surat', width: '22%' },
+        { header: 'Aktivitas Terakhir', width: '28%' },
+      ],
+      rows: rowsList.map((s, idx) => [
+        String(idx + 1),
+        `${s.tanggalSurat}\n${s.nomorSurat}`,
+        `${s.kodeJenis} - ${s.perihal}`,
+        `${s.tujuanAtauPengirim || '-'}\n${s.alamatTujuan || ''}`,
+        `${s.aksiRiwayatKeluar || 'Tercatat'} (${s.waktuRiwayatKeluar || s.createdAt || '-'})`,
+      ]),
+    });
+    showToast('File Word (.doc) Riwayat Surat Keluar berhasil diunduh.');
   };
 
   const handleSaveKopConfig = (e: React.FormEvent) => {
@@ -1088,6 +1344,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
         {[
           { key: 'kotak_masuk', label: 'Kotak Masuk & Pesan', icon: Inbox },
           { key: 'buat_surat', label: 'Terbitkan 15 Jenis Surat', icon: Plus },
+          { key: 'riwayat_surat', label: `Riwayat Surat (${arsipList.length})`, icon: History },
           { key: 'arsip_surat', label: `Buku Agenda & Arsip (${arsipList.length})`, icon: Archive },
           { key: 'data_santri_psb', label: `Data Santri per Kelas (${santriList.length})`, icon: Users },
           { key: 'data_ustadz', label: `Data Ustadz & Ustadzah (${ustadzList.length})`, icon: GraduationCap },
@@ -1122,9 +1379,10 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
 
       {/* TAB 0: KOTAK MASUK & PESAN LINTAS DIVISI */}
       {activeTab === 'kotak_masuk' && (
-        <KoordinasiList
+        <DivisiKotakMasuk
           currentUser={currentUser}
           koordinasiList={koordinasiList}
+          viewerDivision="Sekretaris"
         />
       )}
 
@@ -1479,6 +1737,560 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* TAB 1B: RIWAYAT SURAT (TABEL 1: SURAT MASUK + SCAN KAMERA OCR + KIRIM KE KETUA PONDOK, TABEL 2: SURAT KELUAR OTOMATIS) */}
+      {activeTab === 'riwayat_surat' && (() => {
+        const suratMasukAktif = arsipList.filter((s) => s.arah === 'Masuk' && !s.dikirimKeKetua);
+        const riwayatSuratMasuk = arsipList.filter((s) => s.arah === 'Masuk' && Boolean(s.dikirimKeKetua));
+        const suratKeluarAktif = arsipList.filter((s) => s.arah === 'Keluar' && !s.statusRiwayatKeluar);
+        const riwayatSuratKeluar = arsipList.filter((s) => s.arah === 'Keluar' && Boolean(s.statusRiwayatKeluar));
+
+        return (
+          <div className="space-y-6">
+            {/* TABEL 1: SURAT MASUK + SCAN KAMERA OCR + KIRIM + RIWAYAT SURAT MASUK */}
+            <div className="rounded-3xl bg-[#052419]/95 border border-[#d4af37]/40 p-5 space-y-5 shadow-xl">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[#d4af37]/25 pb-4">
+                <div>
+                  <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                    <Inbox className="w-5 h-5 text-[#e5c158]" />
+                    <span>Tabel 1: Surat Masuk ({suratMasukAktif.length} Baru)</span>
+                  </h2>
+                  <p className="text-xs text-[#9ec5b0] mt-0.5">
+                    Gunakan tombol Scan Surat untuk memotret surat dengan kamera HP/Laptop; sistem otomatis membaca isinya menjadi teks digital ke tabel ini dan dapat langsung dikirim ke Kotak Masuk Ketua Pondok.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowScanModal(true)}
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-2 shadow-lg cursor-pointer hover:brightness-105"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Scan Surat (Kamera)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowManualMasukForm((v) => !v)}
+                    className="px-3.5 py-2.5 rounded-xl bg-[#031810] hover:bg-[#083524] text-[#e5c158] border border-[#d4af37]/40 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{showManualMasukForm ? 'Tutup Form Manual' : 'Input Manual'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {showManualMasukForm && (
+                <form
+                  onSubmit={handleSaveManualSuratMasuk}
+                  className="p-4 rounded-2xl bg-[#031810] border border-[#d4af37]/35 space-y-3"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <label className="block text-[#d1e7da] font-semibold mb-1">Nomor Surat Masuk</label>
+                      <input
+                        type="text"
+                        placeholder="Otomatis jika dikosongkan"
+                        value={manualMasukForm.nomorSurat}
+                        onChange={(e) =>
+                          setManualMasukForm({ ...manualMasukForm, nomorSurat: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/30 text-[#f4f9f5] font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#d1e7da] font-semibold mb-1">Tanggal Surat</label>
+                      <input
+                        type="date"
+                        value={manualMasukForm.tanggalSurat}
+                        onChange={(e) =>
+                          setManualMasukForm({ ...manualMasukForm, tanggalSurat: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/30 text-[#f4f9f5]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#d1e7da] font-semibold mb-1">Pengirim / Instansi</label>
+                      <input
+                        type="text"
+                        placeholder="Nama pengirim atau instansi..."
+                        value={manualMasukForm.tujuanAtauPengirim}
+                        onChange={(e) =>
+                          setManualMasukForm({
+                            ...manualMasukForm,
+                            tujuanAtauPengirim: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/30 text-[#f4f9f5]"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="block text-[#d1e7da] font-semibold mb-1">Perihal Surat *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Perihal atau inti surat masuk..."
+                        value={manualMasukForm.perihal}
+                        onChange={(e) =>
+                          setManualMasukForm({ ...manualMasukForm, perihal: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/30 text-[#f4f9f5]"
+                      />
+                    </div>
+                    <div className="sm:col-span-3">
+                      <label className="block text-[#d1e7da] font-semibold mb-1">Isi Surat (Teks Digital) *</label>
+                      <textarea
+                        rows={3}
+                        required
+                        placeholder="Tuliskan isi surat masuk..."
+                        value={manualMasukForm.isiSurat}
+                        onChange={(e) =>
+                          setManualMasukForm({ ...manualMasukForm, isiSurat: e.target.value })
+                        }
+                        className="w-full px-3 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/30 text-[#f4f9f5]"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl bg-[#d4af37] text-[#03140d] font-bold text-xs cursor-pointer"
+                    >
+                      Simpan ke Tabel Surat Masuk
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Daftar Surat Masuk Aktif */}
+              <div className="overflow-x-auto rounded-2xl border border-[#d4af37]/25 bg-[#031810]">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-[#d4af37]/30 text-[#e5c158] uppercase text-[10px] font-mono bg-[#02110b]">
+                      <th className="py-3 px-3 text-center whitespace-nowrap">No</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Tanggal &amp; Nomor</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Pengirim &amp; Perihal</th>
+                      <th className="py-3 px-3">Isi Surat (Teks Digital)</th>
+                      <th className="py-3 px-3 text-right whitespace-nowrap">Kirim &amp; Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#d4af37]/15">
+                    {suratMasukAktif.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-6 px-4 text-center text-[#9ec5b0]">
+                          Belum ada surat masuk baru. Klik &quot;Scan Surat (Kamera)&quot; untuk memindai surat ke bentuk teks digital.
+                        </td>
+                      </tr>
+                    ) : (
+                      suratMasukAktif.map((srt, idx) => (
+                        <tr key={srt.id} className="hover:bg-[#072e20]/60 align-top">
+                          <td className="py-3 px-3 text-center font-mono text-emerald-300">{idx + 1}</td>
+                          <td className="py-3 px-3 whitespace-nowrap font-mono">
+                            <div className="text-[#f3d266] font-bold">{srt.nomorSurat}</div>
+                            <div className="text-[11px] text-[#9ec5b0]">{srt.tanggalSurat}</div>
+                            {srt.sumberScanKamera && (
+                              <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-emerald-900/70 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold">
+                                HASIL SCAN OCR
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 min-w-[180px] max-w-xs">
+                            <div className="font-bold text-white">{srt.perihal}</div>
+                            <div className="text-[11px] text-[#d1e7da] mt-0.5">
+                              Dari: {srt.tujuanAtauPengirim || '-'}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 min-w-[260px] max-w-xl">
+                            {editingMasukId === srt.id ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  rows={4}
+                                  value={editingMasukText}
+                                  onChange={(e) => setEditingMasukText(e.target.value)}
+                                  className="w-full px-2.5 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/40 text-[#f4f9f5] text-xs"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      storageService.saveArsipSurat({
+                                        ...srt,
+                                        isiSurat: editingMasukText,
+                                      });
+                                      onDataChanged();
+                                      setEditingMasukId(null);
+                                      showToast('Teks isi surat berhasil diperbarui.');
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-[#d4af37] text-[#03140d] font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Save className="w-3 h-3" />
+                                    <span>Simpan Teks</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingMasukId(null)}
+                                    className="px-2.5 py-1 rounded-lg bg-[#052419] text-[#d1e7da] border border-[#d4af37]/30 text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <X className="w-3 h-3" />
+                                    <span>Batal</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="whitespace-pre-line text-[#e2f2e9] leading-relaxed max-h-40 overflow-y-auto pr-1">
+                                {srt.isiSurat}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleKirimSuratMasukKeKetua(srt)}
+                                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-[11px] inline-flex items-center gap-1 shadow cursor-pointer"
+                                title="Kirim ke Kotak Masuk Ketua Pondok & Masukkan ke Riwayat"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>Kirim</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingMasukId(srt.id);
+                                  setEditingMasukText(srt.isiSurat || '');
+                                }}
+                                className="p-1.5 rounded-lg bg-[#052419] hover:bg-[#083524] text-[#e5c158] border border-[#d4af37]/30 cursor-pointer"
+                                title="Edit Teks Isi Surat"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  storageService.deleteArsipSurat(srt.id);
+                                  onDataChanged();
+                                  showToast(`Surat Masuk ${srt.nomorSurat} dihapus.`);
+                                }}
+                                className="p-1.5 rounded-lg bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-500/30 cursor-pointer"
+                                title="Hapus Surat Masuk"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Sub-Tabel Riwayat Surat Masuk (Otomatis terisi setelah dikirim ke Ketua Pondok) */}
+              <div className="pt-2 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#f3d266] uppercase tracking-wider flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      <span>Riwayat Surat Masuk Terkirim ke Ketua Pondok ({riwayatSuratMasuk.length})</span>
+                    </h3>
+                    <p className="text-[11px] text-[#9ec5b0]">
+                      Surat masuk yang telah dikirim ke Kotak Masuk Ketua Pondok otomatis masuk ke riwayat ini.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadRiwayatMasukWord(riwayatSuratMasuk)}
+                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-1.5 shadow cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Word (.doc)</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-emerald-700/40 bg-[#031810]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#d4af37]/30 text-emerald-300 uppercase text-[10px] font-mono bg-[#02110b]">
+                        <th className="py-2.5 px-3 text-center whitespace-nowrap">No</th>
+                        <th className="py-2.5 px-3 whitespace-nowrap">Tanggal &amp; Nomor</th>
+                        <th className="py-2.5 px-3 whitespace-nowrap">Pengirim &amp; Perihal</th>
+                        <th className="py-2.5 px-3">Ringkasan Isi Surat</th>
+                        <th className="py-2.5 px-3 whitespace-nowrap">Status Pengiriman</th>
+                        <th className="py-2.5 px-3 text-right whitespace-nowrap">Hapus</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#d4af37]/15">
+                      {riwayatSuratMasuk.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-5 px-4 text-center text-[#9ec5b0]">
+                            Belum ada riwayat surat masuk terkirim. Klik tombol &quot;Kirim&quot; pada Tabel Surat Masuk di atas.
+                          </td>
+                        </tr>
+                      ) : (
+                        riwayatSuratMasuk.map((srt, idx) => (
+                          <tr key={srt.id} className="hover:bg-[#072e20]/50 align-top">
+                            <td className="py-3 px-3 text-center font-mono text-emerald-300">{idx + 1}</td>
+                            <td className="py-3 px-3 whitespace-nowrap font-mono">
+                              <div className="text-white font-bold">{srt.nomorSurat}</div>
+                              <div className="text-[11px] text-[#9ec5b0]">{srt.tanggalSurat}</div>
+                            </td>
+                            <td className="py-3 px-3 min-w-[170px]">
+                              <div className="font-bold text-white">{srt.perihal}</div>
+                              <div className="text-[11px] text-[#d1e7da]">{srt.tujuanAtauPengirim || '-'}</div>
+                            </td>
+                            <td className="py-3 px-3 min-w-[220px] max-w-md">
+                              <div className="whitespace-pre-line text-[#d1e7da] line-clamp-3">
+                                {srt.isiSurat}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-900/75 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
+                                <CheckCircle2 className="w-3 h-3" />
+                                Terkirim ke Ketua Pondok
+                              </span>
+                              <div className="text-[10px] font-mono text-[#9ec5b0] mt-1">
+                                {srt.waktuKirimKetua || srt.createdAt}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  storageService.deleteArsipSurat(srt.id);
+                                  onDataChanged();
+                                  showToast(`Riwayat Surat Masuk ${srt.nomorSurat} berhasil dihapus.`);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-500/35 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                title="Hapus Riwayat Surat Masuk"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Hapus</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* TABEL 2: SURAT KELUAR + RIWAYAT SURAT KELUAR (OTOMATIS SAAT DIKIRIM / DICETAK / DIDOWNLOAD) */}
+            <div className="rounded-3xl bg-[#052419]/95 border border-[#d4af37]/40 p-5 space-y-5 shadow-xl">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[#d4af37]/25 pb-4">
+                <div>
+                  <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                    <FileSignature className="w-5 h-5 text-[#e5c158]" />
+                    <span>Tabel 2: Surat Keluar &amp; Riwayat Aktivitas ({suratKeluarAktif.length} Draft/Siap · {riwayatSuratKeluar.length} Riwayat)</span>
+                  </h2>
+                  <p className="text-xs text-[#9ec5b0] mt-0.5">
+                    Setiap surat keluar yang dikirim, dicetak, atau diunduh PDF otomatis masuk ke Tabel Riwayat Surat Keluar di bawah ini.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('buat_surat')}
+                    className="px-3.5 py-2 rounded-xl bg-[#031810] hover:bg-[#083524] text-[#e5c158] border border-[#d4af37]/40 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Buat Surat Keluar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadRiwayatKeluarWord(riwayatSuratKeluar)}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-1.5 shadow-lg cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Word (.doc)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Surat Keluar Siap Kirim / Cetak / Unduh */}
+              {suratKeluarAktif.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-mono uppercase text-[#e5c158] font-bold">
+                    Daftar Surat Keluar Siap Kirim / Cetak / Download ({suratKeluarAktif.length})
+                  </p>
+                  <div className="overflow-x-auto rounded-2xl border border-[#d4af37]/25 bg-[#031810]">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-[#d4af37]/30 text-[#e5c158] uppercase text-[10px] font-mono bg-[#02110b]">
+                          <th className="py-2.5 px-3 text-center">No</th>
+                          <th className="py-2.5 px-3">Nomor &amp; Tanggal</th>
+                          <th className="py-2.5 px-3">Perihal &amp; Tujuan</th>
+                          <th className="py-2.5 px-3 text-right">Kirim / Cetak / PDF / Hapus</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#d4af37]/15">
+                        {suratKeluarAktif.map((srt, idx) => (
+                          <tr key={srt.id} className="hover:bg-[#072e20]/60 align-top">
+                            <td className="py-3 px-3 text-center font-mono text-emerald-300">{idx + 1}</td>
+                            <td className="py-3 px-3 whitespace-nowrap font-mono">
+                              <div className="text-[#f3d266] font-bold">{srt.nomorSurat}</div>
+                              <div className="text-[11px] text-[#9ec5b0]">
+                                {srt.kodeJenis} · {srt.tanggalSurat}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 min-w-[200px]">
+                              <div className="font-bold text-white">{srt.perihal}</div>
+                              <div className="text-[11px] text-[#d1e7da]">Kepada: {srt.tujuanAtauPengirim || '-'}</div>
+                            </td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              <div className="inline-flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleKirimSuratKeluar(srt)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Send className="w-3.5 h-3.5" />
+                                  <span>Kirim</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePrintArsipSurat(srt)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-800/70 hover:bg-emerald-700 text-white border border-[#d4af37]/35 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Printer className="w-3.5 h-3.5 text-[#e5c158]" />
+                                  <span>Cetak</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isDownloadingPdf}
+                                  onClick={() => handleDownloadArsipPdf(srt)}
+                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 text-emerald-100 border border-emerald-500/40 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer disabled:opacity-60"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                  <span>PDF</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    storageService.deleteArsipSurat(srt.id);
+                                    onDataChanged();
+                                    showToast(`Surat Keluar ${srt.nomorSurat} dihapus.`);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-500/30 cursor-pointer"
+                                  title="Hapus Surat Keluar"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tabel Riwayat Surat Keluar */}
+              <div className="space-y-2.5">
+                <p className="text-[11px] font-mono uppercase text-emerald-300 font-bold flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5 text-[#e5c158]" />
+                  <span>Riwayat Surat Keluar (Dikirim / Dicetak / Didownload — {riwayatSuratKeluar.length})</span>
+                </p>
+                <div className="overflow-x-auto rounded-2xl border border-emerald-700/40 bg-[#031810]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#d4af37]/30 text-emerald-300 uppercase text-[10px] font-mono bg-[#02110b]">
+                        <th className="py-2.5 px-3 text-center whitespace-nowrap">No</th>
+                        <th className="py-2.5 px-3 whitespace-nowrap">Tanggal &amp; Nomor</th>
+                        <th className="py-2.5 px-3 whitespace-nowrap">Perihal &amp; Tujuan</th>
+                        <th className="py-2.5 px-3 whitespace-nowrap">Aktivitas Terakhir</th>
+                        <th className="py-2.5 px-3 text-right whitespace-nowrap">Aksi &amp; Hapus</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#d4af37]/15">
+                      {riwayatSuratKeluar.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-6 px-4 text-center text-[#9ec5b0]">
+                            Belum ada riwayat surat keluar. Surat keluar akan otomatis masuk ke sini setiap kali dikirim, dicetak A4, atau diunduh PDF.
+                          </td>
+                        </tr>
+                      ) : (
+                        riwayatSuratKeluar.map((srt, idx) => (
+                          <tr key={srt.id} className="hover:bg-[#072e20]/50 align-top">
+                            <td className="py-3 px-3 text-center font-mono text-emerald-300">{idx + 1}</td>
+                            <td className="py-3 px-3 whitespace-nowrap font-mono">
+                              <div className="text-[#f3d266] font-bold">{srt.nomorSurat}</div>
+                              <div className="text-[11px] text-[#9ec5b0]">
+                                {srt.kodeJenis} · {srt.tanggalSurat}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 min-w-[200px] max-w-md">
+                              <div className="font-bold text-white">{srt.perihal}</div>
+                              <div className="text-[11px] text-[#d1e7da] mt-0.5">
+                                Tujuan: {srt.tujuanAtauPengirim || '-'}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-900/75 text-emerald-200 border border-emerald-500/40 text-[10px] font-bold">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                {srt.aksiRiwayatKeluar || 'Tercatat'}
+                              </span>
+                              <div className="text-[10px] font-mono text-[#9ec5b0] mt-1">
+                                {srt.waktuRiwayatKeluar || srt.createdAt}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              <div className="inline-flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleLoadArsipToPreview(srt)}
+                                  className="px-2 py-1.5 rounded-lg bg-[#052419] hover:bg-[#083524] text-[#e5c158] border border-[#d4af37]/30 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                  title="Buka di Pratinjau A4"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Pratinjau</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePrintArsipSurat(srt)}
+                                  className="px-2 py-1.5 rounded-lg bg-emerald-800/70 hover:bg-emerald-700 text-white border border-[#d4af37]/30 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                  title="Cetak Ulang"
+                                >
+                                  <Printer className="w-3.5 h-3.5 text-[#e5c158]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isDownloadingPdf}
+                                  onClick={() => handleDownloadArsipPdf(srt)}
+                                  className="px-2 py-1.5 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 text-emerald-100 border border-emerald-500/40 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer disabled:opacity-60"
+                                  title="Unduh Ulang PDF"
+                                >
+                                  <Download className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    storageService.deleteArsipSurat(srt.id);
+                                    onDataChanged();
+                                    showToast(`Riwayat Surat Keluar ${srt.nomorSurat} berhasil dihapus.`);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-red-950/70 hover:bg-red-900 text-red-300 border border-red-500/35 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                  title="Hapus Riwayat Surat Keluar"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Hapus</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* TAB 2: ARSIP SURAT MASUK & KELUAR */}
       {activeTab === 'arsip_surat' && (
@@ -2979,6 +3791,12 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
           </div>
         );
       })()}
+
+      <ScanSuratModal
+        isOpen={showScanModal}
+        onClose={() => setShowScanModal(false)}
+        onTranscribed={handleScanTranscribed}
+      />
     </div>
   );
 };

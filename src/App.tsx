@@ -236,6 +236,48 @@ export default function App() {
 
   const handleNavigateFromNotification = (menuId: string) => {
     if (!currentUser) return;
+    if (menuId === 'kalender_akademik') {
+      setActiveMenu('dashboard');
+      setActiveSubTab('');
+      setTimeout(() => {
+        document.getElementById('kalender-akademik')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+      return;
+    }
+    if (menuId === 'koordinasi') {
+      if (currentUser.role === 'ketua_pondok') {
+        handleSelectSidebarMenu('ketua_pondok', 'sk_koordinasi');
+      } else if (currentUser.role === 'sekretaris') {
+        handleSelectSidebarMenu('sekretaris', 'kotak_masuk');
+      } else if (currentUser.role === 'bendahara') {
+        handleSelectSidebarMenu('bendahara', 'kotak_masuk');
+      } else if (currentUser.role === 'perlengkapan') {
+        handleSelectSidebarMenu('perlengkapan', 'kotak_masuk');
+      } else {
+        handleSelectSidebarMenu('keamanan', 'koordinasi');
+      }
+      return;
+    }
+    if (menuId === 'ketua_pondok_koordinasi' && canAccessMainMenu(currentUser.role, 'ketua_pondok')) {
+      handleSelectSidebarMenu('ketua_pondok', 'sk_koordinasi');
+      return;
+    }
+    if (menuId === 'ketua_pondok_persetujuan' && canAccessMainMenu(currentUser.role, 'ketua_pondok')) {
+      handleSelectSidebarMenu('ketua_pondok', 'persetujuan');
+      return;
+    }
+    if (menuId === 'sekretaris_inbox' && canAccessMainMenu(currentUser.role, 'sekretaris')) {
+      handleSelectSidebarMenu('sekretaris', 'kotak_masuk');
+      return;
+    }
+    if (menuId === 'bendahara_inbox' && canAccessMainMenu(currentUser.role, 'bendahara')) {
+      handleSelectSidebarMenu('bendahara', 'kotak_masuk');
+      return;
+    }
+    if (menuId === 'perlengkapan_inbox' && canAccessMainMenu(currentUser.role, 'perlengkapan')) {
+      handleSelectSidebarMenu('perlengkapan', 'kotak_masuk');
+      return;
+    }
     if (menuId === 'dashboard_keamanan') {
       setActiveMenu('keamanan');
       setKeamananSubTab('ringkasan');
@@ -253,6 +295,7 @@ export default function App() {
     const mainCandidate = menuId as ActiveMenu;
     if (canAccessMainMenu(currentUser.role, mainCandidate)) {
       setActiveMenu(mainCandidate);
+      setActiveSubTab('');
     }
   };
 
@@ -358,7 +401,7 @@ export default function App() {
                 agendaPengurus={agendaPengurus}
                 pengajuanDivisi={pengajuanDivisi}
                 koordinasiList={koordinasiList}
-                onNavigate={(menu) => handleSelectSidebarMenu(menu)}
+                onNavigate={handleSelectSidebarMenu}
               />
             )}
 

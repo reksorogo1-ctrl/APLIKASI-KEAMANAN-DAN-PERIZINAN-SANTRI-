@@ -136,6 +136,7 @@ class StorageService {
   private cloudConnected: boolean = false;
   private lastSyncTime: string = 'Inisialisasi...';
   private syncError: string | null = null;
+  private cloudSawDocs: Record<string, boolean> = {};
 
   // Cached in-memory state for instant UI access & offline speed
   private cache = {
@@ -282,7 +283,7 @@ class StorageService {
       this.cache.notifikasi = n ? JSON.parse(n) : [];
 
       const k = localStorage.getItem(STORAGE_KEYS.KOORDINASI);
-      this.cache.koordinasi = k ? JSON.parse(k) : INITIAL_KOORDINASI;
+      this.cache.koordinasi = k !== null ? JSON.parse(k) : INITIAL_KOORDINASI;
 
       const org = localStorage.getItem(STORAGE_KEYS.STRUKTUR_ORGANISASI);
       this.cache.strukturOrganisasi = org ? JSON.parse(org) : INITIAL_STRUKTUR_ORGANISASI;
@@ -294,10 +295,10 @@ class StorageService {
       this.cache.evaluasiKepengurusan = evl ? JSON.parse(evl) : INITIAL_EVALUASI_KEPENGURUSAN;
 
       const pgj = localStorage.getItem(STORAGE_KEYS.PENGAJUAN_DIVISI);
-      this.cache.pengajuanDivisi = pgj ? JSON.parse(pgj) : INITIAL_PENGAJUAN_DIVISI;
+      this.cache.pengajuanDivisi = pgj !== null ? JSON.parse(pgj) : INITIAL_PENGAJUAN_DIVISI;
 
       const srt = localStorage.getItem(STORAGE_KEYS.SURAT_MENYURAT);
-      this.cache.arsipSurat = srt ? JSON.parse(srt) : INITIAL_ARSIP_SURAT;
+      this.cache.arsipSurat = srt !== null ? JSON.parse(srt) : INITIAL_ARSIP_SURAT;
 
       const trx = localStorage.getItem(STORAGE_KEYS.KEUANGAN_TRANSAKSI);
       this.cache.transaksiKeuangan = trx ? JSON.parse(trx) : INITIAL_TRANSAKSI_KEUANGAN;
@@ -724,12 +725,20 @@ class StorageService {
         collection(db, CLOUD_COLLECTIONS.KOORDINASI),
         snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.KOORDINASI] = true;
             const list: PesanKoordinasi[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as PesanKoordinasi);
             });
             this.cache.koordinasi = list.sort((a, b) => (b.id > a.id ? 1 : -1));
             localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(this.cache.koordinasi));
+            handleSyncUpdate();
+          } else if (
+            this.cloudSawDocs[CLOUD_COLLECTIONS.KOORDINASI] ||
+            localStorage.getItem(STORAGE_KEYS.KOORDINASI) === '[]'
+          ) {
+            this.cache.koordinasi = [];
+            localStorage.setItem(STORAGE_KEYS.KOORDINASI, '[]');
             handleSyncUpdate();
           } else if (this.cache.koordinasi.length > 0) {
             this.uploadCollectionBatch(CLOUD_COLLECTIONS.KOORDINASI, this.cache.koordinasi);
@@ -755,6 +764,7 @@ class StorageService {
           collection(db, colName),
           snapshot => {
             if (!snapshot.empty) {
+              this.cloudSawDocs[colName] = true;
               const list: T[] = [];
               snapshot.forEach(docSnap => {
                 list.push({ ...docSnap.data(), id: docSnap.id } as T);
@@ -762,6 +772,13 @@ class StorageService {
               const sorted = sorter ? list.sort(sorter) : list;
               setList(sorted);
               localStorage.setItem(storageKey, JSON.stringify(sorted));
+              handleSyncUpdate();
+            } else if (
+              this.cloudSawDocs[colName] ||
+              localStorage.getItem(storageKey) === '[]'
+            ) {
+              setList([]);
+              localStorage.setItem(storageKey, '[]');
               handleSyncUpdate();
             } else if (getList().length > 0) {
               this.uploadCollectionBatch(colName, getList());
@@ -1740,29 +1757,51 @@ class StorageService {
     setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, id), { dibaca: true }, { merge: true }).catch(() => {});
   }
 
+  public deleteNotification(id: string) {
+    const current = this.getNotifications().filter(n => n.id !== id);
+    this.cache.notifikasi = current;
+    localStorage.setItem(STORAGE_KEYS.NOTIFIKASI, JSON.stringify(current));
+    this.notify();
+
+    deleteDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, id)).catch(() => {});
+  }
+
   // ==========================================
   // Koordinasi Admin & Dewan Keamanan
   // ==========================================
   public getKoordinasiList(): PesanKoordinasi[] {
-    return this.cache.koordinasi.length > 0 ? this.cache.koordinasi : INITIAL_KOORDINASI;
+    return this.cache.koordinasi;
   }
 
   public saveKoordinasi(pesan: PesanKoordinasi) {
+    const normalizedPesan: PesanKoordinasi = {
+      ...pesan,
+      dibacaOleh: [...(pesan.dibacaOleh || [])],
+      balasan: [...(pesan.balasan || [])],
+    };
     const list = [...this.getKoordinasiList()];
-    const index = list.findIndex(p => p.id === pesan.id);
+    const index = list.findIndex(p => p.id === normalizedPesan.id);
     if (index >= 0) {
-      list[index] = pesan;
+      list[index] = normalizedPesan;
     } else {
-      list.unshift(pesan);
+      list.unshift(normalizedPesan);
+      const tLower = (normalizedPesan.tujuan || '').toLowerCase();
+      const targetLinkMenu =
+        tLower.includes('ketua') ? 'ketua_pondok_koordinasi' :
+        tLower.includes('sekretaris') ? 'sekretaris_inbox' :
+        tLower.includes('bendahara') ? 'bendahara_inbox' :
+        tLower.includes('perlengkapan') || tLower.includes('sarpras') ? 'perlengkapan_inbox' :
+        'koordinasi';
+
       this.addNotification({
-        judul: `[KOORDINASI ${pesan.prioritas.toUpperCase()}] ${pesan.judul}`,
-        pesan: `${pesan.pengirimNama} (${pesan.kategori}): ${pesan.isi.slice(0, 90)}...`,
-        tipe: pesan.prioritas === 'Mendesak' ? 'danger' : pesan.prioritas === 'Penting' ? 'warning' : 'info',
-        linkMenu: 'koordinasi',
+        judul: `Pesan Masuk: ${normalizedPesan.judul}`,
+        pesan: `Dari ${normalizedPesan.pengirimNama} (${normalizedPesan.pengirimJabatan || normalizedPesan.kategori})`,
+        tipe: normalizedPesan.prioritas === 'Mendesak' ? 'danger' : normalizedPesan.prioritas === 'Penting' ? 'warning' : 'info',
+        linkMenu: targetLinkMenu,
       });
       this.addLog(
         'Disposisi Koordinasi',
-        `${pesan.pengirimNama} (${pesan.pengirimRole}) mengirim ${pesan.kategori} [${pesan.prioritas}]: "${pesan.judul}"`,
+        `${normalizedPesan.pengirimNama} (${normalizedPesan.pengirimRole}) mengirim ${normalizedPesan.kategori} [${normalizedPesan.prioritas}]: "${normalizedPesan.judul}"`,
         'admin'
       );
     }
@@ -1770,29 +1809,37 @@ class StorageService {
     localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesan.id), sanitizeForFirestore(pesan), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.KOORDINASI}/${pesan.id}`));
+    setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, normalizedPesan.id), sanitizeForFirestore(normalizedPesan), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.KOORDINASI}/${normalizedPesan.id}`));
   }
 
   public markKoordinasiAsRead(pesanId: string, userId: string) {
     const list = [...this.getKoordinasiList()];
-    const item = list.find(p => p.id === pesanId);
-    if (item) {
+    const idx = list.findIndex(p => p.id === pesanId);
+    if (idx >= 0) {
+      const item = list[idx];
+      const existingRead = item.dibacaOleh || [];
       let changed = false;
-      if (!item.dibacaOleh.includes(userId)) {
-        item.dibacaOleh.push(userId);
-        changed = true;
-      }
+      const nextRead = existingRead.includes(userId) ? existingRead : [...existingRead, userId];
+      if (!existingRead.includes(userId)) changed = true;
+
+      let nextStatus = item.status;
       if (item.status === 'Terkirim') {
-        item.status = 'Dibaca';
+        nextStatus = 'Dibaca';
         changed = true;
       }
       if (changed) {
+        const updated: PesanKoordinasi = {
+          ...item,
+          dibacaOleh: nextRead,
+          status: nextStatus,
+        };
+        list[idx] = updated;
         this.cache.koordinasi = list;
         localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
         this.notify();
 
-        setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(item), { merge: true })
+        setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(updated), { merge: true })
           .catch(() => {});
       }
     }
@@ -1800,26 +1847,46 @@ class StorageService {
 
   public balasKoordinasi(pesanId: string, balasan: BalasanKoordinasi) {
     const list = [...this.getKoordinasiList()];
-    const item = list.find(p => p.id === pesanId);
-    if (item) {
-      item.balasan.push(balasan);
-      if (!item.dibacaOleh.includes(balasan.pengirimId)) {
-        item.dibacaOleh.push(balasan.pengirimId);
-      }
-      if (balasan.pengirimRole === 'admin' && item.status === 'Terkirim') {
-        item.status = 'Dibaca';
-      }
+    const idx = list.findIndex(p => p.id === pesanId);
+    if (idx >= 0) {
+      const item = list[idx];
+      const existingRead = item.dibacaOleh || [];
+      const nextRead = existingRead.includes(balasan.pengirimId)
+        ? existingRead
+        : [...existingRead, balasan.pengirimId];
+      const nextStatus =
+        balasan.pengirimRole === 'admin' && item.status === 'Terkirim'
+          ? 'Dibaca'
+          : item.status;
+
+      const updated: PesanKoordinasi = {
+        ...item,
+        dibacaOleh: nextRead,
+        status: nextStatus,
+        balasan: [...(item.balasan || []), balasan],
+      };
+      list[idx] = updated;
+
+      const senderLower = (updated.pengirimRole || '').toLowerCase();
+      const targetLinkMenu =
+        senderLower === 'ketua_pondok' ? 'ketua_pondok_koordinasi' :
+        senderLower === 'sekretaris' ? 'sekretaris_inbox' :
+        senderLower === 'bendahara' ? 'bendahara_inbox' :
+        senderLower === 'perlengkapan' ? 'perlengkapan_inbox' :
+        updated.tujuan === 'ketua_pondok' ? 'ketua_pondok_koordinasi' :
+        'koordinasi';
+
       this.addNotification({
-        judul: `Tanggapan Baru Koordinasi: ${item.nomorTiket}`,
-        pesan: `${balasan.pengirimNama}: "${balasan.isi.slice(0, 80)}..."`,
+        judul: `Balasan Pesan: ${updated.judul}`,
+        pesan: `${balasan.pengirimNama}: "${balasan.isi.slice(0, 65)}"`,
         tipe: 'info',
-        linkMenu: 'koordinasi',
+        linkMenu: targetLinkMenu,
       });
       this.cache.koordinasi = list;
       localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
       this.notify();
 
-      setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(item), { merge: true })
+      setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(updated), { merge: true })
         .catch(() => {});
     }
   }
@@ -1852,6 +1919,47 @@ class StorageService {
     }
   }
 
+  public tanggapiKoordinasi(pesanId: string, balasan: BalasanKoordinasi, ringkasanCatatan?: string) {
+    const list = [...this.getKoordinasiList()];
+    const idx = list.findIndex(p => p.id === pesanId);
+    if (idx < 0) return;
+
+    const existing = list[idx];
+    const nextDibaca = existing.dibacaOleh.includes(balasan.pengirimId)
+      ? existing.dibacaOleh
+      : [...existing.dibacaOleh, balasan.pengirimId];
+
+    const updated: PesanKoordinasi = {
+      ...existing,
+      status: 'Ditindaklanjuti',
+      dibacaOleh: nextDibaca,
+      tindakLanjutCatatan: ringkasanCatatan || balasan.isi,
+      tindakLanjutOleh: balasan.pengirimNama,
+      tindakLanjutWaktu: balasan.waktu,
+      balasan: [...(existing.balasan || []), balasan],
+    };
+
+    list[idx] = updated;
+    this.cache.koordinasi = list;
+    localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(list));
+
+    this.addNotification({
+      judul: `Tanggapan Ketua: ${updated.judul}`,
+      pesan: `${balasan.pengirimNama}: "${balasan.isi.slice(0, 75)}"`,
+      tipe: 'success',
+      linkMenu: 'koordinasi',
+    });
+    this.addLog(
+      'Tanggapan Ketua Pondok',
+      `${balasan.pengirimNama} menanggapi pesan ${updated.nomorTiket}: "${balasan.isi.slice(0, 80)}"`,
+      'admin'
+    );
+    this.notify();
+
+    setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(updated), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.KOORDINASI}/${pesanId}`));
+  }
+
   public deleteKoordinasi(pesanId: string) {
     const list = this.getKoordinasiList().filter(p => p.id !== pesanId);
     this.cache.koordinasi = list;
@@ -1860,6 +1968,19 @@ class StorageService {
 
     deleteDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId))
       .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.KOORDINASI}/${pesanId}`));
+  }
+
+  public deleteAllKoordinasi() {
+    const existingIds = this.getKoordinasiList().map(p => p.id);
+    this.cache.koordinasi = [];
+    localStorage.setItem(STORAGE_KEYS.KOORDINASI, '[]');
+    this.addLog('Hapus Semua Pesan Masuk', `Ketua Pondok menghapus seluruh ${existingIds.length} pesan koordinasi masuk.`, 'admin');
+    this.notify();
+
+    for (const id of existingIds) {
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, id))
+        .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.KOORDINASI}/${id}`));
+    }
   }
 
   public getUnreadKoordinasiCount(user?: UserAccount): { total: number; mendesak: number } {
@@ -1935,7 +2056,7 @@ class StorageService {
           waktu: `Hari Ini · ${agd.waktu || 'WIB'}`,
           dibaca: false,
           tipe: agd.status === 'Berlangsung' ? 'warning' : 'info',
-          linkMenu: 'dashboard',
+          linkMenu: 'kalender_akademik',
         };
         currentNotifs = [newNotif, ...currentNotifs].slice(0, 60);
         addedCount++;
@@ -2017,7 +2138,7 @@ class StorageService {
   }
 
   public getPengajuanDivisi(): PengajuanDivisi[] {
-    return this.cache.pengajuanDivisi.length > 0 ? this.cache.pengajuanDivisi : INITIAL_PENGAJUAN_DIVISI;
+    return this.cache.pengajuanDivisi;
   }
 
   public savePengajuanDivisi(pengajuan: PengajuanDivisi) {
@@ -2056,7 +2177,7 @@ class StorageService {
   // 3. Sekretaris (Persuratan 15 Jenis & Arsip)
   // ==========================================
   public getArsipSurat(): ArsipSurat[] {
-    return this.cache.arsipSurat.length > 0 ? this.cache.arsipSurat : INITIAL_ARSIP_SURAT;
+    return this.cache.arsipSurat;
   }
 
   public saveArsipSurat(surat: ArsipSurat) {

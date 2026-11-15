@@ -78,11 +78,15 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                   if (!item.dibaca) {
                     storageService.markNotificationRead(item.id);
                   }
+                  if (item.linkMenu) {
+                    onNavigate(item.linkMenu);
+                    onClose();
+                  }
                 }}
-                className={`p-4 rounded-2xl border transition-all hover-rainbow-edge shadow-md cursor-pointer ${
+                className={`p-3.5 rounded-2xl border transition-all shadow-md cursor-pointer ${
                   item.dibaca
-                    ? 'bg-[#02100a]/60 border-emerald-800/80 text-emerald-200/75'
-                    : 'bg-[#041d13]/90 border-amber-400/30 text-slate-200'
+                    ? 'bg-[#02100a]/60 border-emerald-800/80 text-emerald-200/75 hover:border-emerald-600/70'
+                    : 'bg-[#041d13]/95 border-amber-400/40 text-slate-200 hover:border-amber-300'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -92,38 +96,31 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-bold text-white truncate font-sans flex items-center gap-2">
-                        <span>{item.judul}</span>
+                        <span className="truncate">{item.judul}</span>
                         {!item.dibaca && (
-                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                          <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                         )}
                       </p>
                       <span className="text-[10px] text-emerald-400 shrink-0 font-mono">
                         {item.waktu}
                       </span>
                     </div>
-                    <p className="text-xs text-emerald-100/90 mt-1.5 leading-relaxed font-sans">
+                    <p className="text-xs text-emerald-100/85 mt-1 leading-relaxed font-sans line-clamp-2">
                       {item.pesan}
                     </p>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-emerald-800">
+                    <div className="flex items-center gap-2 mt-2 pt-1.5 border-t border-emerald-800/60">
                       {item.linkMenu && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            storageService.markNotificationRead(item.id);
-                            onNavigate(item.linkMenu!);
-                            onClose();
-                          }}
-                          className="tactile-interactive inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-300 hover:text-amber-200 cursor-pointer"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Buka Menu</span>
-                        </button>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-300">
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Buka halaman terkait</span>
+                        </span>
                       )}
                       {item.noWaTujuan && (
                         <button
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const url = createWhatsAppUrl(
                               item.noWaTujuan!,
                               item.waPesanTemplate || item.pesan
