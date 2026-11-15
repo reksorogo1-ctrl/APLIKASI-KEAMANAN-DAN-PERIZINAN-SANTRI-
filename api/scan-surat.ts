@@ -37,15 +37,19 @@ export default async function handler(req: ServerlessRequest, res: ServerlessRes
   }
 
   try {
-    const apiKey =
+    const apiKey = (
       process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
       process.env.VITE_GEMINI_API_KEY ||
-      process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      ''
+    ).trim();
 
     if (!apiKey) {
       res.status(500).json({
         error:
-          'API Key Gemini belum ditemukan di environment server (GEMINI_API_KEY / VITE_GEMINI_API_KEY / NEXT_PUBLIC_GEMINI_API_KEY).',
+          'API Key Gemini belum ditemukan di environment server. Silakan tambahkan GEMINI_API_KEY pada Settings > Secrets (atau Environment Variables di dashboard hosting lalu redeploy).',
       });
       return;
     }

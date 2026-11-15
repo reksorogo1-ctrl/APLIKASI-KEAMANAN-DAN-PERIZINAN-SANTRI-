@@ -24,13 +24,18 @@ async function startServer() {
 
   app.post('/api/scan-surat', async (req: Request, res: Response) => {
     try {
-      const apiKey =
+      const apiKey = (
         process.env.GEMINI_API_KEY ||
+        process.env.GOOGLE_API_KEY ||
+        process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
         process.env.VITE_GEMINI_API_KEY ||
-        process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+        process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+        ''
+      ).trim();
       if (!apiKey) {
         res.status(500).json({
-          error: 'API Key Gemini belum dikonfigurasi pada environment server (Settings > Secrets).',
+          error:
+            'API Key Gemini belum dikonfigurasi pada environment server. Silakan atur GEMINI_API_KEY di panel Settings > Secrets (atau Environment Variables pada hosting).',
         });
         return;
       }
