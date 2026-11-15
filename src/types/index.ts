@@ -599,6 +599,9 @@ export interface ArsipSurat {
   aksiRiwayatKeluar?: string;
   waktuRiwayatKeluar?: string;
   sumberScanKamera?: boolean;
+  googleDocId?: string;
+  googleDocUrl?: string;
+  metodeScan?: 'google_docs' | 'kamera_ocr';
 }
 
 // -------------------------------------------------------------

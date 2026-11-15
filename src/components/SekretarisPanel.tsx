@@ -31,6 +31,7 @@ import {
   History,
   Save,
   X,
+  ExternalLink,
 } from 'lucide-react';
 import {
   ArsipSurat,
@@ -51,7 +52,7 @@ import { openPrintWindow } from '../utils/printDocument';
 import { downloadSuratSekretarisPDF, loadImageAsDataUrl } from '../utils/pdfGenerator';
 import { downloadWordDocument } from '../utils/wordExport';
 import { DivisiKotakMasuk } from './DivisiKotakMasuk';
-import { ScanSuratModal } from './ScanSuratModal';
+import { ScanSuratModal, ScanSuratResult } from './ScanSuratModal';
 
 interface SekretarisPanelProps {
   arsipSurat?: ArsipSurat[];
@@ -598,9 +599,9 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     }
   };
 
-  // Handler OCR Scan Kamera -> Simpan HANYA Teks Digital ke Tabel 1 Surat Masuk
-  const handleScanTranscribed = (transcribedText: string) => {
-    const cleanText = transcribedText.trim();
+  // Handler OCR Scan Kamera via Google Docs -> Simpan HANYA Teks Digital ke Tabel 1 Surat Masuk
+  const handleScanTranscribed = (scanResult: ScanSuratResult) => {
+    const cleanText = scanResult.text.trim();
     const lines = cleanText
       .split('\n')
       .map((l) => l.trim())
@@ -611,17 +612,17 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     const perihalMatch = cleanText.match(/(?:perihal|hal)\s*[:\-]\s*([^\n]+)/i);
 
     const masukCount = arsipList.filter((s) => s.arah === 'Masuk').length + 1;
-    const detectedNomor = nomorMatch?.[1]?.trim() || `SM-SCAN-${String(masukCount).padStart(3, '0')}/${new Date().getFullYear()}`;
+    const detectedNomor = nomorMatch?.[1]?.trim() || `SM-GDOC-${String(masukCount).padStart(3, '0')}/${new Date().getFullYear()}`;
     const detectedPerihal =
       perihalMatch?.[1]?.trim() ||
-      (lines.find((l) => !/^(?:bismillah|assalamu|nomor|no\.|tanggal)/i.test(l)) || lines[0] || 'Surat Masuk Hasil Scan Kamera').slice(0, 80);
-    const detectedPengirim = pengirimMatch?.[1]?.trim() || 'Pengirim Surat (Hasil Scan Kamera)';
+      (lines.find((l) => !/^(?:bismillah|assalamu|nomor|no\.|tanggal)/i.test(l)) || lines[0] || 'Surat Masuk Hasil Scan Google Docs').slice(0, 80);
+    const detectedPengirim = pengirimMatch?.[1]?.trim() || 'Pengirim Surat (Scan Google Docs)';
 
     const newSuratMasuk: ArsipSurat = {
       id: `srt_in_${Date.now()}`,
       arah: 'Masuk',
       kodeJenis: 'SPeng',
-      namaJenis: 'Surat Masuk (Scan OCR)',
+      namaJenis: 'Surat Masuk (Google Docs OCR)',
       nomorSurat: detectedNomor,
       tanggalSurat: new Date().toISOString().split('T')[0],
       lampiran: '-',
@@ -634,13 +635,16 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       createdAt: new Date().toLocaleString('id-ID'),
       dikirimKeKetua: false,
       sumberScanKamera: true,
+      googleDocId: scanResult.googleDocId,
+      googleDocUrl: scanResult.googleDocUrl,
+      metodeScan: scanResult.googleDocId ? 'google_docs' : 'kamera_ocr',
     };
 
     storageService.saveArsipSurat(newSuratMasuk);
     onDataChanged();
     setShowScanModal(false);
     setActiveTab('riwayat_surat');
-    showToast('Isi surat berhasil dibaca & dimasukkan sebagai teks ke Tabel Surat Masuk.');
+    showToast('Isi surat berhasil dipindai via Google Docs OCR & masuk sebagai teks ke Tabel Surat Masuk.');
   };
 
   const handleSaveManualSuratMasuk = (e: React.FormEvent) => {
@@ -1756,7 +1760,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                     <span>Tabel 1: Surat Masuk ({suratMasukAktif.length} Baru)</span>
                   </h2>
                   <p className="text-xs text-[#9ec5b0] mt-0.5">
-                    Gunakan tombol Scan Surat untuk memotret surat dengan kamera HP/Laptop; sistem otomatis membaca isinya menjadi teks digital ke tabel ini dan dapat langsung dikirim ke Kotak Masuk Ketua Pondok.
+                    Gunakan tombol Scan Surat untuk memotret surat dengan kamera HP/Laptop; teknologi Google Docs OCR otomatis membaca isinya menjadi teks digital ke tabel ini dan dapat langsung dikirim ke Kotak Masuk Ketua Pondok.
                   </p>
                 </div>
 
@@ -1767,7 +1771,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-2 shadow-lg cursor-pointer hover:brightness-105"
                   >
                     <Camera className="w-4 h-4" />
-                    <span>Scan Surat (Kamera)</span>
+                    <span>Scan Surat (Google Docs)</span>
                   </button>
                   <button
                     type="button"
@@ -1889,9 +1893,22 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                             <div className="text-[#f3d266] font-bold">{srt.nomorSurat}</div>
                             <div className="text-[11px] text-[#9ec5b0]">{srt.tanggalSurat}</div>
                             {srt.sumberScanKamera && (
-                              <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-emerald-900/70 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold">
-                                HASIL SCAN OCR
-                              </span>
+                              <div className="mt-1 flex flex-wrap items-center gap-1">
+                                <span className="inline-block px-1.5 py-0.5 rounded bg-emerald-900/70 text-emerald-300 border border-emerald-500/40 text-[9px] font-bold">
+                                  {srt.metodeScan === 'google_docs' ? 'GOOGLE DOCS OCR' : 'HASIL SCAN OCR'}
+                                </span>
+                                {srt.googleDocUrl && (
+                                  <a
+                                    href={srt.googleDocUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-500/40 text-[9px] font-bold hover:underline"
+                                  >
+                                    <span>Docs</span>
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                  </a>
+                                )}
+                              </div>
                             )}
                           </td>
                           <td className="py-3 px-3 min-w-[180px] max-w-xs">
