@@ -184,6 +184,8 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
 
   // State Riwayat Surat (Scan Kamera OCR, Surat Masuk & Surat Keluar)
   const [showScanModal, setShowScanModal] = useState(false);
+  const [scanInitialPreview, setScanInitialPreview] = useState<string | null>(null);
+  const uploadFotoInputRef = useRef<HTMLInputElement | null>(null);
   const [showManualMasukForm, setShowManualMasukForm] = useState(false);
   const [manualMasukForm, setManualMasukForm] = useState({
     nomorSurat: '',
@@ -196,6 +198,42 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
   const isiSuratMasukRef = useRef<HTMLTextAreaElement | null>(null);
   const [editingMasukId, setEditingMasukId] = useState<string | null>(null);
   const [editingMasukText, setEditingMasukText] = useState('');
+
+  const handleDirectUploadSuratMasuk = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxWidth = 1024;
+        const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+        const targetW = Math.round(img.width * scale);
+        const targetH = Math.round(img.height * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        const compressedUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setScanInitialPreview(compressedUrl);
+        setShowScanModal(true);
+      };
+      img.onerror = () => {
+        showToast('Gagal membaca file gambar surat.');
+      };
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -1772,12 +1810,30 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowScanModal(true)}
+                    onClick={() => {
+                      setScanInitialPreview(null);
+                      setShowScanModal(true);
+                    }}
                     className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-2 shadow-lg cursor-pointer hover:brightness-105"
                   >
                     <Camera className="w-4 h-4" />
                     <span>Scan Surat (Kamera)</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => uploadFotoInputRef.current?.click()}
+                    className="px-3.5 py-2.5 rounded-xl bg-[#042116] hover:bg-[#083524] text-[#f3d266] border border-[#d4af37]/45 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Pilih File / Upload Foto Surat</span>
+                  </button>
+                  <input
+                    ref={uploadFotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleDirectUploadSuratMasuk}
+                  />
                   <button
                     type="button"
                     onClick={() => setShowManualMasukForm((v) => !v)}
@@ -3855,7 +3911,11 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
 
       <ScanSuratModal
         isOpen={showScanModal}
-        onClose={() => setShowScanModal(false)}
+        initialPreviewUrl={scanInitialPreview}
+        onClose={() => {
+          setShowScanModal(false);
+          setScanInitialPreview(null);
+        }}
         onTranscribed={handleScanTranscribed}
       />
     </div>

@@ -1,15 +1,16 @@
 import React from 'react';
-import { 
-  Users, 
-  DoorOpen, 
-  Clock, 
-  AlertTriangle, 
-  FileCheck, 
-  ArrowUpRight, 
-  ShieldCheck, 
-  Calendar, 
-  Send, 
-  Eye, 
+import { motion } from 'motion/react';
+import {
+  Users,
+  DoorOpen,
+  Clock,
+  AlertTriangle,
+  FileCheck,
+  ArrowUpRight,
+  ShieldCheck,
+  Calendar,
+  Send,
+  Eye,
   ChevronRight,
   Sparkles,
   Radio,
@@ -25,6 +26,10 @@ import { AdvancedDataVisualization, AnimatedCounter } from './AdvancedDataVisual
 import { DashboardRekapitulasiTables } from './DashboardRekapitulasiTables';
 import { storageService } from '../services/storageService';
 import { getWIBDateTime } from '../utils/timeUtils';
+import {
+  metallicContainerVariants,
+  metallicCardVariants,
+} from './MotionPrimitives';
 
 interface DashboardProps {
   santriList: Santri[];
@@ -92,10 +97,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
       : rawKeamananLogo;
 
   return (
-    <div className="space-y-6">
-      
+    <motion.div
+      variants={metallicContainerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* 3D International Security Command Center Hero Banner */}
-      <div className="relative rounded-3xl overflow-hidden border border-emerald-800/80 bg-gradient-to-r from-[#02100a] via-[#041d13] to-emerald-950/60 shadow-2xl metallic-glass-card hover-rainbow-edge">
+      <motion.div
+        variants={metallicCardVariants}
+        data-motion-card="true"
+        className="relative rounded-3xl overflow-hidden border border-emerald-800/80 bg-gradient-to-r from-[#02100a] via-[#041d13] to-emerald-950/60 shadow-2xl metallic-glass-card hover-rainbow-edge"
+      >
         <img
           src="/src/assets/images/tactical_hq_background_1794052517484.jpg"
           alt="International Command Room"
@@ -187,7 +200,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* REAL-TIME KOORDINASI NOTIFICATION ALERT (MENDESAK OR UNREAD) */}
       {mendesakKoordinasi && (
@@ -275,12 +288,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       {/* Primary KPI Grid (High-Tech 3D International Command Center) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      <motion.div
+        variants={metallicContainerVariants}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4"
+      >
         
         {/* Card 1: Santri Sedang di Luar */}
-        <div 
+        <motion.div
+          variants={metallicCardVariants}
+          data-motion-card="true"
+          whileHover={{ y: -3, transition: { duration: 0.18 } }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => handleCardClick('kpi-diluar', () => onNavigate('monitoring'))}
-          className={`tactile-interactive p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
+          className={`p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
             activeCardId === 'kpi-diluar' ? 'rainbow-active-border' : ''
           }`}
         >
@@ -300,12 +320,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span>LIVE MONITORING</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 2: Santri Terlambat */}
-        <div 
+        <motion.div
+          variants={metallicCardVariants}
+          data-motion-card="true"
+          whileHover={{ y: -3, transition: { duration: 0.18 } }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => handleCardClick('kpi-terlambat', () => onNavigate('monitoring'))}
-          className={`tactile-interactive p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
+          className={`p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
             activeCardId === 'kpi-terlambat' ? 'rainbow-active-border' : ''
           }`}
         >
@@ -325,12 +349,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span>DISPATCH PROTOKOL</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 3: Izin Perlu Verifikasi */}
-        <div 
+        <motion.div
+          variants={metallicCardVariants}
+          data-motion-card="true"
+          whileHover={{ y: -3, transition: { duration: 0.18 } }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => handleCardClick('kpi-verif', () => onNavigate('perizinan'))}
-          className={`tactile-interactive p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
+          className={`p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
             activeCardId === 'kpi-verif' ? 'rainbow-active-border' : ''
           }`}
         >
@@ -350,12 +378,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span>AUDIT BERKAS</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 4: Sanksi Edukatif */}
-        <div 
+        <motion.div
+          variants={metallicCardVariants}
+          data-motion-card="true"
+          whileHover={{ y: -3, transition: { duration: 0.18 } }}
+          whileTap={{ scale: 0.99 }}
           onClick={() => handleCardClick('kpi-sanksi', () => onNavigate('sanksi'))}
-          className={`tactile-interactive p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
+          className={`p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
             activeCardId === 'kpi-sanksi' ? 'rainbow-active-border' : ''
           }`}
         >
@@ -375,9 +407,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span>HAFALAN & KHIDMAH</span>
             <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </div>
-        </div>
+        </motion.div>
 
-      </div>
+      </motion.div>
 
       {/* RADAR MONITORING PERIZINAN & DETEKSI KETERLAMBATAN MILITER */}
       <div 
@@ -416,6 +448,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         />
       </div>
 
-    </div>
+    </motion.div>
   );
 };

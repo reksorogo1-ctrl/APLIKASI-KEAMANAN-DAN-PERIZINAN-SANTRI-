@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence } from 'motion/react';
+import { StaggeredTabPanel } from './components/MotionPrimitives';
 import { storageService } from './services/storageService';
 import {
   Santri,
@@ -386,8 +388,10 @@ export default function App() {
           }`}
         >
           <div className="w-full max-w-full">
-            {/* 1. Dashboard Utama Pesantren */}
-            {activeMenu === 'dashboard' && (
+            <AnimatePresence mode="wait">
+              <StaggeredTabPanel key={activeMenu} tabKey={activeMenu}>
+                {/* 1. Dashboard Utama Pesantren */}
+                {activeMenu === 'dashboard' && (
               <MainDashboard
                 currentUser={currentUser}
                 systemConfig={systemConfig}
@@ -538,6 +542,8 @@ export default function App() {
                 }}
               />
             )}
+              </StaggeredTabPanel>
+            </AnimatePresence>
           </div>
         </main>
       </div>

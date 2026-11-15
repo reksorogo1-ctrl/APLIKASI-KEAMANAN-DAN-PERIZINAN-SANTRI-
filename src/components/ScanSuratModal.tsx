@@ -16,6 +16,7 @@ interface ScanSuratModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTranscribed: (text: string) => void;
+  initialPreviewUrl?: string | null;
 }
 
 const MAX_WIDTH = 1024;
@@ -25,6 +26,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
   isOpen,
   onClose,
   onTranscribed,
+  initialPreviewUrl = null,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -36,7 +38,8 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
   const [cameraError, setCameraError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [capturedPreview, setCapturedPreview] = useState<string | null>(null);
+  const [capturedPreview, setCapturedPreview] = useState<string | null>(initialPreviewUrl);
+  const [previewMeta, setPreviewMeta] = useState<string>('');
   const [shutterFlash, setShutterFlash] = useState(false);
 
   const [torchSupported, setTorchSupported] = useState(false);
@@ -222,9 +225,18 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
     if (!isOpen) {
       stopCamera();
       setCapturedPreview(null);
+      setPreviewMeta('');
       setErrorMsg('');
       setCameraError('');
       setIsProcessing(false);
+      return;
+    }
+
+    if (initialPreviewUrl) {
+      stopCamera();
+      setCapturedPreview(initialPreviewUrl);
+      const kb = Math.max(1, Math.round((initialPreviewUrl.length * 3) / 4 / 1024));
+      setPreviewMeta(`Siap dipindai • ~${kb} KB`);
       return;
     }
 
@@ -235,7 +247,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
     return () => {
       stopCamera();
     };
-  }, [isOpen, facingMode, capturedPreview, startCamera, stopCamera]);
+  }, [isOpen, initialPreviewUrl, facingMode, capturedPreview, startCamera, stopCamera]);
 
   const handleToggleTorch = async () => {
     const videoTrack = streamRef.current?.getVideoTracks()[0];
@@ -293,40 +305,51 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
         }),
       });
 
-      const payload = (await response.json().catch(() => ({}))) as {
-        text?: string;
-        error?: string;
-      };
+      const rawText = await response.text();
+      let payload: { text?: string; error?: string } = {};
+      try {
+        payload = rawText ? (JSON.parse(rawText) as { text?: string; error?: string }) : {};
+      } catch {
+        throw new Error(
+          `HTTP ${response.status} ${response.statusText}: ${rawText || '(empty body)'}`
+        );
+      }
 
-      if (!response.ok || !payload.text?.trim()) {
+      if (!response.ok) {
         throw new Error(
           payload.error ||
-            'Gagal mengekstrak teks surat dari gambar. Silakan ulangi pemindaian dengan pencahayaan lebih jelas.'
+            `HTTP ${response.status} ${response.statusText}: ${JSON.stringify(payload)}`
         );
+      }
+
+      if (!payload.text?.trim()) {
+        throw new Error(`Empty text from /api/scan-surat: ${JSON.stringify(payload)}`);
       }
 
       stopCamera();
       onTranscribed(payload.text.trim());
     } catch (err) {
-      const msg =
+      const technicalError =
         err instanceof Error
-          ? err.message
-          : 'Terjadi kesalahan saat memindai teks surat dengan Gemini OCR.';
-      setErrorMsg(msg);
+          ? `${err.name}: ${err.message}`
+          : JSON.stringify(err);
+      setErrorMsg(technicalError);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleCapturePhoto = async () => {
+  const handleCapturePhoto = () => {
     if (!videoRef.current || !canvasRef.current || isProcessing) return;
 
     const video = videoRef.current;
-    const vw = video.videoWidth || 1920;
-    const vh = video.videoHeight || 1080;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
 
-    if (vw === 0 || vh === 0) {
-      setErrorMsg('Kamera belum siap. Tunggu sesaat lalu coba ambil foto lagi.');
+    if (video.readyState < 2 || vw === 0 || vh === 0) {
+      setErrorMsg(
+        `Camera frame not ready (readyState=${video.readyState}, width=${vw}, height=${vh}).`
+      );
       return;
     }
 
@@ -342,15 +365,21 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
     canvas.height = targetH;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      setErrorMsg('Failed to acquire 2D canvas context.');
+      return;
+    }
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(video, 0, 0, targetW, targetH);
 
     const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+    const kb = Math.max(1, Math.round((dataUrl.length * 3) / 4 / 1024));
+    setErrorMsg('');
+    setPreviewMeta(`${targetW}×${targetH} px • ~${kb} KB`);
     stopCamera();
-    await processImageWithGemini(dataUrl);
+    setCapturedPreview(dataUrl);
   };
 
   const processImageFile = useCallback(
@@ -358,7 +387,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
       const reader = new FileReader();
       reader.onload = () => {
         const img = new Image();
-        img.onload = async () => {
+        img.onload = () => {
           const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
           const targetW = Math.round(img.width * scale);
           const targetH = Math.round(img.height * scale);
@@ -368,20 +397,29 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
           canvas.height = targetH;
 
           const ctx = canvas.getContext('2d');
-          if (!ctx) return;
+          if (!ctx) {
+            setErrorMsg('Failed to acquire 2D canvas context.');
+            return;
+          }
 
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, targetW, targetH);
 
           const compressedDataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+          const kb = Math.max(1, Math.round((compressedDataUrl.length * 3) / 4 / 1024));
+          setErrorMsg('');
+          setPreviewMeta(`${targetW}×${targetH} px • ~${kb} KB`);
           stopCamera();
-          await processImageWithGemini(compressedDataUrl);
+          setCapturedPreview(compressedDataUrl);
         };
-        img.onerror = () => {
-          setErrorMsg('File gambar tidak dapat dibaca. Pilih foto surat dengan format JPG/PNG.');
+        img.onerror = (ev) => {
+          setErrorMsg(`Image decode failed: ${JSON.stringify(ev)}`);
         };
         img.src = String(reader.result || '');
+      };
+      reader.onerror = () => {
+        setErrorMsg(`FileReader error: ${reader.error?.message || 'unknown'}`);
       };
       reader.readAsDataURL(file);
     },
@@ -508,14 +546,21 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
         </div>
       </div>
 
-      {/* Main Full-Screen Viewfinder */}
+      {/* Main Full-Screen Viewfinder / Preview */}
       <div className="relative flex-1 w-full h-full flex items-center justify-center overflow-hidden bg-black">
         {capturedPreview ? (
-          <img
-            src={capturedPreview}
-            alt="Hasil Foto Surat"
-            className="w-full h-full object-contain bg-black"
-          />
+          <div className="relative w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 bg-black">
+            <div className="mb-3 px-3.5 py-1.5 rounded-full bg-emerald-950/90 border border-[#d4af37]/50 text-[11px] sm:text-xs font-semibold text-[#f3d266] text-center">
+              Pratinjau Foto Surat ({previewMeta || 'JPEG 70%'}) — Pastikan gambar tidak kosong/hitam sebelum dikirim
+            </div>
+            <div className="relative flex-1 w-full max-w-3xl flex items-center justify-center overflow-hidden rounded-2xl border border-[#d4af37]/40 bg-[#04140d]">
+              <img
+                src={capturedPreview}
+                alt="Pratinjau Foto Surat"
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+          </div>
         ) : cameraError ? (
           <div className="max-w-md mx-4 px-6 py-8 rounded-2xl bg-[#041d13] border border-[#d4af37]/40 text-center space-y-4">
             <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
@@ -527,7 +572,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
                 className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs inline-flex items-center gap-2 cursor-pointer shadow-lg"
               >
                 <Upload className="w-4 h-4" />
-                <span>Kamera HP / Pilih Foto</span>
+                <span>Pilih File / Upload Foto Surat</span>
               </button>
               <button
                 type="button"
@@ -583,27 +628,34 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
                 <span>Mengekstrak Teks Surat...</span>
               </h4>
               <p className="text-xs text-[#b8dcc8] leading-relaxed">
-                Gemini AI sedang membaca seluruh tulisan Latin maupun Arab pada foto surat untuk dimasukkan otomatis ke formulir Surat Masuk.
+                Mengirim foto ke Gemini 2.5 Flash untuk membaca teks Latin maupun Arab...
               </p>
             </div>
           </div>
         )}
 
-        {/* Error Toast / Overlay when extraction fails */}
+        {/* Technical Error Overlay */}
         {errorMsg && !isProcessing && (
-          <div className="absolute inset-x-4 bottom-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:max-w-lg w-full z-40 rounded-2xl bg-red-950/95 border border-red-400/60 p-4 shadow-2xl space-y-3">
-            <div className="flex items-start gap-2.5 text-red-100 text-xs sm:text-sm">
+          <div className="absolute inset-x-4 bottom-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:max-w-xl w-full z-40 rounded-2xl bg-red-950/95 border border-red-400/70 p-4 shadow-2xl space-y-3">
+            <div className="flex items-start gap-2.5 text-red-100">
               <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-              <p className="leading-relaxed">{errorMsg}</p>
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <p className="text-xs font-extrabold uppercase tracking-wider text-red-300">
+                  Detail Error Teknis:
+                </p>
+                <pre className="text-[11px] sm:text-xs font-mono text-red-100 whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-y-auto bg-black/45 p-2.5 rounded-xl border border-red-500/35">
+                  {errorMsg}
+                </pre>
+              </div>
             </div>
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {capturedPreview && (
                 <button
                   type="button"
                   onClick={() => processImageWithGemini(capturedPreview)}
                   className="px-3.5 py-2 rounded-xl bg-amber-500 text-[#03140d] font-extrabold text-xs cursor-pointer"
                 >
-                  Coba Ekstrak Lagi
+                  Coba Kirim Ulang
                 </button>
               )}
               <button
@@ -619,7 +671,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
       </div>
 
       {/* Bottom Floating Shutter Dock */}
-      <div className="relative z-20 px-4 py-4 sm:px-8 sm:py-5 bg-gradient-to-t from-black/95 via-black/75 to-transparent flex items-center justify-between gap-4">
+      <div className="relative z-20 px-4 py-4 sm:px-8 sm:py-5 bg-gradient-to-t from-black/95 via-black/80 to-transparent flex flex-wrap items-center justify-between gap-3">
         <button
           type="button"
           disabled={isProcessing}
@@ -627,20 +679,30 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
           className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/25 text-xs font-bold inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
         >
           <Upload className="w-4 h-4 text-[#f3d266]" />
-          <span className="hidden sm:inline">Kamera HP / Galeri</span>
-          <span className="sm:hidden">Galeri / HP</span>
+          <span>Pilih File / Upload Foto Surat</span>
         </button>
 
         {capturedPreview ? (
-          <button
-            type="button"
-            disabled={isProcessing}
-            onClick={handleRetryScan}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-sm inline-flex items-center gap-2 shadow-xl cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Foto Ulang</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              disabled={isProcessing}
+              onClick={handleRetryScan}
+              className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/30 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Foto Ulang</span>
+            </button>
+            <button
+              type="button"
+              disabled={isProcessing}
+              onClick={() => processImageWithGemini(capturedPreview)}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-xs sm:text-sm inline-flex items-center gap-2 shadow-[0_0_25px_rgba(212,175,55,0.45)] cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Kirim &amp; Ekstrak Teks (Gemini)</span>
+            </button>
+          </div>
         ) : (
           <button
             type="button"
@@ -651,11 +713,11 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
             <span className="w-8 h-8 rounded-full bg-[#03140d] text-[#f3d266] flex items-center justify-center">
               <Camera className="w-4 h-4" />
             </span>
-            <span>Ambil Foto &amp; Scan Teks</span>
+            <span>Ambil Foto</span>
           </button>
         )}
 
-        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-emerald-300/90 font-semibold">
+        <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-emerald-300/90 font-semibold">
           <Sparkles className="w-3.5 h-3.5 text-[#f3d266]" />
           <span>Gemini 2.5 Flash OCR</span>
         </div>
@@ -665,7 +727,6 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleFileSelected}
       />

@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { AnimatePresence } from 'motion/react';
+import { StaggeredTabPanel } from './MotionPrimitives';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -484,7 +486,8 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
       </div>
 
       {/* Active Keamanan Sub-View */}
-      <div>
+      <AnimatePresence mode="wait">
+        <StaggeredTabPanel key={subTab} tabKey={subTab}>
         {/* 1. TAB DASHBOARD UTAMA KEAMANAN (MENGGANTIKAN DASBOR KAMTIB) */}
         {subTab === 'ringkasan' && (
           <div className="space-y-6">
@@ -1998,7 +2001,8 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
             logsList={logsList}
           />
         )}
-      </div>
+        </StaggeredTabPanel>
+      </AnimatePresence>
     </div>
   );
 };

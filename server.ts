@@ -105,7 +105,12 @@ async function startServer() {
       const transcribedText = (response.text || '').trim();
       if (!transcribedText) {
         res.status(422).json({
-          error: 'Teks surat tidak terbaca dari gambar. Silakan ambil foto ulang dengan pencahayaan yang jelas.',
+          error:
+            'Gemini mengembalikan teks kosong (empty response.text): ' +
+            JSON.stringify({
+              candidates: response.candidates ?? null,
+              promptFeedback: response.promptFeedback ?? null,
+            }),
         });
         return;
       }
@@ -113,7 +118,10 @@ async function startServer() {
       res.json({ text: transcribedText });
     } catch (error) {
       console.error('Error /api/scan-surat:', error);
-      const message = error instanceof Error ? error.message : 'Gagal memproses transkripsi surat.';
+      const message =
+        error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : JSON.stringify(error);
       res.status(500).json({ error: message });
     }
   });
