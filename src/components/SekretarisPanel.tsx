@@ -208,7 +208,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const maxWidth = 1024;
+        const maxWidth = 900;
         const scale = img.width > maxWidth ? maxWidth / img.width : 1;
         const targetW = Math.round(img.width * scale);
         const targetH = Math.round(img.height * scale);
