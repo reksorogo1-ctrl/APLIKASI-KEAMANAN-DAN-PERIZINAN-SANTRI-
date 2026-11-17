@@ -1,7 +1,7 @@
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 
 const TRANSCRIBE_SURAT_PROMPT =
-  'Transkripsikan seluruh teks dalam surat ini (huruf Latin dan Arab) dengan rapi dan akurat. Tampilkan teks hasilnya saja tanpa pembuka, penutup, atau format markdown.';
+  'Ekstrak seluruh teks pada gambar surat ini (Latin/Arab). Langsung keluarkan teksnya saja tanpa pengantar.';
 
 export const config = {
   api: {
@@ -110,6 +110,7 @@ export default async function handler(req: ServerlessRequest, res: ServerlessRes
           thinkingConfig: {
             thinkingBudget: 0,
           },
+          temperature: 0.1,
         },
       });
     } catch (primaryErr) {

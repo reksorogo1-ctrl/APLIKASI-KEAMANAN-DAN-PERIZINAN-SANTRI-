@@ -16,30 +16,21 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
   const systemConfig = storageService.getSystemConfig();
   const layout = systemConfig.suratIzinLayout || {};
 
-  // Generate High-Resolution QR Code (Level Q, Quiet Zone 4 modules, Crisp 500px Canvas)
+  // Generate High-Resolution QR Code berisi murni String(izin.id) dengan margin putih agar mudah terbaca kamera HP/Laptop
   useEffect(() => {
     if (izin) {
-      const qrPayload = JSON.stringify({
-        nomor: izin.nomorIzin,
-        santri: izin.santriNama,
-        nis: izin.santriNis,
-        status: izin.status,
-        pengaju: izin.petugasPencatat || 'Pengurus Keamanan',
-        penyetujui: izin.disetujuiOleh || layout.namaPenandatangan || 'Ketua Keamanan',
-        validUntil: `${izin.tglKembali} ${izin.jamKembali}`,
-        pesantren: layout.kopNamaInstansi || systemConfig.namaPondok || 'Pondok Pesantren Salaf Al-Maliki'
-      });
+      const qrPayload = String(izin.id);
       QRCode.toDataURL(qrPayload, {
-        width: 500,
+        width: 320,
         margin: 4,
-        errorCorrectionLevel: 'Q',
+        errorCorrectionLevel: 'M',
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         }
       }).then(url => setQrUrl(url)).catch(() => {});
     }
-  }, [izin, systemConfig, layout]);
+  }, [izin]);
 
   // Manage print isolation state and Escape key
   useEffect(() => {
@@ -74,20 +65,11 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
     // Pastikan QR code beresolusi tinggi sudah siap sebelum memanggil window.print()
     if (!qrUrl) {
       try {
-        const qrPayload = JSON.stringify({
-          nomor: izin.nomorIzin,
-          santri: izin.santriNama,
-          nis: izin.santriNis,
-          status: izin.status,
-          pengaju: izin.petugasPencatat || 'Pengurus Keamanan',
-          penyetujui: izin.disetujuiOleh || layout.namaPenandatangan || 'Ketua Keamanan',
-          validUntil: `${izin.tglKembali} ${izin.jamKembali}`,
-          pesantren: layout.kopNamaInstansi || systemConfig.namaPondok || 'Pondok Pesantren Salaf Al-Maliki'
-        });
+        const qrPayload = String(izin.id);
         const url = await QRCode.toDataURL(qrPayload, {
-          width: 500,
+          width: 320,
           margin: 4,
-          errorCorrectionLevel: 'Q',
+          errorCorrectionLevel: 'M',
           color: {
             dark: '#000000',
             light: '#FFFFFF'
@@ -325,25 +307,30 @@ export const SuratIzinModal: React.FC<SuratIzinModalProps> = ({ izin, onClose })
           {/* Validation & Official Signatures Row */}
           <div className="avoid-break flex flex-col sm:flex-row items-center sm:items-end justify-between gap-3 pt-1">
             
-            {/* High-Fidelity 5x5 cm QR Code Validation */}
+            {/* High-Contrast QR Code (>=140x140px with white quiet-zone border) */}
             {layout.tampilkanQrCode !== false && (
               <div className="flex items-center gap-3">
                 {qrUrl ? (
-                  <div className="p-1.5 bg-white border-2 border-neutral-900 rounded-xl shadow-xs shrink-0">
+                  <div className="p-2 bg-white border-2 border-neutral-900 rounded-xl shadow-xs shrink-0">
                     <img 
                       src={qrUrl} 
                       alt="QR Code Verifikasi Resmi" 
-                      className="official-qr-code w-24 h-24 sm:w-28 sm:h-28 object-contain rounded-lg block" 
+                      width={148}
+                      height={148}
+                      className="official-qr-code w-[148px] h-[148px] min-w-[148px] min-h-[148px] object-contain bg-white block" 
                     />
                   </div>
                 ) : (
-                  <div className="w-24 h-24 sm:w-28 sm:h-28 bg-neutral-100 rounded-xl animate-pulse" />
+                  <div className="w-[148px] h-[148px] bg-neutral-100 rounded-xl animate-pulse shrink-0" />
                 )}
-                <div className="max-w-[150px]">
+                <div className="max-w-[160px]">
                   <p className="text-[9px] text-neutral-500 uppercase font-mono font-bold">Autentikasi SIM-KAMTIB</p>
                   <p className="text-xs font-black text-emerald-800 flex items-center gap-1 mt-0.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     Terverifikasi Sah
+                  </p>
+                  <p className="text-[9px] text-neutral-700 font-mono font-bold mt-1 bg-neutral-100 px-1.5 py-0.5 rounded border border-neutral-300 inline-block">
+                    ID: {izin.id}
                   </p>
                   <p className="text-[8px] sm:text-[9px] text-neutral-600 mt-1 leading-tight font-mono">
                     Pindai QR ini di Pos Gerbang untuk verifikasi kepulangan otomatis.

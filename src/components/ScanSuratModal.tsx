@@ -17,8 +17,8 @@ interface ScanSuratModalProps {
   initialPreviewUrl?: string | null;
 }
 
-const MAX_WIDTH = 900;
-const JPEG_QUALITY = 0.7;
+const MAX_WIDTH = 768;
+const JPEG_QUALITY = 0.65;
 
 export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
   isOpen,
@@ -96,7 +96,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
           const kb = Math.max(1, Math.round((cleanBase64.length * 3) / 4 / 1024));
           setPreviewDataUrl(dataUrl);
           setPureBase64(cleanBase64);
-          setImageMeta(`${targetW}×${targetH} px • JPEG 70% • ~${kb} KB`);
+          setImageMeta(`${targetW}×${targetH} px • JPEG 65% • ~${kb} KB`);
         } catch (err) {
           setErrorMsg(err instanceof Error ? err.message : String(err));
         } finally {

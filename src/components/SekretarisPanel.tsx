@@ -208,10 +208,10 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        const maxWidth = 900;
+        const maxWidth = 768;
         const scale = img.width > maxWidth ? maxWidth / img.width : 1;
-        const targetW = Math.round(img.width * scale);
-        const targetH = Math.round(img.height * scale);
+        const targetW = Math.max(1, Math.round(img.width * scale));
+        const targetH = Math.max(1, Math.round(img.height * scale));
 
         const canvas = document.createElement('canvas');
         canvas.width = targetW;
@@ -219,11 +219,13 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetW, targetH);
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, targetW, targetH);
 
-        const compressedUrl = canvas.toDataURL('image/jpeg', 0.7);
+        const compressedUrl = canvas.toDataURL('image/jpeg', 0.65);
         setScanInitialPreview(compressedUrl);
         setShowScanModal(true);
       };

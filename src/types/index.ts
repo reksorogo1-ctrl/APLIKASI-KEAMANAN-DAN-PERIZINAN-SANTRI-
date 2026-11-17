@@ -117,6 +117,7 @@ export interface Perizinan {
   // Gate check logs
   actualKeluar?: string;
   actualKembali?: string;
+  waktuKembali?: string;
   petugasKeluar?: string;
   petugasKembali?: string;
   fotoKeluar?: string;

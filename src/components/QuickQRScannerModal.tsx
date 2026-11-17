@@ -1,28 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
-import { 
-  Camera, 
-  ScanLine, 
-  CheckCircle2, 
-  AlertTriangle, 
-  X, 
-  QrCode, 
-  Clock, 
-  DoorOpen, 
-  UserCheck, 
-  ArrowLeft,
-  Check,
-  Send,
-  Sparkles,
+import {
+  Camera,
+  CheckCircle2,
+  AlertTriangle,
+  QrCode,
+  Upload,
   RefreshCw,
   SwitchCamera,
   GraduationCap,
-  ShieldCheck,
-  FileCheck2,
-  Calendar
+  Check,
+  Send,
+  ScanLine,
+  Keyboard,
+  Clock,
+  Loader2,
+  X,
 } from 'lucide-react';
-import { Perizinan, Santri, UserAccount, Pelanggaran, Sanksi } from '../types';
+import { Perizinan, UserAccount, Pelanggaran, Sanksi } from '../types';
 import { storageService } from '../services/storageService';
 import { WhatsAppTemplates, createWhatsAppUrl } from '../services/waService';
 
@@ -33,49 +29,52 @@ interface QuickQRScannerModalProps {
   onSuccessCheckin?: (izin: Perizinan, isLate: boolean) => void;
 }
 
+type ScanMode = 'camera' | 'file';
+
 export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
   isOpen,
   onClose,
   currentUser,
   onSuccessCheckin,
 }) => {
-  const [manualInput, setManualInput] = useState<string>('');
+  const [scanMode, setScanMode] = useState<ScanMode>('camera');
   const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
   const [isCameraRunning, setIsCameraRunning] = useState<boolean>(false);
+  const [isStartingCamera, setIsStartingCamera] = useState<boolean>(false);
+  const [isScanningFile, setIsScanningFile] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string>('');
-  const [scanFlash, setScanFlash] = useState<boolean>(false);
-  const [isProcessingScan, setIsProcessingScan] = useState<boolean>(false);
-  
-  // Results
+  const [fileError, setFileError] = useState<string>('');
+  const [manualIdInput, setManualIdInput] = useState<string>('');
+
   const [scannerResult, setScannerResult] = useState<{
     type: 'izin' | 'sanksi' | 'not_found';
-    success: boolean;
+    alreadyReturned?: boolean;
     isLate?: boolean;
+    minutesLate?: number;
     izin?: Perizinan;
     sanksi?: Sanksi;
-    minutesLate?: number;
+    jamKembaliAktual?: string;
     message: string;
     rawScannedCode?: string;
   } | null>(null);
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-  const scannerContainerId = 'almaliki-qr-scanner-viewport';
+  const fileQrCodeRef = useRef<Html5Qrcode | null>(null);
+  const isMountedRef = useRef<boolean>(false);
+  const isHandlingResultRef = useRef<boolean>(false);
 
-  const perizinanList = storageService.getPerizinanList();
-  const sanksiList = storageService.getSanksiList();
-  const outsideList = perizinanList.filter(
-    p => p.status === 'Sedang Keluar' || p.status === 'Terlambat'
-  );
+  const cameraViewportId = 'almaliki-qr-scanner-viewport';
+  const fileViewportId = 'almaliki-qr-file-viewport';
 
-  // Play crisp acoustic confirmation chime on QR code detection
   const playScanBeep = useCallback(() => {
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
       const now = ctx.currentTime;
 
-      // Tone 1 (E6 - 1318Hz)
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -87,7 +86,6 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
       osc1.start(now);
       osc1.stop(now + 0.08);
 
-      // Tone 2 (A6 - 1760Hz)
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = 'sine';
@@ -98,351 +96,464 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
       gain2.connect(ctx.destination);
       osc2.start(now + 0.08);
       osc2.stop(now + 0.22);
-    } catch {}
+    } catch {
+      // Ignore audio restriction errors
+    }
 
-    // Tactile haptic pulse on mobile devices
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([40, 30, 40]);
+        navigator.vibrate([45, 30, 45]);
       }
-    } catch {}
+    } catch {
+      // Ignore vibration errors
+    }
   }, []);
 
-  // Process Surat Izin Check-in Verification
-  const processCheckinPermit = useCallback((targetPermit: Perizinan) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-    const dateStr = now.toISOString().split('T')[0];
-    const actualArrival = `${dateStr} ${timeStr}`;
+  const stopCameraScanner = useCallback(async () => {
+    const scanner = html5QrCodeRef.current;
+    if (!scanner) {
+      setIsCameraRunning(false);
+      return;
+    }
+    try {
+      const state = scanner.getState();
+      if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
+        await scanner.stop();
+      }
+    } catch {
+      // Ignore stop errors when camera never finished starting
+    }
+    try {
+      scanner.clear();
+    } catch {
+      // Ignore clear errors if DOM already unmounted
+    }
+    html5QrCodeRef.current = null;
+    if (isMountedRef.current) {
+      setIsCameraRunning(false);
+    }
+  }, []);
 
-    // Calculate tardiness:
-    const deadlineString = `${targetPermit.tglKembali}T${targetPermit.jamKembali}:00`;
-    const deadlineDate = new Date(deadlineString);
-    const diffMs = now.getTime() - deadlineDate.getTime();
-    const diffMinutes = Math.floor(diffMs / 60000);
-    const isLate = diffMinutes > 0;
+  const processPermitReturn = useCallback(
+    (targetPermit: Perizinan) => {
+      const isStillOutOrPermitted =
+        targetPermit.status === 'Sedang Keluar' ||
+        targetPermit.status === 'Disetujui' ||
+        targetPermit.status === 'Diajukan' ||
+        targetPermit.status === 'Diverifikasi' ||
+        (targetPermit.status === 'Terlambat' && !targetPermit.actualKembali);
 
-    const officerName = currentUser.nama || 'Petugas Pengurus Keamanan';
+      if (!isStillOutOrPermitted) {
+        const recordedTime =
+          targetPermit.waktuKembali ||
+          targetPermit.actualKembali ||
+          `${targetPermit.tglKembali} ${targetPermit.jamKembali} WIB`;
 
-    // 1. Update Perizinan status
-    const updatedPermit: Perizinan = {
-      ...targetPermit,
-      status: isLate ? 'Terlambat' : 'Sudah Kembali',
-      actualKembali: actualArrival,
-      petugasKembali: officerName,
-      menitKeterlambatan: isLate ? diffMinutes : 0,
-    };
+        setScannerResult({
+          type: 'izin',
+          alreadyReturned: true,
+          isLate: Boolean(targetPermit.menitKeterlambatan && targetPermit.menitKeterlambatan > 0),
+          minutesLate: targetPermit.menitKeterlambatan || 0,
+          izin: targetPermit,
+          jamKembaliAktual: recordedTime,
+          message: `Data izin ini sudah tercatat kembali sebelumnya pada ${recordedTime}.`,
+        });
+        return;
+      }
 
-    storageService.savePerizinan(updatedPermit, isLate ? `Kembali terlambat ${diffMinutes} menit` : 'Kembali tepat waktu (Selesai)');
+      const now = new Date();
+      const timeOnlyStr =
+        now.toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }) + ' WIB';
+      const dateStr = now.toISOString().split('T')[0];
+      const actualArrival = `${dateStr} ${timeOnlyStr}`;
 
-    // 2. Log in central activity logs
-    storageService.addLog(
-      'Pindai QR Kepulangan Santri',
-      `Santri ${targetPermit.santriNama} (${targetPermit.santriNis}) dipindai di pos gerbang. Status: ${isLate ? `Terlambat ${diffMinutes} menit` : 'Tepat Waktu (Selesai)'}. Petugas: ${officerName}`,
-      'gerbang'
-    );
+      const deadlineString = `${targetPermit.tglKembali}T${targetPermit.jamKembali}:00`;
+      const deadlineDate = new Date(deadlineString);
+      const diffMs = now.getTime() - deadlineDate.getTime();
+      const diffMinutes = !isNaN(deadlineDate.getTime()) ? Math.floor(diffMs / 60000) : 0;
+      const isLate = diffMinutes > 0;
 
-    // 3. If LATE, AUTOMATICALLY create entry in Catatan Insiden Pelanggaran (pelanggaranList)
-    if (isLate) {
-      const pelanggaranBaru: Pelanggaran = {
-        id: `pel_late_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-        kodePelanggaran: `PEL-LATE-${Date.now().toString().slice(-4)}`,
-        santriId: targetPermit.santriId,
-        santriNama: targetPermit.santriNama,
-        santriNis: targetPermit.santriNis,
-        santriGender: targetPermit.santriGender,
-        tanggal: dateStr,
-        waktu: timeStr,
-        tataTertibId: 'tt_004',
-        jenisPelanggaran: `Terlambat kembali ke pondok dari ${targetPermit.jenisIzin} selama ${diffMinutes} menit (Jadwal: ${targetPermit.jamKembali} WIB).`,
-        kategori: diffMinutes > 120 ? 'Sedang' : 'Ringan',
-        poin: diffMinutes > 120 ? 10 : 5,
-        kronologi: `Santri ${targetPermit.santriNama} (${targetPermit.santriNis}) keluar izin ${targetPermit.jenisIzin} tujuan ${targetPermit.tujuan}. Jadwal kepulangan maksimal ${targetPermit.tglKembali} pukul ${targetPermit.jamKembali} WIB, namun baru terdeteksi scan QR masuk gerbang pada ${actualArrival}. Terlambat ${diffMinutes} menit.`,
-        lokasi: 'Pos Gerbang Utama Al-Maliki',
-        namaPetugasPelapor: officerName,
-        statusVerifikasi: 'Terverifikasi',
+      const officerName = currentUser.nama || 'Petugas Keamanan';
+
+      const updatedPermit: Perizinan = {
+        ...targetPermit,
+        status: 'Sudah Kembali',
+        actualKembali: actualArrival,
+        waktuKembali: actualArrival,
+        petugasKembali: officerName,
+        menitKeterlambatan: isLate ? diffMinutes : 0,
       };
 
-      storageService.savePelanggaran(pelanggaranBaru, `Insiden keterlambatan otomatis dicatat dari pemindaian QR surat izin`);
+      storageService.savePerizinan(
+        updatedPermit,
+        isLate
+          ? `Santri kembali (terlambat ${diffMinutes} menit) via Scan QR Pos Gerbang`
+          : 'Santri kembali tepat waktu via Scan QR Pos Gerbang'
+      );
 
-      storageService.addNotification({
-        judul: `⚠️ SANTRI TERLAMBAT: ${targetPermit.santriNama}`,
-        pesan: `Santri terdeteksi terlambat ${diffMinutes} menit saat scan QR masuk gerbang. Berkas pelanggaran otomatis diterbitkan ke tab Catatan Pelanggaran.`,
-        tipe: 'danger',
-        linkMenu: 'pelanggaran',
-        noWaTujuan: targetPermit.noWaPenjemput,
-        waPesanTemplate: WhatsAppTemplates.santriCheckIn(targetPermit, actualArrival, `Terlambat ${diffMinutes} Menit`),
-      });
+      storageService.addLog(
+        'Pindai QR Kepulangan Santri',
+        `Santri ${targetPermit.santriNama} (${targetPermit.santriNis}) kembali ke pondok pada ${actualArrival}. Petugas: ${officerName}.`,
+        'gerbang'
+      );
+
+      if (isLate) {
+        const pelanggaranBaru: Pelanggaran = {
+          id: `pel_late_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+          kodePelanggaran: `PEL-LATE-${Date.now().toString().slice(-4)}`,
+          santriId: targetPermit.santriId,
+          santriNama: targetPermit.santriNama,
+          santriNis: targetPermit.santriNis,
+          santriGender: targetPermit.santriGender,
+          tanggal: dateStr,
+          waktu: timeOnlyStr,
+          tataTertibId: 'tt_004',
+          jenisPelanggaran: `Terlambat kembali ke pondok dari ${targetPermit.jenisIzin} selama ${diffMinutes} menit (Batas: ${targetPermit.jamKembali} WIB).`,
+          kategori: diffMinutes > 120 ? 'Sedang' : 'Ringan',
+          poin: diffMinutes > 120 ? 10 : 5,
+          kronologi: `Santri ${targetPermit.santriNama} (${targetPermit.santriNis}) terdeteksi scan QR masuk gerbang pada ${actualArrival} (terlambat ${diffMinutes} menit dari batas ${targetPermit.tglKembali} ${targetPermit.jamKembali} WIB).`,
+          lokasi: 'Pos Gerbang Utama Al-Maliki',
+          namaPetugasPelapor: officerName,
+          statusVerifikasi: 'Terverifikasi',
+        };
+        storageService.savePelanggaran(
+          pelanggaranBaru,
+          'Insiden keterlambatan otomatis dicatat dari pemindaian QR surat izin'
+        );
+
+        storageService.addNotification({
+          judul: `Santri Kembali (Terlambat ${diffMinutes} Menit): ${targetPermit.santriNama}`,
+          pesan: `Santri telah kembali ke pondok pada ${timeOnlyStr} dan status izin diperbarui menjadi Kembali.`,
+          tipe: 'warning',
+          linkMenu: 'perizinan',
+          noWaTujuan: targetPermit.noWaPenjemput,
+          waPesanTemplate: WhatsAppTemplates.santriCheckIn(
+            targetPermit,
+            actualArrival,
+            `Terlambat ${diffMinutes} Menit`
+          ),
+        });
+      } else {
+        storageService.addNotification({
+          judul: `Santri Kembali Tepat Waktu: ${targetPermit.santriNama}`,
+          pesan: `Santri telah kembali ke pondok dengan selamat pada ${timeOnlyStr}.`,
+          tipe: 'success',
+          linkMenu: 'perizinan',
+          noWaTujuan: targetPermit.noWaPenjemput,
+          waPesanTemplate: WhatsAppTemplates.santriCheckIn(
+            targetPermit,
+            actualArrival,
+            'Tepat Waktu (Disiplin)'
+          ),
+        });
+      }
 
       setScannerResult({
         type: 'izin',
-        success: true,
-        isLate: true,
+        alreadyReturned: false,
+        isLate,
+        minutesLate: isLate ? diffMinutes : 0,
         izin: updatedPermit,
-        minutesLate: diffMinutes,
-        message: `PERINGATAN: Santri kembali TERLAMBAT ${diffMinutes} menit. Data kepulangan tersimpan dan insiden keterlambatan otomatis masuk ke Tab Catatan Pelanggaran Admin & Pengurus.`,
-      });
-    } else {
-      // ON TIME
-      storageService.addNotification({
-        judul: `✅ Santri Kembali Tepat Waktu: ${targetPermit.santriNama}`,
-        pesan: `Santri telah kembali ke pondok dengan selamat dan disiplin pada pukul ${timeStr}. Status izin resmi dinyatakan SELESAI dan terekap di pangkalan data perizinan.`,
-        tipe: 'success',
-        linkMenu: 'perizinan',
-        noWaTujuan: targetPermit.noWaPenjemput,
-        waPesanTemplate: WhatsAppTemplates.santriCheckIn(targetPermit, actualArrival, 'Tepat Waktu (Disiplin)'),
+        jamKembaliAktual: timeOnlyStr,
+        message: isLate
+          ? `Status izin diperbarui menjadi Kembali (${actualArrival}). Catatan keterlambatan ${diffMinutes} menit ikut terekam.`
+          : `Status izin diperbarui menjadi Kembali (${actualArrival}) tepat waktu.`,
       });
 
-      setScannerResult({
-        type: 'izin',
-        success: true,
-        isLate: false,
-        izin: updatedPermit,
-        minutesLate: 0,
-        message: `ALHAMDULILLAH: Santri kembali TEPAT WAKTU. Status izin otomatis berubah menjadi SELESAI dan langsung terekap ke rekapan perizinan santri.`,
-      });
-    }
+      if (onSuccessCheckin) {
+        onSuccessCheckin(updatedPermit, isLate);
+      }
+    },
+    [currentUser, onSuccessCheckin]
+  );
 
-    if (onSuccessCheckin) {
-      onSuccessCheckin(updatedPermit, isLate);
-    }
-  }, [currentUser, onSuccessCheckin]);
-
-  // Process Surat Sanksi verification
-  const processSanksiVerification = useCallback((targetSanksi: Sanksi) => {
-    setScannerResult({
-      type: 'sanksi',
-      success: true,
-      sanksi: targetSanksi,
-      message: `BERKAS RESMI SANKSI EDUKATIF DITEMUKAN: ${targetSanksi.santriNama} (${targetSanksi.santriNis}). Pelanggaran: ${targetSanksi.jenisPelanggaran}. Bentuk Sanksi: ${targetSanksi.bentukSanksi}. Status: ${targetSanksi.status}.`,
-    });
-  }, []);
-
-  // Complete Sanksi from Scanner
   const handleCompleteSanksi = (sanksi: Sanksi) => {
     const updated: Sanksi = {
       ...sanksi,
       status: 'Selesai',
       tanggalAktualSelesai: new Date().toISOString().split('T')[0],
-      catatanPembinaan: `${sanksi.catatanPembinaan ? sanksi.catatanPembinaan + ' · ' : ''}Takzir edukatif telah disetorkan dan diverifikasi selesai melalui Scanner Pos Keamanan oleh ${currentUser.nama || 'Petugas'}.`,
+      catatanPembinaan: `${sanksi.catatanPembinaan ? sanksi.catatanPembinaan + ' · ' : ''}Takzir edukatif diverifikasi selesai via Scanner QR oleh ${currentUser.nama || 'Petugas'}.`,
     };
     storageService.saveSanksi(updated, 'Takzir edukatif diselesaikan via QR Scanner');
-    storageService.addLog(
-      'Penyelesaian Takzir Sanksi',
-      `Sanksi ${sanksi.kodeSanksi} santri ${sanksi.santriNama} diverifikasi SELESAI via scanner pos keamanan.`,
-      'gerbang'
-    );
     setScannerResult({
       type: 'sanksi',
-      success: true,
       sanksi: updated,
-      message: `TAKDIR SELESAI: Santri ${sanksi.santriNama} telah menuntaskan sanksi edukatif. Status berkas resmi dinyatakan Bebas Takzir / Selesai.`,
+      message: `Takzir edukatif santri ${sanksi.santriNama} telah ditandai Selesai.`,
     });
   };
 
-  // Parse Raw QR Code Content
-  const handleDecodedQR = useCallback((rawText: string) => {
-    if (!rawText || !rawText.trim() || isProcessingScan) return;
-    
-    setIsProcessingScan(true);
-    playScanBeep();
-    setScanFlash(true);
-    setTimeout(() => setScanFlash(false), 700);
+  const handleDecodedQR = useCallback(
+    async (decodedText: string) => {
+      const cleanText = decodedText.trim();
+      if (!cleanText || isHandlingResultRef.current) return;
 
-    // Pause html5-qrcode scanner to prevent duplicate triggers
-    if (html5QrCodeRef.current && html5QrCodeRef.current.getState() === Html5QrcodeScannerState.SCANNING) {
-      try {
-        html5QrCodeRef.current.pause(true);
-      } catch {}
-    }
+      isHandlingResultRef.current = true;
+      playScanBeep();
+      await stopCameraScanner();
 
-    const currentPerizinan = storageService.getPerizinanList();
-    const currentSanksi = storageService.getSanksiList();
+      const currentPerizinan = storageService.getPerizinanList();
+      const currentSanksi = storageService.getSanksiList();
 
-    let isHandled = false;
+      // 1. Pencarian utama wajib: String(item.id) === decodedText.trim()
+      let targetPermit = currentPerizinan.find((item) => String(item.id) === cleanText);
 
-    // 1. Try JSON parsing
-    try {
-      const parsed = JSON.parse(rawText);
+      // 2. Fallback kompatibilitas jika QR/input berupa JSON atau Nomor Izin / NIS
+      if (!targetPermit) {
+        try {
+          const parsed = JSON.parse(cleanText) as {
+            id?: string;
+            nomor?: string;
+            nis?: string;
+            dokumen?: string;
+            kode?: string;
+            arsipId?: string;
+          };
 
-      // Check if it's a Surat Sanksi
-      if (parsed.dokumen && parsed.dokumen.includes('SANKSI') || parsed.kode?.startsWith('SNK/')) {
-        const targetSanksi = currentSanksi.find(s => 
-          s.kodeSanksi === parsed.kode ||
-          s.id === parsed.arsipId ||
-          (parsed.nis && s.santriNis === parsed.nis)
+          if (parsed.id) {
+            targetPermit = currentPerizinan.find((item) => String(item.id) === String(parsed.id).trim());
+          }
+          if (!targetPermit && parsed.nomor) {
+            targetPermit = currentPerizinan.find((item) => item.nomorIzin === parsed.nomor);
+          }
+          if (!targetPermit && parsed.nis) {
+            targetPermit = currentPerizinan.find(
+              (item) =>
+                item.santriNis === parsed.nis &&
+                (item.status === 'Sedang Keluar' ||
+                  item.status === 'Disetujui' ||
+                  item.status === 'Terlambat')
+            );
+          }
+
+          if (!targetPermit && (parsed.dokumen?.includes('SANKSI') || parsed.kode?.startsWith('SNK/'))) {
+            const targetSanksi = currentSanksi.find(
+              (s) =>
+                s.kodeSanksi === parsed.kode ||
+                String(s.id) === String(parsed.arsipId) ||
+                (parsed.nis && s.santriNis === parsed.nis)
+            );
+            if (targetSanksi) {
+              setScannerResult({
+                type: 'sanksi',
+                sanksi: targetSanksi,
+                message: `Berkas Sanksi Edukatif ditemukan untuk ${targetSanksi.santriNama} (${targetSanksi.santriNis}).`,
+              });
+              setManualIdInput('');
+              return;
+            }
+          }
+        } catch {
+          // Bukan JSON — lanjut ke fallback teks biasa
+        }
+      }
+
+      if (!targetPermit) {
+        const lower = cleanText.toLowerCase();
+        targetPermit = currentPerizinan.find(
+          (item) =>
+            String(item.id).toLowerCase() === lower ||
+            item.nomorIzin.toLowerCase() === lower ||
+            item.santriNis.toLowerCase() === lower
         );
-        if (targetSanksi) {
-          processSanksiVerification(targetSanksi);
-          isHandled = true;
-        }
       }
-
-      // Check if it's a Surat Izin
-      if (!isHandled && (parsed.nomor || parsed.nis || parsed.santri)) {
-        let targetPermit = currentPerizinan.find(p => p.nomorIzin === parsed.nomor);
-        if (!targetPermit && parsed.nis) {
-          targetPermit = currentPerizinan.find(p => 
-            p.santriNis === parsed.nis && (p.status === 'Sedang Keluar' || p.status === 'Terlambat' || p.status === 'Disetujui')
-          );
-        }
-        if (targetPermit) {
-          processCheckinPermit(targetPermit);
-          isHandled = true;
-        }
-      }
-    } catch {
-      // Non-JSON plain text fallback
-    }
-
-    // 2. Plain text / Barcode lookup
-    if (!isHandled) {
-      const q = rawText.trim().toLowerCase();
-      
-      // Look for permit
-      const targetPermit = currentPerizinan.find(p => 
-        p.nomorIzin.toLowerCase() === q ||
-        p.santriNis.toLowerCase() === q ||
-        p.id.toLowerCase() === q ||
-        p.santriNama.toLowerCase().includes(q)
-      );
 
       if (targetPermit) {
-        processCheckinPermit(targetPermit);
-        isHandled = true;
-      } else {
-        // Look for sanksi
-        const targetSanksi = currentSanksi.find(s => 
-          s.kodeSanksi.toLowerCase() === q ||
-          s.santriNis.toLowerCase() === q ||
-          s.id.toLowerCase() === q ||
-          s.santriNama.toLowerCase().includes(q)
-        );
-        if (targetSanksi) {
-          processSanksiVerification(targetSanksi);
-          isHandled = true;
-        }
+        processPermitReturn(targetPermit);
+        setManualIdInput('');
+        return;
       }
-    }
 
-    // 3. Not Found in Active Database
-    if (!isHandled) {
+      const targetSanksi = currentSanksi.find(
+        (s) =>
+          String(s.id) === cleanText ||
+          s.kodeSanksi.toLowerCase() === cleanText.toLowerCase()
+      );
+      if (targetSanksi) {
+        setScannerResult({
+          type: 'sanksi',
+          sanksi: targetSanksi,
+          message: `Berkas Sanksi Edukatif ditemukan untuk ${targetSanksi.santriNama} (${targetSanksi.santriNis}).`,
+        });
+        setManualIdInput('');
+        return;
+      }
+
       setScannerResult({
         type: 'not_found',
-        success: false,
-        rawScannedCode: rawText,
-        message: `QR Code terdeteksi (${rawText.slice(0, 45)}${rawText.length > 45 ? '...' : ''}), namun tidak terdaftar dalam pangkalan data perizinan maupun sanksi aktif.`,
+        rawScannedCode: cleanText,
+        message: `Kode QR "${cleanText}" terbaca, namun tidak ditemukan pada daftar data perizinan santri.`,
       });
-    }
+      setManualIdInput('');
+    },
+    [playScanBeep, processPermitReturn, stopCameraScanner]
+  );
 
-    setManualInput('');
-  }, [isProcessingScan, playScanBeep, processCheckinPermit, processSanksiVerification]);
+  const startCameraScanner = useCallback(
+    async (facing: 'environment' | 'user') => {
+      setCameraError('');
+      setIsStartingCamera(true);
+      await stopCameraScanner();
 
-  // Stop camera tracks cleanly
-  const stopScannerCamera = useCallback(async () => {
-    if (html5QrCodeRef.current) {
-      try {
-        const state = html5QrCodeRef.current.getState();
-        if (state === Html5QrcodeScannerState.SCANNING || state === Html5QrcodeScannerState.PAUSED) {
-          await html5QrCodeRef.current.stop();
-        }
-        html5QrCodeRef.current.clear();
-      } catch (err) {
-        console.warn('Stopping scanner:', err);
-      } finally {
-        setIsCameraRunning(false);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (!isMountedRef.current) {
+        setIsStartingCamera(false);
+        return;
       }
-    }
-  }, []);
 
-  // Start continuous camera scanning automatically
-  const startScannerCamera = useCallback(async (facing: 'environment' | 'user') => {
-    setCameraError('');
-    setIsCameraRunning(false);
+      const container = document.getElementById(cameraViewportId);
+      if (!container) {
+        setIsStartingCamera(false);
+        return;
+      }
 
-    // Stop previous instance if any
-    await stopScannerCamera();
+      try {
+        const scanner = new Html5Qrcode(cameraViewportId, { verbose: false });
+        html5QrCodeRef.current = scanner;
 
-    // Small timeout to allow DOM container to settle
-    await new Promise(resolve => setTimeout(resolve, 80));
+        const scanConfig = {
+          fps: 15,
+          aspectRatio: 1.0,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.max(180, Math.min(280, Math.floor(minEdge * 0.72)));
+            return { width: size, height: size };
+          },
+        };
 
-    const element = document.getElementById(scannerContainerId);
-    if (!element) return;
+        const onScanSuccess = (decodedText: string) => {
+          void handleDecodedQR(decodedText);
+        };
+        const onScanFailure = () => {
+          // Frame tanpa QR diabaikan
+        };
+
+        let started = false;
+        try {
+          await scanner.start(
+            { facingMode: facing },
+            scanConfig,
+            onScanSuccess,
+            onScanFailure
+          );
+          started = true;
+        } catch {
+          try {
+            await scanner.start(
+              { facingMode: facing === 'environment' ? 'user' : 'environment' },
+              scanConfig,
+              onScanSuccess,
+              onScanFailure
+            );
+            started = true;
+          } catch {
+            const devices = await Html5Qrcode.getCameras();
+            if (devices && devices.length > 0) {
+              const backCam =
+                devices.find((d) => /back|rear|environment/i.test(d.label)) ||
+                devices[devices.length - 1];
+              await scanner.start(backCam.id, scanConfig, onScanSuccess, onScanFailure);
+              started = true;
+            }
+          }
+        }
+
+        if (!started) {
+          throw new Error('Perangkat kamera tidak merespons.');
+        }
+
+        if (isMountedRef.current) {
+          setIsCameraRunning(true);
+        }
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (isMountedRef.current) {
+          if (/permission|denied|notallowed/i.test(errMsg)) {
+            setCameraError(
+              'Izin kamera diblokir browser. Gunakan Cara 2 (Upload / Foto QR) di bawah atau izinkan akses kamera.'
+            );
+          } else if (/notfound|device|requested device/i.test(errMsg)) {
+            setCameraError(
+              'Kamera tidak terdeteksi di perangkat ini. Gunakan Cara 2 (Upload / Foto QR) atau Input Kode ID Manual di bawah.'
+            );
+          } else {
+            setCameraError(`Kamera gagal dibuka (${errMsg}). Gunakan Cara 2 (Upload / Foto QR) di bawah.`);
+          }
+          setIsCameraRunning(false);
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setIsStartingCamera(false);
+        }
+      }
+    },
+    [handleDecodedQR, stopCameraScanner]
+  );
+
+  // Cara 2: Upload / Foto QR menggunakan html5QrCode.scanFile(file, true)
+  const handleFileQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setFileError('');
+    setScannerResult(null);
+    isHandlingResultRef.current = false;
+    setScanMode('file');
+    setIsScanningFile(true);
+
+    await stopCameraScanner();
+
+    // Tunggu DOM #almaliki-qr-file-viewport ter-render
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     try {
-      const scanner = new Html5Qrcode(scannerContainerId);
-      html5QrCodeRef.current = scanner;
-
-      const scanConfig = {
-        fps: 20, // High frame rate for instant, snappy detection
-        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
-          const edge = Math.min(viewfinderWidth, viewfinderHeight);
-          const boxSize = Math.floor(edge * 0.75);
-          return {
-            width: Math.max(boxSize, 220),
-            height: Math.max(boxSize, 220),
-          };
-        },
-        aspectRatio: 1.0,
-      };
-
-      const onScanSuccess = (decodedText: string) => {
-        handleDecodedQR(decodedText);
-      };
-
-      const onScanError = () => {
-        // Continuous scan loop frame-by-frame; no log needed for idle frames
-      };
-
-      // Try prioritized facing mode (rear camera first)
-      try {
-        await scanner.start(
-          { facingMode: { ideal: facing } },
-          scanConfig,
-          onScanSuccess,
-          onScanError
-        );
-        setIsCameraRunning(true);
-      } catch {
-        // Fallback to user facing / default webcam without specific ideal environment constraints
-        await scanner.start(
-          { facingMode: 'user' },
-          scanConfig,
-          onScanSuccess,
-          onScanError
-        );
-        setIsCameraRunning(true);
+      if (fileQrCodeRef.current) {
+        try {
+          fileQrCodeRef.current.clear();
+        } catch {
+          // ignore
+        }
       }
+
+      const fileScanner = new Html5Qrcode(fileViewportId, { verbose: false });
+      fileQrCodeRef.current = fileScanner;
+
+      const decodedText = await fileScanner.scanFile(file, true);
+      await handleDecodedQR(decodedText);
     } catch (err: unknown) {
-      console.error('Camera start error:', err);
-      const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg.toLowerCase().includes('permission') || errMsg.toLowerCase().includes('denied')) {
-        setCameraError('Izin akses kamera ditolak. Mohon izinkan akses kamera di ikon gembok pada browser Anda.');
-      } else if (errMsg.toLowerCase().includes('notfound') || errMsg.toLowerCase().includes('devices')) {
-        setCameraError('Perangkat kamera tidak ditemukan. Gunakan input manual nomor izin di bawah.');
-      } else {
-        setCameraError('Gagal mengaktifkan kamera. Pastikan browser mendukung kamera atau gunakan input manual.');
+      const msg = err instanceof Error ? err.message : String(err);
+      setFileError(
+        `QR Code belum terbaca dari gambar tersebut (${msg}). Pastikan foto QR jelas, tidak terpotong, dan cukup terang.`
+      );
+    } finally {
+      if (isMountedRef.current) {
+        setIsScanningFile(false);
       }
-      setIsCameraRunning(false);
     }
-  }, [handleDecodedQR, stopScannerCamera]);
+  };
 
-  // Auto-Start camera as soon as modal opens, clean stop when closed
   useEffect(() => {
+    isMountedRef.current = true;
     if (isOpen) {
+      isHandlingResultRef.current = false;
       setScannerResult(null);
-      setIsProcessingScan(false);
-      startScannerCamera(cameraFacing);
+      setFileError('');
+      setCameraError('');
+      setScanMode('camera');
+      void startCameraScanner(cameraFacing);
     } else {
-      stopScannerCamera();
+      void stopCameraScanner();
     }
 
     return () => {
-      stopScannerCamera();
+      isMountedRef.current = false;
+      void stopCameraScanner();
     };
-  }, [isOpen, cameraFacing, startScannerCamera, stopScannerCamera]);
+  }, [isOpen, cameraFacing, startCameraScanner, stopCameraScanner]);
 
-  // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -453,341 +564,393 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Resume camera scanning after viewing a result
-  const handleResumeScanning = async () => {
+  const handleResetAndScanAgain = async () => {
+    isHandlingResultRef.current = false;
     setScannerResult(null);
-    setIsProcessingScan(false);
-
-    if (html5QrCodeRef.current) {
-      const state = html5QrCodeRef.current.getState();
-      if (state === Html5QrcodeScannerState.PAUSED) {
-        try {
-          html5QrCodeRef.current.resume();
-          return;
-        } catch {}
-      }
-    }
-
-    // Otherwise restart cleanly
-    await startScannerCamera(cameraFacing);
+    setFileError('');
+    setScanMode('camera');
+    await startCameraScanner(cameraFacing);
   };
 
-  // Toggle Camera Front / Back
-  const handleToggleCamera = () => {
-    const nextFacing = cameraFacing === 'environment' ? 'user' : 'environment';
-    setCameraFacing(nextFacing);
+  const handleSwitchMode = async (nextMode: ScanMode) => {
+    setScanMode(nextMode);
+    setFileError('');
+    if (nextMode === 'camera') {
+      isHandlingResultRef.current = false;
+      setScannerResult(null);
+      await startCameraScanner(cameraFacing);
+    } else {
+      await stopCameraScanner();
+    }
   };
 
   if (!isOpen) return null;
 
   const modalContent = (
-    <div 
+    <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-hidden"
     >
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg max-h-[92vh] flex flex-col metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating"
+        className="relative w-full max-w-lg max-h-[94dvh] flex flex-col metallic-glass-card border border-emerald-700/80 rounded-3xl shadow-2xl overflow-hidden"
       >
         {/* Header Bar */}
-        <div className="shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-300 shadow-xs glow-gold">
+        <div className="shrink-0 flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-300 shrink-0">
               <QrCode className="w-5 h-5 text-emerald-400" />
             </div>
-            <div>
-              <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide flex items-center gap-2">
-                Pemindai QR Real-Time
+            <div className="min-w-0">
+              <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide truncate">
+                Pemindai QR Kepulangan Santri
               </h3>
-              <p className="text-[10px] text-emerald-200/75 font-mono">
-                Deteksi otomatis cepat · Surat Izin & Sanksi Santri
+              <p className="text-[10px] text-emerald-200/75 font-mono truncate">
+                Kamera Langsung &amp; Upload Foto QR (Android, iOS &amp; Laptop)
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Camera Switch Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            {scanMode === 'camera' && !scannerResult && (
+              <button
+                type="button"
+                onClick={() =>
+                  setCameraFacing((prev) => (prev === 'environment' ? 'user' : 'environment'))
+                }
+                className="p-1.5 rounded-lg bg-[#072c1e] hover:bg-[#0b422d] text-emerald-200 border border-emerald-700 cursor-pointer"
+                title="Ganti Kamera Depan / Belakang"
+              >
+                <SwitchCamera className="w-4 h-4 text-emerald-400" />
+              </button>
+            )}
             <button
               type="button"
-              onClick={handleToggleCamera}
-              className="p-1.5 rounded-lg bg-[#072c1e] hover:bg-[#0b422d] text-emerald-100/90 hover:text-white border border-emerald-800 cursor-pointer transition-colors"
-              title={`Ganti kamera (${cameraFacing === 'environment' ? 'Kamera Belakang' : 'Kamera Depan'})`}
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg bg-red-600/85 hover:bg-red-500 text-white flex items-center justify-center cursor-pointer font-bold"
+              title="Tutup"
             >
-              <SwitchCamera className="w-4 h-4 text-emerald-400" />
-            </button>
-            <button 
-              onClick={onClose} 
-              className="w-7 h-7 rounded-lg bg-[#072c1e]/80 text-emerald-200/75 hover:text-white flex items-center justify-center transition-all cursor-pointer font-bold"
-            >
-              ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 font-mono text-xs">
-          
-          {/* Result Alert Card when Scanned */}
-          {scannerResult && (
-            <div className={`p-4 rounded-2xl border flex flex-col gap-2.5 shadow-2xl animate-in zoom-in-95 duration-200 ${
-              scannerResult.type === 'not_found'
-                ? 'bg-amber-950/80 border-amber-500 text-amber-100 glow-amber'
-                : scannerResult.isLate 
-                  ? 'bg-red-950/90 border-red-500 text-red-100 glow-red' 
-                  : 'bg-emerald-950/90 border-emerald-500 text-emerald-100 glow-gold'
-            }`}>
-              
-              {/* Header result row */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  {scannerResult.type === 'not_found' ? (
-                    <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-                  ) : scannerResult.type === 'sanksi' ? (
-                    <GraduationCap className="w-5 h-5 text-amber-400 shrink-0" />
-                  ) : scannerResult.isLate ? (
-                    <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 animate-pulse" />
-                  ) : (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                  )}
-                  <div>
-                    <span className="font-bold uppercase tracking-wider text-[10px] block">
-                      {scannerResult.type === 'not_found' 
-                        ? 'DOKUMEN TIDAK TERDAFTAR'
-                        : scannerResult.type === 'sanksi'
-                          ? 'BERKAS SANKSI EDUKATIF TERVERIFIKASI'
-                          : scannerResult.isLate 
-                            ? 'KEDATANGAN TERLAMBAT (TERCATAT INSIDEN)' 
-                            : 'KEDATANGAN TEPAT WAKTU (SELESAI)'}
-                    </span>
-                    <span className="text-white font-bold font-sans text-sm block">
-                      {scannerResult.izin 
-                        ? `${scannerResult.izin.santriNama} (${scannerResult.izin.santriNis})`
-                        : scannerResult.sanksi 
-                          ? `${scannerResult.sanksi.santriNama} (${scannerResult.sanksi.santriNis})`
-                          : 'Arsip Tidak Ditemukan'}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleResumeScanning}
-                  className="tactile-interactive inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white text-slate-950 font-bold text-xs cursor-pointer shadow-md hover:bg-slate-100 shrink-0"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Pindai Lagi</span>
-                </button>
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4 text-xs">
+          {/* LAYAR KONFIRMASI HIJAU BESAR: SANTRI TELAH KEMBALI */}
+          {scannerResult && scannerResult.type === 'izin' && scannerResult.izin ? (
+            <div className="rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-700 to-emerald-900 border-2 border-emerald-300 p-6 sm:p-8 text-center shadow-[0_0_50px_rgba(16,185,129,0.45)] space-y-4">
+              <div className="w-20 h-20 rounded-full bg-white/20 border-2 border-white/60 flex items-center justify-center mx-auto shadow-xl">
+                <CheckCircle2 className="w-12 h-12 text-white" />
               </div>
 
-              {/* Message text */}
-              <p className="text-[11px] leading-relaxed pt-1.5 border-t border-white/15 font-sans">
+              <div className="space-y-1">
+                <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white text-[10px] font-mono font-bold uppercase tracking-widest">
+                  {scannerResult.alreadyReturned
+                    ? 'STATUS SUDAH TERCATAT SEBELUMNYA'
+                    : 'VERIFIKASI QR BERHASIL'}
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase leading-tight pt-1">
+                  SANTRI TELAH KEMBALI
+                </h2>
+              </div>
+
+              <div className="bg-black/25 border border-white/25 rounded-2xl p-4 space-y-2">
+                <p className="text-[11px] font-mono uppercase text-emerald-100/80">
+                  Nama Santri
+                </p>
+                <p className="text-xl sm:text-2xl font-extrabold text-white">
+                  {scannerResult.izin.santriNama}
+                </p>
+                <p className="text-xs font-mono text-emerald-100">
+                  NIS: {scannerResult.izin.santriNis} · {scannerResult.izin.santriKelas}
+                </p>
+
+                <div className="pt-3 mt-2 border-t border-white/20 flex items-center justify-center gap-2 text-white">
+                  <Clock className="w-4 h-4 text-emerald-200" />
+                  <span className="text-xs font-mono uppercase text-emerald-100">Jam Kembali:</span>
+                  <span className="text-base sm:text-lg font-black font-mono text-amber-200">
+                    {scannerResult.jamKembaliAktual}
+                  </span>
+                </div>
+              </div>
+
+              {scannerResult.isLate && (
+                <div className="px-3.5 py-2 rounded-xl bg-amber-950/75 border border-amber-300/60 text-amber-100 text-xs font-medium">
+                  Catatan: Terlambat {scannerResult.minutesLate} menit dari batas jadwal (
+                  {scannerResult.izin.jamKembali} WIB).
+                </div>
+              )}
+
+              <p className="text-xs text-emerald-50/90 leading-relaxed">
                 {scannerResult.message}
               </p>
 
-              {/* Sanksi specific actions */}
-              {scannerResult.sanksi && (
-                <div className="pt-2 border-t border-emerald-800/60 flex items-center justify-between text-[10px]">
-                  <span className="text-emerald-100/90">
-                    Batas: <strong className="text-amber-300">{scannerResult.sanksi.batasMaksimal}</strong>
-                  </span>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={handleResetAndScanAgain}
+                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-950 font-extrabold text-xs inline-flex items-center justify-center gap-2 shadow-xl cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Pindai QR Berikutnya</span>
+                </button>
+                {scannerResult.izin.noWaPenjemput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const text = WhatsAppTemplates.santriCheckIn(
+                        scannerResult.izin!,
+                        scannerResult.izin!.waktuKembali ||
+                          scannerResult.izin!.actualKembali ||
+                          '',
+                        scannerResult.isLate
+                          ? `Terlambat ${scannerResult.minutesLate} Menit`
+                          : 'Tepat Waktu'
+                      );
+                      window.open(
+                        createWhatsAppUrl(scannerResult.izin!.noWaPenjemput, text),
+                        '_blank'
+                      );
+                    }}
+                    className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-emerald-950/70 hover:bg-emerald-950 text-white border border-white/30 font-bold text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Kirim Info WA Wali</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Result for Sanksi or Not Found */}
+              {scannerResult && scannerResult.type === 'sanksi' && scannerResult.sanksi && (
+                <div className="p-4 rounded-2xl bg-emerald-950/90 border border-emerald-500 text-emerald-100 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-5 h-5 text-amber-400 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-mono uppercase text-amber-300 font-bold">
+                          Berkas Sanksi Edukatif
+                        </p>
+                        <p className="text-sm font-bold text-white">
+                          {scannerResult.sanksi.santriNama} ({scannerResult.sanksi.santriNis})
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetAndScanAgain}
+                      className="px-3 py-1.5 rounded-xl bg-white text-slate-950 font-bold text-xs cursor-pointer"
+                    >
+                      Pindai Lagi
+                    </button>
+                  </div>
+                  <p className="text-xs">{scannerResult.message}</p>
                   {scannerResult.sanksi.status !== 'Selesai' && (
                     <button
                       type="button"
                       onClick={() => scannerResult.sanksi && handleCompleteSanksi(scannerResult.sanksi)}
-                      className="tactile-interactive inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer shadow-xs"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs inline-flex items-center gap-1 cursor-pointer"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>Tandai Selesai / Bebas Takzir</span>
+                      <span>Tandai Selesai</span>
                     </button>
                   )}
                 </div>
               )}
 
-              {/* Izin specific row */}
-              {scannerResult.izin && (
-                <div className="flex items-center justify-between pt-1 text-[10px]">
-                  <span className="text-emerald-100/90">
-                    Waktu Scan Masuk: <strong className="text-white">{scannerResult.izin.actualKembali}</strong>
-                  </span>
-                  {scannerResult.izin.noWaPenjemput && (
+              {scannerResult && scannerResult.type === 'not_found' && (
+                <div className="p-4 rounded-2xl bg-amber-950/85 border border-amber-500 text-amber-100 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-mono uppercase font-bold text-amber-300">
+                          Data Tidak Ditemukan
+                        </p>
+                        <p className="text-xs font-bold text-white">
+                          ID: {scannerResult.rawScannedCode}
+                        </p>
+                      </div>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        const text = WhatsAppTemplates.santriCheckIn(
-                          scannerResult.izin!,
-                          scannerResult.izin!.actualKembali || '',
-                          scannerResult.isLate ? `Terlambat ${scannerResult.minutesLate} Menit` : 'Tepat Waktu'
-                        );
-                        window.open(createWhatsAppUrl(scannerResult.izin!.noWaPenjemput, text), '_blank');
-                      }}
-                      className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 underline cursor-pointer"
+                      onClick={handleResetAndScanAgain}
+                      className="px-3 py-1.5 rounded-xl bg-white text-slate-950 font-bold text-xs cursor-pointer shrink-0"
                     >
-                      <Send className="w-3 h-3" />
-                      <span>Kirim Info WA Wali</span>
+                      Pindai Lagi
                     </button>
+                  </div>
+                  <p className="text-xs leading-relaxed">{scannerResult.message}</p>
+                </div>
+              )}
+
+              {/* Pemilih 2 Cara Pemindaian QR */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleSwitchMode('camera')}
+                  className={`px-3 py-2.5 rounded-2xl font-bold text-xs inline-flex items-center justify-center gap-2 border cursor-pointer transition-all ${
+                    scanMode === 'camera'
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow-lg'
+                      : 'bg-[#041d13] text-emerald-200 border-emerald-800 hover:border-emerald-500/50'
+                  }`}
+                >
+                  <Camera className="w-4 h-4 shrink-0" />
+                  <span>Cara 1: Kamera Langsung</span>
+                </button>
+
+                <label
+                  className={`px-3 py-2.5 rounded-2xl font-bold text-xs inline-flex items-center justify-center gap-2 border cursor-pointer transition-all ${
+                    scanMode === 'file'
+                      ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg'
+                      : 'bg-[#041d13] text-amber-300 border-amber-500/40 hover:border-amber-400'
+                  }`}
+                >
+                  <Upload className="w-4 h-4 shrink-0" />
+                  <span>Cara 2: Upload / Foto QR</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileQrUpload}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+
+              {/* Cara 1: Kamera Langsung (Square Scanner Viewport) */}
+              {scanMode === 'camera' && (
+                <div className="relative mx-auto w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden border-2 border-emerald-600/60 bg-[#02100a] flex items-center justify-center shadow-inner">
+                  <div id={cameraViewportId} className="w-full h-full relative" />
+
+                  {isStartingCamera && (
+                    <div className="absolute inset-0 bg-[#02100a]/90 flex flex-col items-center justify-center gap-2 z-10">
+                      <Loader2 className="w-7 h-7 text-emerald-400 animate-spin" />
+                      <span className="text-xs font-mono text-emerald-200">
+                        Membuka kamera belakang...
+                      </span>
+                    </div>
+                  )}
+
+                  {isCameraRunning && !scannerResult && (
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+                      <div className="w-52 h-52 relative flex items-center justify-center">
+                        <div className="absolute top-0 left-0 w-7 h-7 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
+                        <div className="absolute top-0 right-0 w-7 h-7 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
+                        <div className="absolute bottom-0 left-0 w-7 h-7 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
+                        <div className="absolute bottom-0 right-0 w-7 h-7 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
+                        <div className="absolute inset-x-3 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse" />
+                        <div className="absolute -bottom-8 px-3 py-1 rounded-full bg-[#02100a]/90 border border-emerald-500/50 text-[10px] text-emerald-300 font-mono font-bold whitespace-nowrap flex items-center gap-1.5">
+                          <ScanLine className="w-3 h-3 text-emerald-400" />
+                          <span>ARAHKAN KE QR SURAT IZIN</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {cameraError && (
+                    <div className="absolute inset-0 p-5 bg-[#02100a]/95 flex flex-col items-center justify-center text-center space-y-3 z-20">
+                      <div className="p-3 rounded-2xl bg-red-950/80 border border-red-500 text-red-400">
+                        <AlertTriangle className="w-6 h-6" />
+                      </div>
+                      <p className="text-xs font-bold text-white">Kamera Tidak Aktif</p>
+                      <p className="text-[11px] text-red-200 leading-relaxed">{cameraError}</p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void startCameraScanner(cameraFacing)}
+                          className="px-3.5 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Coba Lagi</span>
+                        </button>
+                        <label className="px-3.5 py-2 rounded-xl bg-amber-400 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Upload / Foto QR</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileQrUpload}
+                            className="sr-only"
+                          />
+                        </label>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
 
-            </div>
+              {/* Cara 2: Upload / Foto QR Viewport */}
+              {scanMode === 'file' && (
+                <div className="rounded-2xl border border-amber-500/40 bg-[#041d13] p-4 space-y-3 text-center">
+                  <div
+                    id={fileViewportId}
+                    className="mx-auto max-w-[280px] min-h-[160px] rounded-xl overflow-hidden bg-[#02100a] border border-emerald-800 flex items-center justify-center"
+                  />
+
+                  {isScanningFile && (
+                    <div className="flex items-center justify-center gap-2 text-amber-300 font-bold text-xs">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Membaca QR Code dari gambar...</span>
+                    </div>
+                  )}
+
+                  {fileError && (
+                    <div className="p-3 rounded-xl bg-red-950/85 border border-red-500/60 text-red-200 text-xs leading-relaxed">
+                      {fileError}
+                    </div>
+                  )}
+
+                  <label className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-400 text-slate-950 font-extrabold text-xs inline-flex items-center justify-center gap-2 cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    <span>Pilih / Foto Ulang Gambar QR</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileQrUpload}
+                      className="sr-only"
+                    />
+                  </label>
+                </div>
+              )}
+            </>
           )}
 
-          {/* High-Performance Real-Time Camera Viewport */}
-          <div className="relative rounded-2xl overflow-hidden border border-emerald-800 bg-[#02100a] aspect-video flex items-center justify-center shadow-inner">
-            
-            {/* Target Viewport Container for Html5Qrcode */}
-            <div 
-              id={scannerContainerId} 
-              className={`w-full h-full relative ${scanFlash ? 'ring-4 ring-emerald-400 ring-inset glow-gold' : ''}`}
-            />
-
-            {/* Tactical Laser & Corner Brackets Overlay (Active while camera is scanning) */}
-            {isCameraRunning && !scannerResult && (
-              <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                
-                {/* Visual reticle box */}
-                <div className="w-48 h-48 sm:w-56 sm:h-56 relative flex items-center justify-center">
-                  
-                  {/* 4 Corner L-Brackets */}
-                  <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-emerald-400 rounded-tl-lg shadow-[0_0_8px_#10b981]" />
-                  <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-emerald-400 rounded-tr-lg shadow-[0_0_8px_#10b981]" />
-                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-emerald-400 rounded-bl-lg shadow-[0_0_8px_#10b981]" />
-                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-emerald-400 rounded-br-lg shadow-[0_0_8px_#10b981]" />
-
-                  {/* High-speed scanning laser line */}
-                  <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse shadow-[0_0_12px_#10b981]" />
-
-                  {/* Realtime Detection Status Badge */}
-                  <div className="absolute -bottom-8 px-3 py-1 rounded-full bg-[#02100a]/90 border border-emerald-500/50 text-[10px] text-emerald-300 font-mono font-bold tracking-wider shadow-lg flex items-center gap-1.5 whitespace-nowrap">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    <span>KAMERA AKTIF · MENUNGGU QR CODE</span>
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* Flash Detection Notification */}
-            {scanFlash && (
-              <div className="absolute inset-0 bg-emerald-500/25 flex items-center justify-center z-20 pointer-events-none transition-opacity duration-300">
-                <div className="px-4 py-2 rounded-2xl bg-emerald-950 border border-emerald-400 text-emerald-200 font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-2xl animate-in zoom-in-95">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  <span>QR CODE BERHASIL TERDETEKSI!</span>
-                </div>
-              </div>
-            )}
-
-            {/* Camera Error / Fallback State */}
-            {cameraError && (
-              <div className="absolute inset-0 p-5 bg-[#02100a]/95 flex flex-col items-center justify-center text-center space-y-3 z-20">
-                <div className="p-3 rounded-2xl bg-red-950/80 border border-red-500 text-red-400">
-                  <AlertTriangle className="w-6 h-6" />
-                </div>
-                <div className="space-y-1 max-w-xs">
-                  <p className="font-bold text-white text-xs font-sans">Kamera Belum Dapat Diakses</p>
-                  <p className="text-[10px] text-red-300 leading-normal">{cameraError}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => startScannerCamera(cameraFacing)}
-                  className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-bold text-xs cursor-pointer shadow-md"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Coba Aktifkan Ulang</span>
-                </button>
-              </div>
-            )}
-
-          </div>
-
-          {/* Manual Input or Barcode Scanner Gun */}
+          {/* Jalan Pintas Darurat: Input Kode ID Manual di Paling Bawah */}
           <div className="p-3.5 bg-[#02100a]/90 border border-emerald-800 rounded-2xl space-y-2">
-            <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider">
-              Input Nomor Izin / Nomor Sanksi / NIS Santri / Barcode Gun:
+            <label
+              htmlFor="manual-qr-id-input"
+              className="flex items-center gap-1.5 text-emerald-200 font-bold uppercase text-[10px] tracking-wider font-mono"
+            >
+              <Keyboard className="w-3.5 h-3.5 text-amber-400" />
+              <span>Input Kode ID Manual (Jika Kertas QR Rusak)</span>
             </label>
             <div className="flex gap-2">
               <input
+                id="manual-qr-id-input"
                 type="text"
-                placeholder="Misal: IZIN/MALIKI/2026/XI/001 atau NIS: 20240182"
-                value={manualInput}
-                onChange={(e) => setManualInput(e.target.value)}
+                placeholder="Masukkan ID Izin (contoh: iz_001)"
+                value={manualIdInput}
+                onChange={(e) => setManualIdInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    handleDecodedQR(manualInput);
+                    void handleDecodedQR(manualIdInput);
                   }
                 }}
                 className="flex-1 px-3 py-2 bg-[#041d13] border border-emerald-800 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-emerald-400"
               />
               <button
                 type="button"
-                onClick={() => handleDecodedQR(manualInput)}
-                className="tactile-interactive px-4 py-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-bold rounded-xl cursor-pointer shadow-md shrink-0"
+                onClick={() => void handleDecodedQR(manualIdInput)}
+                className="px-4 py-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-extrabold rounded-xl cursor-pointer shrink-0 text-xs"
               >
-                Proses
+                Proses ID
               </button>
             </div>
           </div>
-
-          {/* Quick Simulation List of Santri Currently Outside */}
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-200/75">
-                Santri yang Sedang di Luar ({outsideList.length}) · Klik Pindai Cepat:
-              </span>
-              <span className="text-[9px] text-emerald-400 font-bold">Simulasi Instan</span>
-            </div>
-
-            {outsideList.length === 0 ? (
-              <p className="text-[11px] text-emerald-300/60 py-2.5 text-center bg-[#041d13]/60 rounded-xl border border-emerald-800 font-sans">
-                Tidak ada santri yang sedang berstatus di luar pondok saat ini.
-              </p>
-            ) : (
-              <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
-                {outsideList.map((izin) => (
-                  <div
-                    key={izin.id}
-                    className="p-2.5 rounded-xl bg-[#041d13]/90 border border-emerald-800 flex items-center justify-between gap-2 hover:border-emerald-800 transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-bold text-white truncate font-sans text-xs">{izin.santriNama}</p>
-                      <p className="text-[10px] text-emerald-200/75 truncate">
-                        NIS: <span className="text-emerald-300">{izin.santriNis}</span> · Batas: <span className="text-amber-300 font-bold">{izin.jamKembali} WIB</span>
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => processCheckinPermit(izin)}
-                      className={`tactile-interactive px-2.5 py-1.5 rounded-lg font-bold text-[10px] transition-all cursor-pointer shadow-xs shrink-0 flex items-center gap-1 ${
-                        izin.status === 'Terlambat'
-                          ? 'bg-red-600 hover:bg-red-500 text-white animate-pulse'
-                          : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                      }`}
-                    >
-                      <ScanLine className="w-3 h-3" />
-                      <span>{izin.status === 'Terlambat' ? 'Scan (Terlambat)' : 'Scan Masuk'}</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
         </div>
-
-        {/* Footer Bar */}
-        <div className="shrink-0 px-5 py-3 border-t border-emerald-800 bg-[#02100a] flex items-center justify-between text-[11px] text-emerald-200/75">
-          <span>Arahkan kamera ke QR Code surat · Tekan ESC untuk menutup</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-[#072c1e] hover:bg-[#0b422d] text-white font-bold cursor-pointer transition-colors"
-          >
-            Tutup
-          </button>
-        </div>
-
       </div>
     </div>
   );

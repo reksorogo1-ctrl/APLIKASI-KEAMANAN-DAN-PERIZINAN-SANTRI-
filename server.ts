@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TRANSCRIBE_SURAT_PROMPT =
-  'Transkripsikan seluruh teks dalam surat ini (huruf Latin dan Arab) dengan rapi dan akurat. Tampilkan teks hasilnya saja tanpa pembuka, penutup, atau format markdown.';
+  'Ekstrak seluruh teks pada gambar surat ini (Latin/Arab). Langsung keluarkan teksnya saja tanpa pengantar.';
 
 async function startServer() {
   const app = express();
@@ -86,6 +86,7 @@ async function startServer() {
             thinkingConfig: {
               thinkingBudget: 0,
             },
+            temperature: 0.1,
           },
         });
       } catch (primaryErr) {
