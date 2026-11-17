@@ -43,6 +43,11 @@ import {
   INITIAL_BENDAHARA_CONFIG
 } from '../data/seedData';
 import { db, handleFirestoreError, OperationType } from './firebase';
+import {
+  applyPengaturanSuratToConfig,
+  readPengaturanSuratFromStorage,
+  savePengaturanSuratToStorage,
+} from '../utils/pengaturanSurat';
 import { 
   collection, 
   doc, 
@@ -247,7 +252,7 @@ class StorageService {
         mutasiBarangList: parsedCfg.mutasiBarangList?.length ? parsedCfg.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
         jadwalPerbaikanList: parsedCfg.jadwalPerbaikanList?.length ? parsedCfg.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
         kamarSantriList: parsedCfg.kamarSantriList?.length ? parsedCfg.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
-        suratSekretarisConfig: {
+        suratSekretarisConfig: applyPengaturanSuratToConfig({
           ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
           ...(parsedCfg.suratSekretarisConfig || {}),
           kopLogoUrl:
@@ -273,7 +278,7 @@ class StorageService {
             ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!.templates,
             ...(parsedCfg.suratSekretarisConfig?.templates || {}),
           }
-        }
+        })
       };
 
       const l = localStorage.getItem(STORAGE_KEYS.LOGS);
@@ -629,33 +634,51 @@ class StorageService {
               mutasiBarangList: cloudData.mutasiBarangList?.length ? cloudData.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
               jadwalPerbaikanList: cloudData.jadwalPerbaikanList?.length ? cloudData.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
               kamarSantriList: cloudData.kamarSantriList?.length ? cloudData.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
-              suratSekretarisConfig: {
-                ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
-                ...(cloudData.suratSekretarisConfig || {}),
-                kopLogoUrl:
-                  cloudData.suratSekretarisConfig?.kopLogoUrl &&
-                  !cloudData.suratSekretarisConfig.kopLogoUrl.includes('2026-11-11-7ffd46ad')
-                    ? cloudData.suratSekretarisConfig.kopLogoUrl
-                    : 'https://cdn.phototourl.com/member/2026-11-14-49a0f8f3-f2e5-443e-8c1e-36ccad7a6009.png',
-                kopLogoKananUrl:
-                  cloudData.suratSekretarisConfig?.kopLogoKananUrl &&
-                  cloudData.suratSekretarisConfig.kopLogoKananUrl.trim() !== '' &&
-                  !cloudData.suratSekretarisConfig.kopLogoKananUrl.includes('2026-11-11-7ffd46ad')
-                    ? cloudData.suratSekretarisConfig.kopLogoKananUrl
-                    : 'https://cdn.phototourl.com/member/2026-11-14-6e57abdd-4666-430d-911c-7e8281c86140.jpg',
-                ttdUrl1:
-                  cloudData.suratSekretarisConfig?.ttdUrl1 ??
-                  INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.ttdUrl1 ??
-                  '',
-                ttdUrl2:
-                  cloudData.suratSekretarisConfig?.ttdUrl2 ??
-                  INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.ttdUrl2 ??
-                  '',
-                templates: {
-                  ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!.templates,
-                  ...(cloudData.suratSekretarisConfig?.templates || {}),
+              suratSekretarisConfig: (() => {
+                const cloudSekCfg = {
+                  ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
+                  ...(cloudData.suratSekretarisConfig || {}),
+                  kopLogoUrl:
+                    cloudData.suratSekretarisConfig?.kopLogoUrl &&
+                    !cloudData.suratSekretarisConfig.kopLogoUrl.includes('2026-11-11-7ffd46ad')
+                      ? cloudData.suratSekretarisConfig.kopLogoUrl
+                      : 'https://cdn.phototourl.com/member/2026-11-14-49a0f8f3-f2e5-443e-8c1e-36ccad7a6009.png',
+                  kopLogoKananUrl:
+                    cloudData.suratSekretarisConfig?.kopLogoKananUrl &&
+                    cloudData.suratSekretarisConfig.kopLogoKananUrl.trim() !== '' &&
+                    !cloudData.suratSekretarisConfig.kopLogoKananUrl.includes('2026-11-11-7ffd46ad')
+                      ? cloudData.suratSekretarisConfig.kopLogoKananUrl
+                      : 'https://cdn.phototourl.com/member/2026-11-14-6e57abdd-4666-430d-911c-7e8281c86140.jpg',
+                  ttdUrl1:
+                    cloudData.suratSekretarisConfig?.ttdUrl1 ??
+                    INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.ttdUrl1 ??
+                    '',
+                  ttdUrl2:
+                    cloudData.suratSekretarisConfig?.ttdUrl2 ??
+                    INITIAL_SYSTEM_CONFIG.suratSekretarisConfig?.ttdUrl2 ??
+                    '',
+                  templates: {
+                    ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!.templates,
+                    ...(cloudData.suratSekretarisConfig?.templates || {}),
+                  }
+                };
+                const localSaved = readPengaturanSuratFromStorage();
+                const cloudTs = cloudSekCfg.pejabatUpdatedAt ?? 0;
+                const localTs = localSaved?.updatedAt ?? 0;
+                if (cloudTs > localTs && localTs > 0) {
+                  savePengaturanSuratToStorage({
+                    namaKetua: cloudSekCfg.namaPenandatangan2,
+                    jabatanKetua: cloudSekCfg.jabatanPenandatangan2,
+                    ttdKetua: cloudSekCfg.ttdUrl2 ?? '',
+                    namaSekretaris: cloudSekCfg.namaPenandatangan,
+                    jabatanSekretaris: cloudSekCfg.jabatanPenandatangan,
+                    ttdSekretaris: cloudSekCfg.ttdUrl1 ?? '',
+                    tampilkanKetua: cloudSekCfg.tampilkanPenandatangan2,
+                    updatedAt: cloudTs,
+                  });
                 }
-              }
+                return applyPengaturanSuratToConfig(cloudSekCfg);
+              })()
             };
             this.cache.systemConfig = cfg;
             localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(cfg));

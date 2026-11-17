@@ -331,6 +331,24 @@
     visibility: visible !important;
   }
 
+  .surat-ttd-box {
+    height: 65px !important;
+    min-height: 65px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .surat-ttd-img {
+    height: 65px !important;
+    max-height: 65px !important;
+    width: auto !important;
+    max-width: 165px !important;
+    object-fit: contain !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .official-qr-code {
     width: 48mm !important;
     height: 48mm !important;

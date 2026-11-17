@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { Perizinan, Sanksi, ArsipSurat, SuratSekretarisConfig } from '../types';
 import { storageService } from '../services/storageService';
 import { INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
+import { resolvePejabatSurat } from './pengaturanSurat';
 
 const OFFICIAL_PONDOK_LOGO =
   'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
@@ -866,14 +867,15 @@ export async function downloadSuratSekretarisPDF(
     y = margin + 4;
   }
 
-  const showTwoSigners = surat.tampilkanPenandatangan2 ?? config.tampilkanPenandatangan2;
-  const ttd1Url = surat.ttdUrl1 ?? config.ttdUrl1;
-  const ttd2Url = surat.ttdUrl2 ?? config.ttdUrl2;
+  const pejabat = resolvePejabatSurat(config, surat);
+  const showTwoSigners = pejabat.tampilkanKetua;
+  const ttd1Url = pejabat.ttdSekretaris;
+  const ttd2Url = pejabat.ttdKetua;
   const stempelCustomUrl = config.stempelUrl;
 
   const [ttd1Info, ttd2Info, stempelInfo] = await Promise.all([
-    loadImageWithAspect(ttd1Url),
-    showTwoSigners ? loadImageWithAspect(ttd2Url) : Promise.resolve(null),
+    ttd1Url ? loadImageWithAspect(ttd1Url) : Promise.resolve(null),
+    showTwoSigners && ttd2Url ? loadImageWithAspect(ttd2Url) : Promise.resolve(null),
     config.tampilkanStempel && stempelCustomUrl ? loadImageWithAspect(stempelCustomUrl) : Promise.resolve(null),
   ]);
 
@@ -895,7 +897,7 @@ export async function downloadSuratSekretarisPDF(
   if (showTwoSigners) {
     doc.setFont('times', 'bold');
     doc.text(
-      surat.jabatanPenandatangan2 || config.jabatanPenandatangan2 || 'Ketua Pondok Pesantren',
+      pejabat.jabatanKetua || 'Ketua Pondok Pesantren',
       leftSignX,
       y,
       { align: 'center' }
@@ -903,13 +905,13 @@ export async function downloadSuratSekretarisPDF(
   }
 
   doc.setFont('times', 'bold');
-  doc.text(surat.jabatanPenandatangan || config.jabatanPenandatangan || 'Sekretaris Pondok', rightSignX, y, {
+  doc.text(pejabat.jabatanSekretaris || 'Sekretaris Pondok', rightSignX, y, {
     align: 'center',
   });
 
   // Render Gambar Tanda Tangan Digital 2 (Kiri - Ketua Pondok)
   if (showTwoSigners && ttd2Info) {
-    addProportionalImageToPdf(doc, ttd2Info, leftSignX - 22, y + 2, 44, 18);
+    addProportionalImageToPdf(doc, ttd2Info, leftSignX - 22, y + 2, 44, 17.5);
   }
 
   // Render Stempel Pondok (mengikuti posisi kiri area TTD 1 pada pratinjau)
@@ -927,7 +929,7 @@ export async function downloadSuratSekretarisPDF(
 
   // Render Gambar Tanda Tangan Digital 1 (Kanan - Sekretaris)
   if (ttd1Info) {
-    addProportionalImageToPdf(doc, ttd1Info, rightSignX - 22, y + 2, 44, 18);
+    addProportionalImageToPdf(doc, ttd1Info, rightSignX - 22, y + 2, 44, 17.5);
   }
 
   // Nama Terang Penandatangan
@@ -936,18 +938,22 @@ export async function downloadSuratSekretarisPDF(
   doc.setTextColor(15, 23, 42);
 
   if (showTwoSigners) {
-    const nama2 = surat.namaPenandatangan2 || config.namaPenandatangan2 || 'K.H. Ahmad Faqih Al-Maliki';
-    doc.text(nama2, leftSignX, y + 23.5, { align: 'center' });
-    const w2 = doc.getTextWidth(nama2);
-    doc.setLineWidth(0.3);
-    doc.line(leftSignX - w2 / 2, y + 24.3, leftSignX + w2 / 2, y + 24.3);
+    const nama2 = pejabat.namaKetua || '';
+    if (nama2) {
+      doc.text(nama2, leftSignX, y + 23.5, { align: 'center' });
+      const w2 = doc.getTextWidth(nama2);
+      doc.setLineWidth(0.3);
+      doc.line(leftSignX - w2 / 2, y + 24.3, leftSignX + w2 / 2, y + 24.3);
+    }
   }
 
-  const nama1 = surat.namaPenandatangan || config.namaPenandatangan || 'Ustadz Muhammad Yusuf, S.Pd';
-  doc.text(nama1, rightSignX, y + 23.5, { align: 'center' });
-  const w1 = doc.getTextWidth(nama1);
-  doc.setLineWidth(0.3);
-  doc.line(rightSignX - w1 / 2, y + 24.3, rightSignX + w1 / 2, y + 24.3);
+  const nama1 = pejabat.namaSekretaris || '';
+  if (nama1) {
+    doc.text(nama1, rightSignX, y + 23.5, { align: 'center' });
+    const w1 = doc.getTextWidth(nama1);
+    doc.setLineWidth(0.3);
+    doc.line(rightSignX - w1 / 2, y + 24.3, rightSignX + w1 / 2, y + 24.3);
+  }
 
   y += 31;
 

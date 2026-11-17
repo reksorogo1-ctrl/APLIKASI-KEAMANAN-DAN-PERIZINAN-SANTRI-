@@ -716,8 +716,8 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               if (msg.tujuan === 'ketua_pondok' || msg.pengirimRole === 'ketua_pondok') {
                 return { menu: 'ketua_pondok', subTab: 'sk_koordinasi', label: 'Kotak Masuk Ketua' };
               }
-              if (msg.pengirimRole === 'sekretaris' || text.includes('sekretaris')) {
-                return { menu: 'sekretaris', subTab: 'kotak_masuk', label: 'Kotak Masuk Sekretaris' };
+              if (msg.pengirimRole === 'sekretaris' || text.includes('sekretaris') || text.includes('notulen rapat')) {
+                return { menu: 'sekretaris', subTab: 'kotak_masuk', label: 'Kotak Masuk & Pesan' };
               }
               if (msg.pengirimRole === 'bendahara' || text.includes('bendahara')) {
                 return { menu: 'bendahara', subTab: 'kotak_masuk', label: 'Kotak Masuk Bendahara' };
@@ -752,11 +752,11 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                 return { menu: 'perlengkapan', subTab: linkMenu === 'perlengkapan_inbox' ? 'kotak_masuk' : undefined, label: 'Halaman Perlengkapan' };
               }
               if (linkMenu === 'koordinasi') {
-                if (currentUser.role === 'ketua_pondok') return { menu: 'ketua_pondok', subTab: 'sk_koordinasi', label: 'Kotak Masuk' };
-                if (currentUser.role === 'sekretaris') return { menu: 'sekretaris', subTab: 'kotak_masuk', label: 'Kotak Masuk' };
-                if (currentUser.role === 'bendahara') return { menu: 'bendahara', subTab: 'kotak_masuk', label: 'Kotak Masuk' };
-                if (currentUser.role === 'perlengkapan') return { menu: 'perlengkapan', subTab: 'kotak_masuk', label: 'Kotak Masuk' };
-                return { menu: 'keamanan', subTab: 'koordinasi', label: 'Kotak Masuk' };
+                if (currentUser.role === 'ketua_pondok') return { menu: 'ketua_pondok', subTab: 'sk_koordinasi', label: 'Kotak Masuk & Pesan' };
+                if (currentUser.role === 'sekretaris') return { menu: 'sekretaris', subTab: 'kotak_masuk', label: 'Kotak Masuk & Pesan' };
+                if (currentUser.role === 'bendahara') return { menu: 'bendahara', subTab: 'kotak_masuk', label: 'Kotak Masuk & Pesan' };
+                if (currentUser.role === 'perlengkapan') return { menu: 'perlengkapan', subTab: 'kotak_masuk', label: 'Kotak Masuk & Pesan' };
+                return { menu: 'keamanan', subTab: 'koordinasi', label: 'Kotak Masuk & Pesan' };
               }
               if (linkMenu === 'perizinan' || linkMenu === 'monitoring' || linkMenu === 'pelanggaran' || linkMenu === 'pos_gerbang' || linkMenu === 'sanksi') {
                 const mapLabel: Record<string, string> = {
@@ -771,9 +771,14 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               return { menu: 'dashboard', label: 'Dashboard' };
             };
 
-            const pesanItems: SimpleNotifItem[] = koordinasiList
+            const pesanItems: SimpleNotifItem[] = [...koordinasiList]
               .filter((k) => k.pengirimId !== currentUser.id)
-              .slice(0, 3)
+              .sort((a, b) => {
+                const aUnread = !(a.dibacaOleh || []).includes(currentUser.id);
+                const bUnread = !(b.dibacaOleh || []).includes(currentUser.id);
+                return Number(bUnread) - Number(aUnread);
+              })
+              .slice(0, 4)
               .map((k) => {
                 const target = resolveMsgTarget(k);
                 const isUnread = !(k.dibacaOleh || []).includes(currentUser.id);

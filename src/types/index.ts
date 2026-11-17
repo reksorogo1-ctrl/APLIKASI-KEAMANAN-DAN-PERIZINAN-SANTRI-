@@ -562,6 +562,7 @@ export interface SuratSekretarisConfig {
   marginSuratMm?: number; // Margin halaman A4 dalam mm (15, 20, 25)
   perataanIsi?: 'justify' | 'left';
   posisiTanggal?: 'kanan_atas' | 'bawah_kanan';
+  pejabatUpdatedAt?: number;
   templates: Record<KodeJenisSurat, TemplateSuratConfig>;
 }
 
@@ -725,6 +726,7 @@ export interface NotulenRapat {
   tempat: string;
   pimpinanRapat: string;
   jumlahPeserta: number;
+  pesertaHadir?: string;
   agendaBahasan: string;
   hasilKeputusan: string;
   notulis: string;

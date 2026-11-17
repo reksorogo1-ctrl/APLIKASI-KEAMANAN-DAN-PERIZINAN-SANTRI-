@@ -77,8 +77,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Real-time internal coordination telemetry
   const koordinasiList = storageService.getKoordinasiList();
-  const unreadKoordinasi = koordinasiList.filter(k => !k.dibacaOleh.includes(currentUser.id));
-  const mendesakKoordinasi = koordinasiList.find(k => k.prioritas === 'Mendesak' && k.status !== 'Ditindaklanjuti');
+  const unreadKoordinasi = koordinasiList.filter((k) => !(k.dibacaOleh || []).includes(currentUser.id));
+  const mendesakKoordinasi = koordinasiList.find((k) => k.prioritas === 'Mendesak' && k.status !== 'Ditindaklanjuti');
 
   const handleSendWaAlert = (izin: Perizinan) => {
     const text = WhatsAppTemplates.peringatanKeterlambatan(izin, izin.menitKeterlambatan || 30);
@@ -236,14 +236,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Unread Regular Dispatches Notice */}
       {!mendesakKoordinasi && unreadKoordinasi.length > 0 && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-[#041d13] to-[#02100a] border border-emerald-500/50 text-emerald-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl hover-rainbow-edge">
+        <div
+          onClick={() => onNavigate('koordinasi')}
+          className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-[#041d13] to-[#02100a] border border-emerald-500/50 hover:border-[#d4af37] text-emerald-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xl hover-rainbow-edge cursor-pointer transition-colors"
+        >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-300 shrink-0 glow-gold">
               <Radio className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
               <p className="text-xs font-bold text-white uppercase tracking-wide flex items-center gap-2">
-                <span>PEMBERITAHUAN KOORDINASI: {unreadKoordinasi.length} PESAN / DISPOSISI BARU</span>
+                <span>PEMBERITAHUAN KOORDINASI: {unreadKoordinasi.length} PESAN / NOTULEN BARU</span>
                 <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">REAL-TIME SYNC</span>
               </p>
               <p className="text-xs text-emerald-100/90 mt-0.5 font-sans">
@@ -252,10 +255,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <button
-            onClick={() => onNavigate('koordinasi')}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNavigate('koordinasi');
+            }}
             className="tactile-interactive inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider text-white bg-[#072c1e] hover:bg-[#0b422d] border border-emerald-500/40 rounded-xl transition-colors cursor-pointer shrink-0 shadow-md"
           >
-            <span>Buka Tab Koordinasi</span>
+            <span>Buka Kotak Masuk &amp; Pesan</span>
             <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
           </button>
         </div>

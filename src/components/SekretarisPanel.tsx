@@ -4,9 +4,7 @@ import {
   Printer,
   Download,
   Plus,
-  Search,
   Send,
-  Archive,
   CheckCircle2,
   Sliders,
   Trash2,
@@ -53,6 +51,12 @@ import { downloadSuratSekretarisPDF, loadImageAsDataUrl } from '../utils/pdfGene
 import { downloadWordDocument } from '../utils/wordExport';
 import { DivisiKotakMasuk } from './DivisiKotakMasuk';
 import { ScanSuratModal } from './ScanSuratModal';
+import {
+  applyPengaturanSuratToConfig,
+  convertSignatureFileToBase64,
+  resolvePejabatSurat,
+  savePengaturanSuratToStorage,
+} from '../utils/pengaturanSurat';
 
 interface SekretarisPanelProps {
   arsipSurat?: ArsipSurat[];
@@ -107,7 +111,6 @@ type SekretarisTabKey =
   | 'kotak_masuk'
   | 'buat_surat'
   | 'riwayat_surat'
-  | 'arsip_surat'
   | 'data_santri_psb'
   | 'data_ustadz'
   | 'notulen_agenda'
@@ -115,13 +118,13 @@ type SekretarisTabKey =
 
 function normalizeSekretarisSubTab(subTab?: string): SekretarisTabKey {
   if (!subTab) return 'buat_surat';
+  if (subTab === 'arsip_surat') return 'riwayat_surat';
   if (subTab === 'data_santri' || subTab === 'data_santri_psb') return 'data_santri_psb';
   if (subTab === 'format_surat' || subTab === 'pengaturan_kop') return 'pengaturan_kop';
   if (
     subTab === 'kotak_masuk' ||
     subTab === 'buat_surat' ||
     subTab === 'riwayat_surat' ||
-    subTab === 'arsip_surat' ||
     subTab === 'data_ustadz' ||
     subTab === 'notulen_agenda'
   ) {
@@ -172,13 +175,10 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
         ...(raw?.templates || {}),
       },
     };
-    return merged;
+    return applyPengaturanSuratToConfig(merged);
   }, [systemConfig.suratSekretarisConfig]);
 
   const [selectedKode, setSelectedKode] = useState<KodeJenisSurat>('SK');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterArah, setFilterArah] = useState<'Semua' | 'Keluar' | 'Masuk'>('Semua');
-  const [filterKode, setFilterKode] = useState<string>('Semua');
   const [toastMsg, setToastMsg] = useState('');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
@@ -409,7 +409,8 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
   const buildPrintableSuratHtml = async (
     suratData: Partial<ArsipSurat>,
     cfg: SuratSekretarisConfig,
-    kodeSuratAktif: KodeJenisSurat
+    kodeSuratAktif: KodeJenisSurat,
+    preferLiveConfig = false
   ): Promise<string> => {
     const rawLeftLogo =
       (cfg.kopLogoUrl && !cfg.kopLogoUrl.includes('2026-11-11-7ffd46ad')
@@ -423,9 +424,10 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
         ? cfg.kopLogoKananUrl
         : 'https://cdn.phototourl.com/member/2026-11-14-6e57abdd-4666-430d-911c-7e8281c86140.jpg';
 
-    const showSigner2 = suratData.tampilkanPenandatangan2 ?? cfg.tampilkanPenandatangan2;
-    const rawTtd1 = suratData.ttdUrl1 ?? cfg.ttdUrl1;
-    const rawTtd2 = suratData.ttdUrl2 ?? cfg.ttdUrl2;
+    const pejabat = resolvePejabatSurat(cfg, suratData, preferLiveConfig);
+    const showSigner2 = pejabat.tampilkanKetua;
+    const rawTtd1 = pejabat.ttdSekretaris;
+    const rawTtd2 = pejabat.ttdKetua;
 
     const [leftLogoData, rightLogoData, ttd1Data, ttd2Data, stempelData] = await Promise.all([
       loadImageAsDataUrl(rawLeftLogo).then((r) => r || loadImageAsDataUrl('/kop-logo-1.png')),
@@ -510,30 +512,30 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
         </div>
 
         <!-- Blok Tanda Tangan & Stempel -->
-        <table style="width: 100%; border-collapse: collapse; margin-top: 24px; text-align: center; font-size: ${fontSizePt}; page-break-inside: avoid;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 24px; text-align: center; font-size: ${fontSizePt}; page-break-inside: avoid; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
           <tr>
             <td style="width: 50%; vertical-align: bottom; padding: 4px 12px;">
               ${showSigner2 ? `
                 <div style="font-size: 9.5pt; color: #475569;">Mengetahui,</div>
-                <div style="font-weight: 700;">${escapeHtml(suratData.jabatanPenandatangan2 || cfg.jabatanPenandatangan2)}</div>
-                <div style="height: 68px; display: flex; align-items: center; justify-content: center; margin: 4px 0;">
-                  ${ttd2Data ? `<img src="${ttd2Data}" alt="TTD 2" style="max-height: 62px; max-width: 165px; object-fit: contain;" />` : ''}
+                <div style="font-weight: 700;">${escapeHtml(pejabat.jabatanKetua)}</div>
+                <div class="surat-ttd-box" style="height: 65px; min-height: 65px; display: flex; align-items: center; justify-content: center; margin: 4px 0;">
+                  ${ttd2Data ? `<img src="${ttd2Data}" alt="TTD Ketua Pondok" class="surat-ttd-img" style="height: 65px; max-height: 65px; max-width: 165px; object-fit: contain; -webkit-print-color-adjust: exact; print-color-adjust: exact;" />` : ''}
                 </div>
-                <div style="font-weight: 700; text-decoration: underline;">${escapeHtml(suratData.namaPenandatangan2 || cfg.namaPenandatangan2)}</div>
+                <div style="font-weight: 700; text-decoration: underline;">${escapeHtml(pejabat.namaKetua)}</div>
               ` : ''}
             </td>
             <td style="width: 50%; vertical-align: bottom; padding: 4px 12px; position: relative;">
               <div style="font-size: 9.5pt; color: #475569;">${escapeHtml(suratData.kotaTerbit || cfg.kotaTerbit)}, ${escapeHtml(formattedTanggal)}</div>
-              <div style="font-weight: 700;">${escapeHtml(suratData.jabatanPenandatangan || cfg.jabatanPenandatangan)}</div>
-              <div style="height: 68px; position: relative; display: flex; align-items: center; justify-content: center; margin: 4px 0;">
+              <div style="font-weight: 700;">${escapeHtml(pejabat.jabatanSekretaris)}</div>
+              <div class="surat-ttd-box" style="height: 65px; min-height: 65px; position: relative; display: flex; align-items: center; justify-content: center; margin: 4px 0;">
                 ${cfg.tampilkanStempel ? (
                   stempelData
-                    ? `<img src="${stempelData}" alt="Stempel Pondok" style="max-height: 60px; max-width: 85px; object-fit: contain; opacity: 0.85; position: absolute; left: 10px;" />`
+                    ? `<img src="${stempelData}" alt="Stempel Pondok" style="max-height: 60px; max-width: 85px; object-fit: contain; opacity: 0.85; position: absolute; left: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact;" />`
                     : `<span style="display: inline-block; padding: 2px 7px; border: 2px solid rgba(6,95,70,0.65); color: rgba(6,78,59,0.8); font-size: 7pt; font-family: monospace; font-weight: 700; text-transform: uppercase; border-radius: 4px; transform: rotate(-6deg); position: absolute; left: 6px;">STEMPEL RESMI PONDOK</span>`
                 ) : ''}
-                ${ttd1Data ? `<img src="${ttd1Data}" alt="TTD 1" style="max-height: 62px; max-width: 165px; object-fit: contain; position: relative; z-index: 2;" />` : ''}
+                ${ttd1Data ? `<img src="${ttd1Data}" alt="TTD Sekretaris" class="surat-ttd-img" style="height: 65px; max-height: 65px; max-width: 165px; object-fit: contain; position: relative; z-index: 2; -webkit-print-color-adjust: exact; print-color-adjust: exact;" />` : ''}
               </div>
-              <div style="font-weight: 700; text-decoration: underline;">${escapeHtml(suratData.namaPenandatangan || cfg.namaPenandatangan)}</div>
+              <div style="font-weight: 700; text-decoration: underline;">${escapeHtml(pejabat.namaSekretaris)}</div>
             </td>
           </tr>
         </table>
@@ -853,14 +855,46 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     showToast('File Word (.doc) Riwayat Surat Keluar berhasil diunduh.');
   };
 
-  const handleSaveKopConfig = (e: React.FormEvent) => {
-    e.preventDefault();
+  const persistPengaturanSurat = (targetCfg: SuratSekretarisConfig = kopForm) => {
+    const savedPejabat = savePengaturanSuratToStorage({
+      namaKetua: targetCfg.namaPenandatangan2,
+      jabatanKetua: targetCfg.jabatanPenandatangan2,
+      ttdKetua: targetCfg.ttdUrl2 ?? '',
+      namaSekretaris: targetCfg.namaPenandatangan,
+      jabatanSekretaris: targetCfg.jabatanPenandatangan,
+      ttdSekretaris: targetCfg.ttdUrl1 ?? '',
+      tampilkanKetua: targetCfg.tampilkanPenandatangan2,
+    });
+
+    const syncedCfg: SuratSekretarisConfig = {
+      ...targetCfg,
+      pejabatUpdatedAt: savedPejabat.updatedAt,
+    };
+
+    setKopForm(syncedCfg);
+    setFormSurat((prev) => ({
+      ...prev,
+      kotaTerbit: syncedCfg.kotaTerbit,
+      jabatanPenandatangan: syncedCfg.jabatanPenandatangan,
+      namaPenandatangan: syncedCfg.namaPenandatangan,
+      ttdUrl1: syncedCfg.ttdUrl1 ?? '',
+      jabatanPenandatangan2: syncedCfg.jabatanPenandatangan2,
+      namaPenandatangan2: syncedCfg.namaPenandatangan2,
+      ttdUrl2: syncedCfg.ttdUrl2 ?? '',
+      tampilkanPenandatangan2: syncedCfg.tampilkanPenandatangan2,
+    }));
+
     storageService.updateSystemConfig({
       ...systemConfig,
-      suratSekretarisConfig: kopForm,
+      suratSekretarisConfig: syncedCfg,
     });
     onDataChanged();
-    showToast('Pengaturan Kop Surat, Logo, Tanda Tangan Digital, & 15 Template Surat berhasil disimpan ke Database!');
+    showToast('Pengaturan Tanda Tangan & Nama Pejabat Berhasil Disimpan!');
+  };
+
+  const handleSaveKopConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    persistPengaturanSurat(kopForm);
   };
 
   const handleUploadImageToField = (
@@ -868,6 +902,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     onResult: (dataUrl: string) => void
   ) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -878,23 +913,43 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     reader.readAsDataURL(file);
   };
 
-  // Filtered archive
-  const filteredArsip = useMemo(() => {
-    return arsipList.filter((s) => {
-      if (filterArah !== 'Semua' && s.arah !== filterArah) return false;
-      if (filterKode !== 'Semua' && s.kodeJenis !== filterKode) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return (
-          s.nomorSurat.toLowerCase().includes(q) ||
-          s.perihal.toLowerCase().includes(q) ||
-          s.tujuanAtauPengirim.toLowerCase().includes(q) ||
-          s.namaJenis.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [arsipList, filterArah, filterKode, searchQuery]);
+  const handleUploadSignatureImage = async (
+    role: 'ketua' | 'sekretaris',
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const base64 = await convertSignatureFileToBase64(file);
+      if (!base64) return;
+      const updated = {
+        ...kopForm,
+        ...(role === 'ketua' ? { ttdUrl2: base64 } : { ttdUrl1: base64 }),
+      };
+      setKopForm(updated);
+      savePengaturanSuratToStorage({
+        namaKetua: updated.namaPenandatangan2,
+        jabatanKetua: updated.jabatanPenandatangan2,
+        ttdKetua: updated.ttdUrl2 ?? '',
+        namaSekretaris: updated.namaPenandatangan,
+        jabatanSekretaris: updated.jabatanPenandatangan,
+        ttdSekretaris: updated.ttdUrl1 ?? '',
+        tampilkanKetua: updated.tampilkanPenandatangan2,
+      });
+      setFormSurat((prev) => ({
+        ...prev,
+        ...(role === 'ketua' ? { ttdUrl2: base64 } : { ttdUrl1: base64 }),
+      }));
+      showToast(
+        role === 'ketua'
+          ? 'Gambar Tanda Tangan Ketua Pondok berhasil dikonversi ke Base64 & disimpan!'
+          : 'Gambar Tanda Tangan Sekretaris berhasil dikonversi ke Base64 & disimpan!'
+      );
+    } catch {
+      showToast('Gagal memproses gambar tanda tangan. Pastikan format PNG/JPG valid.');
+    }
+  };
 
   // -------------------------------------------------------------
   // STATE DATA SANTRI (KELAS, BIODATA LENGKAP, FOTO, WALI & CRUD)
@@ -1067,6 +1122,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     tempat: 'Aula Utama Pondok',
     pimpinanRapat: 'K.H. Ahmad Faqih Al-Maliki',
     jumlahPeserta: 18,
+    pesertaHadir: '',
     agendaBahasan: '',
     hasilKeputusan: '',
     notulis: currentUser.nama,
@@ -1075,6 +1131,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
   const handleSaveNotulen = (e: React.FormEvent) => {
     e.preventDefault();
     if (!notulenForm.judulRapat?.trim() || !notulenForm.hasilKeputusan?.trim()) return;
+    const pesertaHadirClean = (notulenForm.pesertaHadir || '').trim();
     const item: NotulenRapat = {
       id: `not_${Date.now()}`,
       judulRapat: notulenForm.judulRapat.trim(),
@@ -1083,7 +1140,8 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       tempat: notulenForm.tempat || 'Aula Pondok',
       pimpinanRapat: notulenForm.pimpinanRapat || 'Ketua Pondok',
       jumlahPeserta: Number(notulenForm.jumlahPeserta) || 15,
-      agendaBahasan: notulenForm.agendaBahasan || '-',
+      pesertaHadir: pesertaHadirClean || undefined,
+      agendaBahasan: notulenForm.agendaBahasan?.trim() || '-',
       hasilKeputusan: notulenForm.hasilKeputusan.trim(),
       notulis: notulenForm.notulis || currentUser.nama,
     };
@@ -1091,9 +1149,55 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       ...systemConfig,
       notulenRapatList: [item, ...notulenList],
     });
+
+    // Otomatis bagikan hasil notulen rapat ke setiap pengurus (Kotak Masuk & Notifikasi Dashboard)
+    const now = new Date();
+    const waktuDistribusi =
+      now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) +
+      ' WIB (' +
+      now.toISOString().split('T')[0] +
+      ')';
+    const pesanNotulen: PesanKoordinasi = {
+      id: `krd_notulen_${Date.now()}`,
+      nomorTiket: `NTL-${item.tanggal.replace(/-/g, '').slice(2)}-${Math.floor(100 + Math.random() * 900)}`,
+      judul: `[NOTULEN RAPAT] ${item.judulRapat} (${item.tanggal})`,
+      isi: [
+        `Tanggal & Waktu : ${item.tanggal} · ${item.waktu}`,
+        `Tempat          : ${item.tempat}`,
+        `Pimpinan Rapat  : ${item.pimpinanRapat}`,
+        `Yang Hadir      : ${pesertaHadirClean || `${item.jumlahPeserta} Pengurus`}`,
+        `Inti Pembahasan : ${item.agendaBahasan}`,
+        `Hasil Keputusan :\n${item.hasilKeputusan}`,
+        `Notulis         : ${item.notulis}`,
+      ].join('\n'),
+      prioritas: 'Penting',
+      kategori: 'Instruksi Admin',
+      pengirimId: currentUser.id,
+      pengirimNama: currentUser.nama,
+      pengirimRole: currentUser.role,
+      pengirimJabatan:
+        currentUser.role === 'sekretaris'
+          ? currentUser.jabatan || 'Sekretaris Pondok'
+          : 'Sekretaris Pondok',
+      pengirimAvatar: currentUser.avatar || '',
+      tujuan: 'semua_dewan',
+      waktu: waktuDistribusi,
+      tanggal: item.tanggal,
+      status: 'Terkirim',
+      dibacaOleh: [currentUser.id],
+      balasan: [],
+    };
+    storageService.saveKoordinasi(pesanNotulen);
+
     onDataChanged();
-    setNotulenForm({ ...notulenForm, judulRapat: '', agendaBahasan: '', hasilKeputusan: '' });
-    showToast('Notulen rapat berhasil diarsipkan.');
+    setNotulenForm({
+      ...notulenForm,
+      judulRapat: '',
+      pesertaHadir: '',
+      agendaBahasan: '',
+      hasilKeputusan: '',
+    });
+    showToast('Notulen rapat berhasil diarsipkan dan otomatis dibagikan ke Kotak Masuk seluruh pengurus.');
   };
 
   // Helper untuk merender Kertas A4 (dipakai di Tab Buat Surat dan di Live Preview Editor Format Surat)
@@ -1101,7 +1205,8 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     cfg: SuratSekretarisConfig,
     suratData: Partial<ArsipSurat>,
     kodeSuratAktif: KodeJenisSurat,
-    elementId?: string
+    elementId?: string,
+    preferLiveConfig = false
   ) => {
     const logoSizePx = cfg.ukuranLogoPx || 68;
     const paddingClass =
@@ -1129,9 +1234,10 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       !cfg.kopLogoKananUrl.includes('2026-11-11-7ffd46ad')
         ? cfg.kopLogoKananUrl
         : 'https://cdn.phototourl.com/member/2026-11-14-6e57abdd-4666-430d-911c-7e8281c86140.jpg';
-    const ttd1Src = suratData.ttdUrl1 ?? cfg.ttdUrl1;
-    const ttd2Src = suratData.ttdUrl2 ?? cfg.ttdUrl2;
-    const showSigner2 = suratData.tampilkanPenandatangan2 ?? cfg.tampilkanPenandatangan2;
+    const pejabat = resolvePejabatSurat(cfg, suratData, preferLiveConfig);
+    const ttd1Src = pejabat.ttdSekretaris;
+    const ttd2Src = pejabat.ttdKetua;
+    const showSigner2 = pejabat.tampilkanKetua;
 
     const formattedTanggal = (() => {
       if (!suratData.tanggalSurat) return '';
@@ -1270,26 +1376,35 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
           {suratData.penutupSurat && <p>{suratData.penutupSurat}</p>}
         </div>
 
-        {/* Kolom Tanda Tangan & Tanda Tangan Digital melalui Link URL */}
+        {/* Kolom Tanda Tangan & Tanda Tangan Digital (Dinamis dari almaliki_pengaturan_surat) */}
         <div className={`mt-7 pt-3 ${fontSizeClass}`}>
           <div className="grid grid-cols-2 gap-6 text-center items-end">
             {showSigner2 ? (
               <div className="flex flex-col items-center">
                 <p className="text-[11px] text-slate-600">Mengetahui,</p>
-                <p className="font-bold">{suratData.jabatanPenandatangan2 || cfg.jabatanPenandatangan2}</p>
-                <div className="h-20 w-full flex items-center justify-center my-1 relative">
+                <p className="font-bold">{pejabat.jabatanKetua}</p>
+                <div
+                  style={{ height: '65px', minHeight: '65px' }}
+                  className="surat-ttd-box w-full flex items-center justify-center my-1 relative"
+                >
                   {ttd2Src && (
                     <img
                       src={ttd2Src}
-                      alt="Tanda Tangan Penandatangan 2"
+                      alt="Tanda Tangan Ketua Pondok"
                       referrerPolicy="no-referrer"
-                      className="max-h-16 max-w-[165px] object-contain mx-auto select-none"
+                      style={{
+                        height: '65px',
+                        maxHeight: '65px',
+                        maxWidth: '165px',
+                        objectFit: 'contain',
+                        WebkitPrintColorAdjust: 'exact',
+                        printColorAdjust: 'exact',
+                      }}
+                      className="surat-ttd-img mx-auto select-none"
                     />
                   )}
                 </div>
-                <p className="font-bold underline">
-                  {suratData.namaPenandatangan2 || cfg.namaPenandatangan2}
-                </p>
+                <p className="font-bold underline">{pejabat.namaKetua}</p>
               </div>
             ) : (
               <div />
@@ -1299,14 +1414,21 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
               <p className="text-[11px] text-slate-600">
                 {suratData.kotaTerbit || cfg.kotaTerbit}, {formattedTanggal}
               </p>
-              <p className="font-bold">{suratData.jabatanPenandatangan || cfg.jabatanPenandatangan}</p>
-              <div className="h-20 w-full flex items-center justify-center my-1 relative">
+              <p className="font-bold">{pejabat.jabatanSekretaris}</p>
+              <div
+                style={{ height: '65px', minHeight: '65px' }}
+                className="surat-ttd-box w-full flex items-center justify-center my-1 relative"
+              >
                 {cfg.tampilkanStempel && (
                   cfg.stempelUrl ? (
                     <img
                       src={cfg.stempelUrl}
                       alt="Stempel Resmi Pondok"
                       referrerPolicy="no-referrer"
+                      style={{
+                        WebkitPrintColorAdjust: 'exact',
+                        printColorAdjust: 'exact',
+                      }}
                       className="max-h-16 max-w-[90px] object-contain opacity-80 absolute left-2 sm:left-4 pointer-events-none"
                     />
                   ) : (
@@ -1318,15 +1440,21 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                 {ttd1Src && (
                   <img
                     src={ttd1Src}
-                    alt="Tanda Tangan Penandatangan 1"
+                    alt="Tanda Tangan Sekretaris"
                     referrerPolicy="no-referrer"
-                    className="max-h-16 max-w-[165px] object-contain mx-auto relative z-10 select-none"
+                    style={{
+                      height: '65px',
+                      maxHeight: '65px',
+                      maxWidth: '165px',
+                      objectFit: 'contain',
+                      WebkitPrintColorAdjust: 'exact',
+                      printColorAdjust: 'exact',
+                    }}
+                    className="surat-ttd-img mx-auto relative z-10 select-none"
                   />
                 )}
               </div>
-              <p className="font-bold underline">
-                {suratData.namaPenandatangan || cfg.namaPenandatangan}
-              </p>
+              <p className="font-bold underline">{pejabat.namaSekretaris}</p>
             </div>
           </div>
         </div>
@@ -1394,7 +1522,6 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
           { key: 'kotak_masuk', label: 'Kotak Masuk & Pesan', icon: Inbox },
           { key: 'buat_surat', label: 'Terbitkan 15 Jenis Surat', icon: Plus },
           { key: 'riwayat_surat', label: `Riwayat Surat (${arsipList.length})`, icon: History },
-          { key: 'arsip_surat', label: `Buku Agenda & Arsip (${arsipList.length})`, icon: Archive },
           { key: 'data_santri_psb', label: `Data Santri per Kelas (${santriList.length})`, icon: Users },
           { key: 'data_ustadz', label: `Data Ustadz & Ustadzah (${ustadzList.length})`, icon: GraduationCap },
           { key: 'notulen_agenda', label: 'Notulen Rapat & Kalender', icon: Calendar },
@@ -1420,8 +1547,8 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       </div>
 
       {toastMsg && (
-        <div className="p-3.5 rounded-2xl bg-emerald-950/90 border border-[#d4af37]/50 text-xs font-bold text-[#e5c158] flex items-center gap-2 shadow-lg">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-emerald-600 border border-emerald-300 text-xs font-extrabold text-white flex items-center gap-2 shadow-xl">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -1615,22 +1742,31 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
 
                 {/* Pengaturan Cepat Penandatangan & Link TTD Digital pada Surat Ini */}
                 <div className="sm:col-span-2 p-3.5 rounded-2xl bg-[#031810] border border-[#d4af37]/30 space-y-2.5">
-                  <p className="text-[11px] font-bold text-[#e5c158] uppercase flex items-center gap-1.5">
-                    <Link2 className="w-3.5 h-3.5" />
-                    <span>Penandatangan &amp; Link Tanda Tangan Digital</span>
-                  </p>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] font-bold text-[#e5c158] uppercase flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5" />
+                      <span>Pejabat Penandatangan &amp; TTD Digital (Tersinkron Otomatis)</span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('pengaturan_kop')}
+                      className="text-[10px] font-bold text-emerald-300 hover:underline cursor-pointer"
+                    >
+                      Ubah Pengaturan Permanen &rarr;
+                    </button>
+                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
-                      placeholder="Jabatan Penandatangan 1"
+                      placeholder="Jabatan Sekretaris"
                       value={formSurat.jabatanPenandatangan || ''}
                       onChange={(e) => setFormSurat({ ...formSurat, jabatanPenandatangan: e.target.value })}
                       className="px-2.5 py-1.5 rounded-lg bg-[#052419] border border-[#d4af37]/25 text-[#f4f9f5]"
                     />
                     <input
                       type="text"
-                      placeholder="Nama Penandatangan 1"
+                      placeholder="Nama Lengkap & Gelar Sekretaris"
                       value={formSurat.namaPenandatangan || ''}
                       onChange={(e) => setFormSurat({ ...formSurat, namaPenandatangan: e.target.value })}
                       className="px-2.5 py-1.5 rounded-lg bg-[#052419] border border-[#d4af37]/25 text-[#f4f9f5]"
@@ -1639,23 +1775,19 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Tempel Link URL Gambar Tanda Tangan 1 (https://...)"
+                      placeholder="Link URL / Base64 Gambar TTD Sekretaris"
                       value={formSurat.ttdUrl1 || ''}
                       onChange={(e) => setFormSurat({ ...formSurat, ttdUrl1: e.target.value })}
                       className="flex-1 px-2.5 py-1.5 rounded-lg bg-[#052419] border border-[#d4af37]/30 text-[#e5c158] font-mono text-[11px]"
                     />
                     <label className="px-2.5 py-1.5 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/40 text-[#f3d266] text-[10px] font-bold flex items-center gap-1 cursor-pointer shrink-0">
                       <Upload className="w-3 h-3" />
-                      <span>Upload</span>
+                      <span>Upload PNG/JPG</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/jpg,image/*"
                         className="hidden"
-                        onChange={(e) =>
-                          handleUploadImageToField(e, (dataUrl) =>
-                            setFormSurat((prev) => ({ ...prev, ttdUrl1: dataUrl }))
-                          )
-                        }
+                        onChange={(e) => void handleUploadSignatureImage('sekretaris', e)}
                       />
                     </label>
                   </div>
@@ -1663,14 +1795,14 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                     <input
                       type="text"
-                      placeholder="Jabatan Penandatangan 2 (Ketua)"
+                      placeholder="Jabatan Ketua Pondok"
                       value={formSurat.jabatanPenandatangan2 || ''}
                       onChange={(e) => setFormSurat({ ...formSurat, jabatanPenandatangan2: e.target.value })}
                       className="px-2.5 py-1.5 rounded-lg bg-[#052419] border border-[#d4af37]/25 text-[#f4f9f5]"
                     />
                     <input
                       type="text"
-                      placeholder="Nama Penandatangan 2 (Ketua)"
+                      placeholder="Nama Lengkap & Gelar Ketua Pondok"
                       value={formSurat.namaPenandatangan2 || ''}
                       onChange={(e) => setFormSurat({ ...formSurat, namaPenandatangan2: e.target.value })}
                       className="px-2.5 py-1.5 rounded-lg bg-[#052419] border border-[#d4af37]/25 text-[#f4f9f5]"
@@ -1679,23 +1811,19 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Tempel Link URL Gambar Tanda Tangan 2 (https://...)"
+                      placeholder="Link URL / Base64 Gambar TTD Ketua Pondok"
                       value={formSurat.ttdUrl2 || ''}
                       onChange={(e) => setFormSurat({ ...formSurat, ttdUrl2: e.target.value })}
                       className="flex-1 px-2.5 py-1.5 rounded-lg bg-[#052419] border border-[#d4af37]/30 text-[#e5c158] font-mono text-[11px]"
                     />
                     <label className="px-2.5 py-1.5 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/40 text-[#f3d266] text-[10px] font-bold flex items-center gap-1 cursor-pointer shrink-0">
                       <Upload className="w-3 h-3" />
-                      <span>Upload</span>
+                      <span>Upload PNG/JPG</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/png,image/jpeg,image/jpg,image/*"
                         className="hidden"
-                        onChange={(e) =>
-                          handleUploadImageToField(e, (dataUrl) =>
-                            setFormSurat((prev) => ({ ...prev, ttdUrl2: dataUrl }))
-                          )
-                        }
+                        onChange={(e) => void handleUploadSignatureImage('ketua', e)}
                       />
                     </label>
                   </div>
@@ -2411,140 +2539,6 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
         );
       })()}
 
-      {/* TAB 2: ARSIP SURAT MASUK & KELUAR */}
-      {activeTab === 'arsip_surat' && (
-        <div className="rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-[#9ec5b0] absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Cari nomor surat, perihal, tujuan, atau jenis surat..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-xs text-[#f4f9f5]"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={filterArah}
-                onChange={(e) => setFilterArah(e.target.value as any)}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-xs text-[#f4f9f5]"
-              >
-                <option value="Semua">Semua Arah</option>
-                <option value="Keluar">Surat Keluar</option>
-                <option value="Masuk">Surat Masuk</option>
-              </select>
-
-              <select
-                value={filterKode}
-                onChange={(e) => setFilterKode(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-xs text-[#f4f9f5]"
-              >
-                <option value="Semua">Semua 15 Jenis Surat</option>
-                {DAFTAR_15_JENIS_SURAT.map((j) => (
-                  <option key={j.kode} value={j.kode}>
-                    {j.kode} - {j.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-[#d4af37]/30 text-[#e5c158] uppercase text-[11px]">
-                  <th className="py-3 px-3">Nomor &amp; Jenis</th>
-                  <th className="py-3 px-3">Tanggal</th>
-                  <th className="py-3 px-3">Arah</th>
-                  <th className="py-3 px-3">Perihal</th>
-                  <th className="py-3 px-3">Tujuan / Pengirim</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3 text-right">Cetak / PDF / Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#d4af37]/15">
-                {filteredArsip.map((srt) => (
-                  <tr key={srt.id} className="hover:bg-[#072e20]/60 transition-colors">
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 rounded bg-[#d4af37]/20 text-[#e5c158] font-mono text-[10px] font-bold mr-1.5">
-                        {srt.kodeJenis}
-                      </span>
-                      <span className="font-mono font-bold text-[#f4f9f5]">{srt.nomorSurat}</span>
-                      <p className="text-[11px] text-[#9ec5b0] mt-0.5">{srt.namaJenis}</p>
-                    </td>
-                    <td className="py-3 px-3 font-mono text-[#d1e7da]">{srt.tanggalSurat}</td>
-                    <td className="py-3 px-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                          srt.arah === 'Keluar'
-                            ? 'bg-emerald-900/70 text-emerald-200 border border-emerald-500/40'
-                            : 'bg-amber-900/60 text-amber-200 border border-amber-500/40'
-                        }`}
-                      >
-                        {srt.arah}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-[#f4f9f5] max-w-xs">{srt.perihal}</td>
-                    <td className="py-3 px-3 text-[#d1e7da]">{srt.tujuanAtauPengirim}</td>
-                    <td className="py-3 px-3">
-                      <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#d4af37]/20 text-[#e5c158] border border-[#d4af37]/40">
-                        {srt.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleLoadArsipToPreview(srt)}
-                          className="px-2.5 py-1.5 rounded-lg bg-[#031810] hover:bg-[#093826] text-[#e5c158] border border-[#d4af37]/35 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                          title="Buka di Pratinjau A4 & Edit"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Pratinjau</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handlePrintArsipSurat(srt)}
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-800/70 hover:bg-emerald-700 text-white border border-[#d4af37]/35 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                          title="Cetak Langsung Kertas A4"
-                        >
-                          <Printer className="w-3.5 h-3.5 text-[#e5c158]" />
-                          <span>Cetak</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isDownloadingPdf}
-                          onClick={() => handleDownloadArsipPdf(srt)}
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 text-emerald-100 border border-emerald-500/40 text-[11px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-60"
-                          title="Unduh PDF A4"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>PDF</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            storageService.deleteArsipSurat(srt.id);
-                            onDataChanged();
-                          }}
-                          className="p-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-500/30 cursor-pointer"
-                          title="Hapus Arsip"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* TAB 3: DATA SANTRI PER KELAS, BIODATA LENGKAP, FOTO & WALI (TERINTEGRASI DASHBOARD UTAMA) */}
       {activeTab === 'data_santri_psb' && (
         <div className="space-y-6">
@@ -3008,233 +3002,455 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       )}
 
       {/* TAB 4: DATA USTADZ, USTADZAH & PENGURUS */}
-      {activeTab === 'data_ustadz' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <form
-            onSubmit={handleSaveUstadz}
-            className="lg:col-span-4 rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-3 text-xs"
-          >
-            <h3 className="text-sm font-bold text-[#e5c158] uppercase tracking-wider">
-              Tambah Data Ustadz / Ustadzah
-            </h3>
-            <input
-              type="text"
-              required
-              placeholder="Nama Lengkap & Gelar"
-              value={ustadzForm.nama || ''}
-              onChange={(e) => setUstadzForm({ ...ustadzForm, nama: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={ustadzForm.gender || 'ustadz'}
-                onChange={(e) => setUstadzForm({ ...ustadzForm, gender: e.target.value as any })}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+      {activeTab === 'data_ustadz' && (() => {
+        const ustadzMukimList = ustadzList.filter((u) => (u.statusMukim || 'Mukim') === 'Mukim');
+        const ustadzLajuList = ustadzList.filter((u) => u.statusMukim === 'Laju');
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <form
+                onSubmit={handleSaveUstadz}
+                className="lg:col-span-4 rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-3 text-xs"
               >
-                <option value="ustadz">Ustadz (Putra)</option>
-                <option value="ustadzah">Ustadzah (Putri)</option>
-              </select>
-              <select
-                value={ustadzForm.statusMukim || 'Mukim'}
-                onChange={(e) => setUstadzForm({ ...ustadzForm, statusMukim: e.target.value as any })}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#e5c158] font-bold"
-              >
-                <option value="Mukim">Status: Mukim</option>
-                <option value="Laju">Status: Laju (PP)</option>
-              </select>
-            </div>
-            <input
-              type="text"
-              placeholder="NIP / Kode Asatidz"
-              value={ustadzForm.nip || ''}
-              onChange={(e) => setUstadzForm({ ...ustadzForm, nip: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#e5c158] font-mono"
-            />
-            <input
-              type="text"
-              placeholder="Jabatan Kepengurusan"
-              value={ustadzForm.jabatan || ''}
-              onChange={(e) => setUstadzForm({ ...ustadzForm, jabatan: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-            />
-            <input
-              type="text"
-              placeholder="Bidang Kitab / Mata Pelajaran"
-              value={ustadzForm.bidangKitab || ''}
-              onChange={(e) => setUstadzForm({ ...ustadzForm, bidangKitab: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="No. WhatsApp"
-                value={ustadzForm.noWa || ''}
-                onChange={(e) => setUstadzForm({ ...ustadzForm, noWa: e.target.value })}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-              />
-              <input
-                type="text"
-                placeholder="Jadwal Piket / Mengajar"
-                value={ustadzForm.jadwalPiket || ''}
-                onChange={(e) => setUstadzForm({ ...ustadzForm, jadwalPiket: e.target.value })}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-bold text-xs cursor-pointer"
-            >
-              Simpan Data Ustadz/Ustadzah
-            </button>
-          </form>
-
-          <div className="lg:col-span-8 rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#e5c158]">
-              Direktori Ustadz, Ustadzah &amp; Jadwal Tugas ({ustadzList.length} Personil)
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {ustadzList.map((u) => (
-                <div
-                  key={u.id}
-                  className="p-4 rounded-2xl bg-[#031810] border border-[#d4af37]/25 flex items-start justify-between gap-3"
+                <h3 className="text-sm font-bold text-[#e5c158] uppercase tracking-wider">
+                  Tambah Data Ustadz / Ustadzah
+                </h3>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nama Lengkap & Gelar"
+                  value={ustadzForm.nama || ''}
+                  onChange={(e) => setUstadzForm({ ...ustadzForm, nama: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <select
+                    value={ustadzForm.gender || 'ustadz'}
+                    onChange={(e) => setUstadzForm({ ...ustadzForm, gender: e.target.value as any })}
+                    className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                  >
+                    <option value="ustadz">Ustadz (Putra)</option>
+                    <option value="ustadzah">Ustadzah (Putri)</option>
+                  </select>
+                  <select
+                    value={ustadzForm.statusMukim || 'Mukim'}
+                    onChange={(e) => setUstadzForm({ ...ustadzForm, statusMukim: e.target.value as any })}
+                    className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#e5c158] font-bold"
+                  >
+                    <option value="Mukim">Status: Mukim</option>
+                    <option value="Laju">Status: Laju (PP)</option>
+                  </select>
+                </div>
+                <input
+                  type="text"
+                  placeholder="NIP / Kode Asatidz"
+                  value={ustadzForm.nip || ''}
+                  onChange={(e) => setUstadzForm({ ...ustadzForm, nip: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#e5c158] font-mono"
+                />
+                <input
+                  type="text"
+                  placeholder="Jabatan Kepengurusan"
+                  value={ustadzForm.jabatan || ''}
+                  onChange={(e) => setUstadzForm({ ...ustadzForm, jabatan: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                />
+                <input
+                  type="text"
+                  placeholder="Bidang Kitab / Mata Pelajaran"
+                  value={ustadzForm.bidangKitab || ''}
+                  onChange={(e) => setUstadzForm({ ...ustadzForm, bidangKitab: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="No. WhatsApp"
+                    value={ustadzForm.noWa || ''}
+                    onChange={(e) => setUstadzForm({ ...ustadzForm, noWa: e.target.value })}
+                    className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Jadwal Piket / Mengajar"
+                    value={ustadzForm.jadwalPiket || ''}
+                    onChange={(e) => setUstadzForm({ ...ustadzForm, jadwalPiket: e.target.value })}
+                    className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-bold text-xs cursor-pointer"
                 >
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2 py-0.5 rounded bg-[#d4af37]/20 text-[#e5c158] font-mono text-[10px] font-bold">
-                        {u.nip}
-                      </span>
-                      <span className="text-[10px] uppercase font-bold text-emerald-300">
-                        {u.gender === 'ustadz' ? 'Ustadz' : 'Ustadzah'}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/40 text-[10px] font-mono font-bold text-emerald-200">
-                        {u.statusMukim || 'Mukim'}
-                      </span>
+                  Simpan Data Ustadz/Ustadzah
+                </button>
+              </form>
+
+              <div className="lg:col-span-8 rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#e5c158]">
+                  Direktori Ustadz, Ustadzah &amp; Jadwal Tugas ({ustadzList.length} Personil)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {ustadzList.map((u) => (
+                    <div
+                      key={u.id}
+                      className="p-4 rounded-2xl bg-[#031810] border border-[#d4af37]/25 flex items-start justify-between gap-3"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded bg-[#d4af37]/20 text-[#e5c158] font-mono text-[10px] font-bold">
+                            {u.nip}
+                          </span>
+                          <span className="text-[10px] uppercase font-bold text-emerald-300">
+                            {u.gender === 'ustadz' ? 'Ustadz' : 'Ustadzah'}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/40 text-[10px] font-mono font-bold text-emerald-200">
+                            {u.statusMukim || 'Mukim'}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-[#f4f9f5] mt-1">{u.nama}</h4>
+                        <p className="text-xs text-[#e5c158] font-medium">{u.jabatan}</p>
+                        <p className="text-[11px] text-[#d1e7da] mt-1">Kitab/Bidang: {u.bidangKitab}</p>
+                        <p className="text-[10px] text-[#9ec5b0] font-mono mt-1">
+                          Jadwal: {u.jadwalPiket} · WA: {u.noWa}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteUstadz(u.id)}
+                        className="p-1.5 rounded-lg bg-red-950/60 text-red-300 hover:bg-red-900 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <h4 className="text-sm font-bold text-[#f4f9f5] mt-1">{u.nama}</h4>
-                    <p className="text-xs text-[#e5c158] font-medium">{u.jabatan}</p>
-                    <p className="text-[11px] text-[#d1e7da] mt-1">Kitab/Bidang: {u.bidangKitab}</p>
-                    <p className="text-[10px] text-[#9ec5b0] font-mono mt-1">
-                      Jadwal: {u.jadwalPiket} · WA: {u.noWa}
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 2 KOLOM TABEL DI BAWAHNYA: TABEL 1 USTADZ & USTADZAH MUKIM, TABEL 2 USTADZ & USTADZAH LAJU */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {/* Tabel 1: Ustadz & Ustadzah Mukim */}
+              <div className="rounded-3xl bg-[#052419]/95 border border-emerald-500/40 p-5 space-y-3 shadow-xl">
+                <div className="flex items-center justify-between gap-2 border-b border-emerald-800/60 pb-3">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-emerald-400" />
+                      <span>Tabel 1: Ustadz &amp; Ustadzah Mukim ({ustadzMukimList.length})</span>
+                    </h3>
+                    <p className="text-[11px] text-[#9ec5b0] mt-0.5">
+                      Tenaga pengajar dan pengurus yang bermukim di lingkungan pondok.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteUstadz(u.id)}
-                    className="p-1.5 rounded-lg bg-red-950/60 text-red-300 hover:bg-red-900 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-mono text-[10px] font-bold">
+                    MUKIM
+                  </span>
                 </div>
-              ))}
+                <div className="overflow-x-auto rounded-2xl border border-emerald-800/50 bg-[#031810]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-emerald-800/60 text-emerald-300 uppercase text-[10px] font-mono bg-[#02110b]">
+                        <th className="py-2.5 px-3 text-center">No</th>
+                        <th className="py-2.5 px-3">Nama &amp; NIP</th>
+                        <th className="py-2.5 px-3">Jabatan &amp; Kitab</th>
+                        <th className="py-2.5 px-3">Jadwal &amp; WA</th>
+                        <th className="py-2.5 px-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-emerald-900/50">
+                      {ustadzMukimList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-6 px-3 text-center text-[#9ec5b0]">
+                            Belum ada data Ustadz/Ustadzah Mukim.
+                          </td>
+                        </tr>
+                      ) : (
+                        ustadzMukimList.map((u, idx) => (
+                          <tr key={u.id} className="hover:bg-[#072e20]/60 align-top">
+                            <td className="py-2.5 px-3 text-center font-mono text-emerald-300">{idx + 1}</td>
+                            <td className="py-2.5 px-3">
+                              <div className="font-bold text-white">{u.nama}</div>
+                              <div className="text-[10px] font-mono text-[#e5c158]">
+                                {u.nip} · {u.gender === 'ustadz' ? 'Ustadz' : 'Ustadzah'}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="font-semibold text-emerald-200">{u.jabatan}</div>
+                              <div className="text-[11px] text-[#9ec5b0]">{u.bidangKitab}</div>
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-[#d1e7da]">
+                              <div>{u.jadwalPiket}</div>
+                              <div className="text-[10px] text-emerald-300">{u.noWa}</div>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUstadz(u.id)}
+                                className="p-1.5 rounded-lg bg-red-950/60 text-red-300 hover:bg-red-900 cursor-pointer"
+                                title="Hapus Data"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Tabel 2: Ustadz & Ustadzah Laju */}
+              <div className="rounded-3xl bg-[#052419]/95 border border-[#d4af37]/40 p-5 space-y-3 shadow-xl">
+                <div className="flex items-center justify-between gap-2 border-b border-[#d4af37]/25 pb-3">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-[#e5c158]" />
+                      <span>Tabel 2: Ustadz &amp; Ustadzah Laju ({ustadzLajuList.length})</span>
+                    </h3>
+                    <p className="text-[11px] text-[#9ec5b0] mt-0.5">
+                      Tenaga pengajar dan asatidz pulang-pergi (Laju / PP).
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-[#d4af37]/15 border border-[#d4af37]/40 text-[#f3d266] font-mono text-[10px] font-bold">
+                    LAJU (PP)
+                  </span>
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-[#d4af37]/25 bg-[#031810]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-[#d4af37]/30 text-[#e5c158] uppercase text-[10px] font-mono bg-[#02110b]">
+                        <th className="py-2.5 px-3 text-center">No</th>
+                        <th className="py-2.5 px-3">Nama &amp; NIP</th>
+                        <th className="py-2.5 px-3">Jabatan &amp; Kitab</th>
+                        <th className="py-2.5 px-3">Jadwal &amp; WA</th>
+                        <th className="py-2.5 px-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#d4af37]/15">
+                      {ustadzLajuList.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-6 px-3 text-center text-[#9ec5b0]">
+                            Belum ada data Ustadz/Ustadzah Laju.
+                          </td>
+                        </tr>
+                      ) : (
+                        ustadzLajuList.map((u, idx) => (
+                          <tr key={u.id} className="hover:bg-[#072e20]/60 align-top">
+                            <td className="py-2.5 px-3 text-center font-mono text-[#e5c158]">{idx + 1}</td>
+                            <td className="py-2.5 px-3">
+                              <div className="font-bold text-white">{u.nama}</div>
+                              <div className="text-[10px] font-mono text-[#e5c158]">
+                                {u.nip} · {u.gender === 'ustadz' ? 'Ustadz' : 'Ustadzah'}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="font-semibold text-[#f3d266]">{u.jabatan}</div>
+                              <div className="text-[11px] text-[#9ec5b0]">{u.bidangKitab}</div>
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-[#d1e7da]">
+                              <div>{u.jadwalPiket}</div>
+                              <div className="text-[10px] text-emerald-300">{u.noWa}</div>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUstadz(u.id)}
+                                className="p-1.5 rounded-lg bg-red-950/60 text-red-300 hover:bg-red-900 cursor-pointer"
+                                title="Hapus Data"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* TAB 5: NOTULEN RAPAT & KALENDER KEGIATAN PONDOK */}
       {activeTab === 'notulen_agenda' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <form
-            onSubmit={handleSaveNotulen}
-            className="lg:col-span-5 rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-3 text-xs"
-          >
-            <h3 className="text-sm font-bold text-[#e5c158] uppercase tracking-wider">
-              Catat Notulen Rapat Pengurus
-            </h3>
-            <input
-              type="text"
-              required
-              placeholder="Judul Rapat / Musyawarah"
-              value={notulenForm.judulRapat || ''}
-              onChange={(e) => setNotulenForm({ ...notulenForm, judulRapat: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="date"
-                value={notulenForm.tanggal || ''}
-                onChange={(e) => setNotulenForm({ ...notulenForm, tanggal: e.target.value })}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-              />
-              <input
-                type="text"
-                placeholder="Waktu (19:30 WIB)"
-                value={notulenForm.waktu || ''}
-                onChange={(e) => setNotulenForm({ ...notulenForm, waktu: e.target.value })}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Tempat Rapat"
-                value={notulenForm.tempat || ''}
-                onChange={(e) => setNotulenForm({ ...notulenForm, tempat: e.target.value })}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-              />
-              <input
-                type="text"
-                placeholder="Pimpinan Rapat"
-                value={notulenForm.pimpinanRapat || ''}
-                onChange={(e) => setNotulenForm({ ...notulenForm, pimpinanRapat: e.target.value })}
-                className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-              />
-            </div>
-            <textarea
-              rows={2}
-              placeholder="Pokok Bahasan / Agenda..."
-              value={notulenForm.agendaBahasan || ''}
-              onChange={(e) => setNotulenForm({ ...notulenForm, agendaBahasan: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-            />
-            <textarea
-              rows={4}
-              required
-              placeholder="Hasil Keputusan Musyawarah..."
-              value={notulenForm.hasilKeputusan || ''}
-              onChange={(e) => setNotulenForm({ ...notulenForm, hasilKeputusan: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-            />
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-bold text-xs cursor-pointer"
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <form
+              onSubmit={handleSaveNotulen}
+              className="lg:col-span-5 rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-3 text-xs"
             >
-              Simpan Arsip Notulen Rapat
-            </button>
-          </form>
-
-          <div className="lg:col-span-7 space-y-4">
-            <div className="rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#e5c158]">
-                Buku Notulen Rapat &amp; Kalender Agenda Pondok
+              <h3 className="text-sm font-bold text-[#e5c158] uppercase tracking-wider">
+                Catat Notulen Rapat Pengurus
               </h3>
-              {notulenList.map((n) => (
-                <div key={n.id} className="p-4 rounded-2xl bg-[#031810] border border-[#d4af37]/25 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#f4f9f5]">{n.judulRapat}</span>
-                    <span className="text-[10px] font-mono text-[#e5c158]">
-                      {n.tanggal} · {n.waktu}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#9ec5b0]">
-                    Pimpinan: {n.pimpinanRapat} · Tempat: {n.tempat}
-                  </p>
-                  <p className="text-xs text-[#d1e7da] bg-[#052419] p-2.5 rounded-xl border border-[#d4af37]/15">
-                    <strong>Keputusan:</strong> {n.hasilKeputusan}
-                  </p>
-                </div>
-              ))}
-              {agendaList.slice(0, 4).map((ag) => (
-                <div key={ag.id} className="p-3 rounded-xl bg-[#031810]/70 border border-emerald-500/25 flex items-center justify-between text-xs">
-                  <div>
-                    <p className="font-bold text-emerald-200">{ag.judul}</p>
-                    <p className="text-[10px] text-[#9ec5b0]">
-                      {ag.tempat} · Divisi: {ag.divisiTerkait}
+              <p className="text-[11px] text-[#9ec5b0]">
+                Setelah disimpan, notulen rapat otomatis dibagikan ke Kotak Masuk &amp; Notifikasi Dashboard seluruh pengurus.
+              </p>
+              <input
+                type="text"
+                required
+                placeholder="Judul Rapat / Musyawarah"
+                value={notulenForm.judulRapat || ''}
+                onChange={(e) => setNotulenForm({ ...notulenForm, judulRapat: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={notulenForm.tanggal || ''}
+                  onChange={(e) => setNotulenForm({ ...notulenForm, tanggal: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                />
+                <input
+                  type="text"
+                  placeholder="Waktu (19:30 WIB)"
+                  value={notulenForm.waktu || ''}
+                  onChange={(e) => setNotulenForm({ ...notulenForm, waktu: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Tempat Rapat"
+                  value={notulenForm.tempat || ''}
+                  onChange={(e) => setNotulenForm({ ...notulenForm, tempat: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                />
+                <input
+                  type="text"
+                  placeholder="Pimpinan Rapat"
+                  value={notulenForm.pimpinanRapat || ''}
+                  onChange={(e) => setNotulenForm({ ...notulenForm, pimpinanRapat: e.target.value })}
+                  className="px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#e5c158] mb-1">
+                  Peserta / Pengurus yang Hadir
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  placeholder="Tulis siapa saja yang hadir (contoh: Ketua Pondok, Sekretaris, Bendahara, Perlengkapan, Ketua Keamanan...)"
+                  value={notulenForm.pesertaHadir || ''}
+                  onChange={(e) => setNotulenForm({ ...notulenForm, pesertaHadir: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                />
+              </div>
+              <textarea
+                rows={2}
+                placeholder="Inti / Pokok Bahasan Rapat..."
+                value={notulenForm.agendaBahasan || ''}
+                onChange={(e) => setNotulenForm({ ...notulenForm, agendaBahasan: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+              />
+              <textarea
+                rows={4}
+                required
+                placeholder="Hasil Keputusan Musyawarah..."
+                value={notulenForm.hasilKeputusan || ''}
+                onChange={(e) => setNotulenForm({ ...notulenForm, hasilKeputusan: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+              />
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-bold text-xs cursor-pointer"
+              >
+                Simpan &amp; Bagikan Notulen Rapat ke Pengurus
+              </button>
+            </form>
+
+            <div className="lg:col-span-7 space-y-4">
+              <div className="rounded-3xl bg-[#052419]/95 border border-[#d4af37]/30 p-5 space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#e5c158]">
+                  Buku Notulen Rapat &amp; Kalender Agenda Pondok
+                </h3>
+                {notulenList.map((n) => (
+                  <div key={n.id} className="p-4 rounded-2xl bg-[#031810] border border-[#d4af37]/25 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-[#f4f9f5]">{n.judulRapat}</span>
+                      <span className="text-[10px] font-mono text-[#e5c158] shrink-0">
+                        {n.tanggal} · {n.waktu}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#9ec5b0]">
+                      Pimpinan: {n.pimpinanRapat} · Tempat: {n.tempat}
+                    </p>
+                    {n.pesertaHadir && (
+                      <p className="text-[11px] text-emerald-300">
+                        <strong>Yang Hadir:</strong> {n.pesertaHadir}
+                      </p>
+                    )}
+                    <p className="text-xs text-[#d1e7da] bg-[#052419] p-2.5 rounded-xl border border-[#d4af37]/15 whitespace-pre-line">
+                      <strong>Keputusan:</strong> {n.hasilKeputusan}
                     </p>
                   </div>
-                  <span className="font-mono text-[11px] text-[#e5c158]">{ag.tanggal}</span>
-                </div>
-              ))}
+                ))}
+                {agendaList.slice(0, 4).map((ag) => (
+                  <div key={ag.id} className="p-3 rounded-xl bg-[#031810]/70 border border-emerald-500/25 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-emerald-200">{ag.judul}</p>
+                      <p className="text-[10px] text-[#9ec5b0]">
+                        {ag.tempat} · Divisi: {ag.divisiTerkait}
+                      </p>
+                    </div>
+                    <span className="font-mono text-[11px] text-[#e5c158]">{ag.tanggal}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* TABEL RIWAYAT NOTULENSI (CUKUP INTI PEMBAHASAN SAJA) */}
+          <div className="rounded-3xl bg-[#052419]/95 border border-[#d4af37]/40 p-5 space-y-3 shadow-xl">
+            <div className="flex items-center justify-between gap-2 border-b border-[#d4af37]/25 pb-3">
+              <div>
+                <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                  <History className="w-4 h-4 text-[#e5c158]" />
+                  <span>Tabel Riwayat Notulensi Rapat ({notulenList.length})</span>
+                </h3>
+                <p className="text-[11px] text-[#9ec5b0] mt-0.5">
+                  Ringkasan inti pembahasan dari setiap rapat yang telah dilaksanakan.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-2xl border border-[#d4af37]/25 bg-[#031810]">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-[#d4af37]/30 text-[#e5c158] uppercase text-[10px] font-mono bg-[#02110b]">
+                    <th className="py-2.5 px-3 text-center w-12">No</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap w-36">Tanggal</th>
+                    <th className="py-2.5 px-3 w-1/3">Judul Rapat</th>
+                    <th className="py-2.5 px-3">Inti Pembahasan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#d4af37]/15">
+                  {notulenList.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 px-4 text-center text-[#9ec5b0]">
+                        Belum ada riwayat notulensi rapat.
+                      </td>
+                    </tr>
+                  ) : (
+                    notulenList.map((n, idx) => (
+                      <tr key={n.id} className="hover:bg-[#072e20]/60 align-top">
+                        <td className="py-3 px-3 text-center font-mono text-emerald-300">{idx + 1}</td>
+                        <td className="py-3 px-3 font-mono text-[#e5c158] whitespace-nowrap">
+                          {n.tanggal}
+                        </td>
+                        <td className="py-3 px-3 font-bold text-white">{n.judulRapat}</td>
+                        <td className="py-3 px-3 text-[#d1e7da] whitespace-pre-line">
+                          {n.agendaBahasan && n.agendaBahasan !== '-' ? n.agendaBahasan : n.hasilKeputusan}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -3302,7 +3518,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-bold text-xs shadow-lg cursor-pointer"
                 >
-                  Simpan Semua Pengaturan
+                  Simpan Pengaturan Surat
                 </button>
               </div>
 
@@ -3546,106 +3762,34 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                 </div>
               </div>
 
-              {/* C. TANDA TANGAN DIGITAL MELALUI LINK URL */}
+              {/* C. PENGATURAN TANDA TANGAN & IDENTITAS PEJABAT SURAT */}
               <div className="p-4 rounded-2xl bg-[#031810] border border-[#d4af37]/40 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <h4 className="text-xs font-bold text-[#e5c158] uppercase tracking-wider flex items-center gap-1.5">
-                    <Link2 className="w-4 h-4" />
-                    <span>3. Kolom Tanda Tangan &amp; Link URL Tanda Tangan Digital</span>
+                    <FileSignature className="w-4 h-4" />
+                    <span>3. Pengaturan Tanda Tangan &amp; Identitas Pejabat Surat</span>
                   </h4>
                   <button
                     type="button"
                     onClick={() =>
                       setKopForm((prev) => ({
                         ...prev,
-                        ttdUrl1: INITIAL_SURAT_SEKRETARIS_CONFIG.ttdUrl1,
-                        ttdUrl2: INITIAL_SURAT_SEKRETARIS_CONFIG.ttdUrl2,
+                        ttdUrl1: '',
+                        ttdUrl2: '',
                       }))
                     }
                     className="text-[10px] font-mono text-emerald-300 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <RotateCcw className="w-3 h-3" />
-                    <span>Gunakan TTD Default</span>
+                    <span>Kosongkan Gambar TTD (TTD Basah)</span>
                   </button>
                 </div>
 
-                {/* Penandatangan 1: Sekretaris */}
-                <div className="p-3.5 rounded-xl bg-[#052419] border border-[#d4af37]/30 space-y-2.5">
-                  <p className="text-[11px] font-bold text-white">
-                    Penandatangan 1 (Sebelah Kanan - Sekretaris Pondok)
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[#9ec5b0] text-[10px] mb-1">Jabatan Penandatangan 1</label>
-                      <input
-                        type="text"
-                        value={kopForm.jabatanPenandatangan}
-                        onChange={(e) => setKopForm({ ...kopForm, jabatanPenandatangan: e.target.value })}
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[#9ec5b0] text-[10px] mb-1">Nama Lengkap &amp; Gelar</label>
-                      <input
-                        type="text"
-                        value={kopForm.namaPenandatangan}
-                        onChange={(e) => setKopForm({ ...kopForm, namaPenandatangan: e.target.value })}
-                        className="w-full px-3 py-1.5 rounded-lg bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5] font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[#e5c158] font-bold text-[11px] mb-1">
-                      Link URL Gambar Tanda Tangan Digital 1 (Sekretaris)
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        placeholder="Tempel Link URL Gambar Tanda Tangan (https://... atau data:image/...)"
-                        value={kopForm.ttdUrl1 || ''}
-                        onChange={(e) => setKopForm({ ...kopForm, ttdUrl1: e.target.value })}
-                        className="flex-1 px-3 py-1.5 rounded-lg bg-[#031810] border border-[#d4af37]/40 text-[#e5c158] font-mono text-[11px]"
-                      />
-                      <label className="px-3 py-1.5 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/40 text-[#f3d266] text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer shrink-0">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Upload TTD 1</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) =>
-                            handleUploadImageToField(e, (dataUrl) =>
-                              setKopForm((prev) => ({ ...prev, ttdUrl1: dataUrl }))
-                            )
-                          }
-                        />
-                      </label>
-                    </div>
-                    {kopForm.ttdUrl1 && (
-                      <div className="mt-2 p-2 rounded-lg bg-white flex items-center justify-between">
-                        <img
-                          src={kopForm.ttdUrl1}
-                          alt="Preview TTD 1"
-                          className="h-10 object-contain"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setKopForm({ ...kopForm, ttdUrl1: '' })}
-                          className="text-[10px] font-bold text-red-600 hover:underline px-2 cursor-pointer"
-                        >
-                          Hapus TTD 1
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Penandatangan 2: Ketua Pondok */}
+                {/* Pejabat 1: Ketua Pondok */}
                 <div className="p-3.5 rounded-xl bg-[#052419] border border-[#d4af37]/30 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <p className="text-[11px] font-bold text-white">
-                      Penandatangan 2 (Sebelah Kiri - Ketua Pondok / Mengetahui)
+                      Ketua Pondok Pesantren (Sebelah Kiri / Mengetahui)
                     </p>
                     <label className="inline-flex items-center gap-1.5 text-emerald-300 cursor-pointer">
                       <input
@@ -3659,7 +3803,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
-                      <label className="block text-[#9ec5b0] text-[10px] mb-1">Jabatan Penandatangan 2</label>
+                      <label className="block text-[#9ec5b0] text-[10px] mb-1">Jabatan Ketua Pondok</label>
                       <input
                         type="text"
                         value={kopForm.jabatanPenandatangan2}
@@ -3668,9 +3812,12 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-[#9ec5b0] text-[10px] mb-1">Nama Lengkap &amp; Gelar Ketua Pondok</label>
+                      <label className="block text-[#9ec5b0] text-[10px] mb-1">
+                        Nama Lengkap &amp; Gelar Ketua Pondok
+                      </label>
                       <input
                         type="text"
+                        placeholder="Contoh: K.H. Ahmad Faqih Al-Maliki"
                         value={kopForm.namaPenandatangan2}
                         onChange={(e) => setKopForm({ ...kopForm, namaPenandatangan2: e.target.value })}
                         className="w-full px-3 py-1.5 rounded-lg bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5] font-bold"
@@ -3680,46 +3827,121 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
 
                   <div>
                     <label className="block text-[#e5c158] font-bold text-[11px] mb-1">
-                      Link URL Gambar Tanda Tangan Digital 2 (Ketua Pondok)
+                      Link / Gambar Tanda Tangan Ketua Pondok (URL atau Upload PNG/JPG)
                     </label>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
-                        placeholder="Tempel Link URL Gambar Tanda Tangan 2 (https://... atau data:image/...)"
+                        placeholder="Tempel Link URL Tanda Tangan Ketua atau gunakan tombol Upload di samping"
                         value={kopForm.ttdUrl2 || ''}
                         onChange={(e) => setKopForm({ ...kopForm, ttdUrl2: e.target.value })}
                         className="flex-1 px-3 py-1.5 rounded-lg bg-[#031810] border border-[#d4af37]/40 text-[#e5c158] font-mono text-[11px]"
                       />
-                      <label className="px-3 py-1.5 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/40 text-[#f3d266] text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer shrink-0">
+                      <label className="px-3 py-1.5 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/40 text-[#f3d266] text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
                         <Upload className="w-3.5 h-3.5" />
-                        <span>Upload TTD 2</span>
+                        <span>Upload Gambar Tanda Tangan (PNG/JPG)</span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/png,image/jpeg,image/jpg,image/*"
                           className="hidden"
-                          onChange={(e) =>
-                            handleUploadImageToField(e, (dataUrl) =>
-                              setKopForm((prev) => ({ ...prev, ttdUrl2: dataUrl }))
-                            )
-                          }
+                          onChange={(e) => void handleUploadSignatureImage('ketua', e)}
                         />
                       </label>
                     </div>
-                    {kopForm.ttdUrl2 && (
+                    {kopForm.ttdUrl2 ? (
                       <div className="mt-2 p-2 rounded-lg bg-white flex items-center justify-between">
                         <img
                           src={kopForm.ttdUrl2}
-                          alt="Preview TTD 2"
-                          className="h-10 object-contain"
+                          alt="Preview TTD Ketua Pondok"
+                          style={{ height: '56px', objectFit: 'contain' }}
                         />
                         <button
                           type="button"
                           onClick={() => setKopForm({ ...kopForm, ttdUrl2: '' })}
                           className="text-[10px] font-bold text-red-600 hover:underline px-2 cursor-pointer"
                         >
-                          Hapus TTD 2
+                          Hapus TTD Ketua
                         </button>
                       </div>
+                    ) : (
+                      <p className="mt-1.5 text-[10px] text-[#9ec5b0] italic">
+                        Kosong — area tanda tangan basah setinggi 65px akan disediakan rapi pada surat.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pejabat 2: Sekretaris */}
+                <div className="p-3.5 rounded-xl bg-[#052419] border border-[#d4af37]/30 space-y-2.5">
+                  <p className="text-[11px] font-bold text-white">
+                    Sekretaris Pondok (Sebelah Kanan)
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[#9ec5b0] text-[10px] mb-1">Jabatan Sekretaris</label>
+                      <input
+                        type="text"
+                        value={kopForm.jabatanPenandatangan}
+                        onChange={(e) => setKopForm({ ...kopForm, jabatanPenandatangan: e.target.value })}
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#9ec5b0] text-[10px] mb-1">
+                        Nama Lengkap &amp; Gelar Sekretaris
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Ustadz Muhammad Yusuf, S.Pd"
+                        value={kopForm.namaPenandatangan}
+                        onChange={(e) => setKopForm({ ...kopForm, namaPenandatangan: e.target.value })}
+                        className="w-full px-3 py-1.5 rounded-lg bg-[#031810] border border-[#d4af37]/30 text-[#f4f9f5] font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[#e5c158] font-bold text-[11px] mb-1">
+                      Link / Gambar Tanda Tangan Sekretaris (URL atau Upload PNG/JPG)
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        placeholder="Tempel Link URL Tanda Tangan Sekretaris atau gunakan tombol Upload di samping"
+                        value={kopForm.ttdUrl1 || ''}
+                        onChange={(e) => setKopForm({ ...kopForm, ttdUrl1: e.target.value })}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-[#031810] border border-[#d4af37]/40 text-[#e5c158] font-mono text-[11px]"
+                      />
+                      <label className="px-3 py-1.5 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/40 text-[#f3d266] text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Gambar Tanda Tangan (PNG/JPG)</span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/*"
+                          className="hidden"
+                          onChange={(e) => void handleUploadSignatureImage('sekretaris', e)}
+                        />
+                      </label>
+                    </div>
+                    {kopForm.ttdUrl1 ? (
+                      <div className="mt-2 p-2 rounded-lg bg-white flex items-center justify-between">
+                        <img
+                          src={kopForm.ttdUrl1}
+                          alt="Preview TTD Sekretaris"
+                          style={{ height: '56px', objectFit: 'contain' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setKopForm({ ...kopForm, ttdUrl1: '' })}
+                          className="text-[10px] font-bold text-red-600 hover:underline px-2 cursor-pointer"
+                        >
+                          Hapus TTD Sekretaris
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="mt-1.5 text-[10px] text-[#9ec5b0] italic">
+                        Kosong — area tanda tangan basah setinggi 65px akan disediakan rapi pada surat.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -3741,6 +3963,17 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                     />
                     <span>Tampilkan Kalimat Bismillah di Kop</span>
                   </label>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => persistPengaturanSurat(kopForm)}
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-extrabold text-xs shadow-lg flex items-center justify-center gap-2 border border-emerald-300/40 cursor-pointer"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>Simpan Pengaturan Surat</span>
+                  </button>
                 </div>
               </div>
 
@@ -3830,7 +4063,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                   type="submit"
                   className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-bold text-xs shadow-lg cursor-pointer"
                 >
-                  Simpan Permanen Format Surat &amp; Sinkronkan Database
+                  Simpan Pengaturan Surat
                 </button>
               </div>
             </form>
@@ -3846,7 +4079,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                   <button
                     type="button"
                     onClick={async () => {
-                      const html = await buildPrintableSuratHtml(samplePreviewSurat, kopForm, selectedTemplateEditKode);
+                      const html = await buildPrintableSuratHtml(samplePreviewSurat, kopForm, selectedTemplateEditKode, true);
                       openPrintWindow(
                         `Pratinjau Cetak - ${selectedTemplateEditKode}`,
                         html,
@@ -3905,11 +4138,22 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                   </button>
                 </div>
               </div>
-              {renderA4PaperPreview(kopForm, samplePreviewSurat, selectedTemplateEditKode, 'sekretaris-editor-a4-preview')}
+              {renderA4PaperPreview(kopForm, samplePreviewSurat, selectedTemplateEditKode, 'sekretaris-editor-a4-preview', true)}
             </div>
           </div>
         );
       })()}
+
+      {toastMsg && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 right-5 z-50 max-w-md px-4 py-3 rounded-2xl bg-emerald-600 text-white border border-emerald-300 shadow-2xl text-xs font-extrabold flex items-center gap-2.5 no-print"
+        >
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
 
       <ScanSuratModal
         isOpen={showScanModal}

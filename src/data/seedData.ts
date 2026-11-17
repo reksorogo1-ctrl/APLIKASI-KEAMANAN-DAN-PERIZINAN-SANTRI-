@@ -208,7 +208,7 @@ export const INITIAL_SURAT_SEKRETARIS_CONFIG: SuratSekretarisConfig = {
       judulDefault: 'SURAT PENGANTAR DOKUMEN / DELEGASI',
       salamPembuka: 'Assalamu\'alaikum Warahmatullahi Wabarakatuh.',
       kalimatPembuka: 'Bersama surat ini kami mengantarkan berkas/dokumen serta perwakilan resmi Pondok Pesantren Salaf Al-Maliki kepada Bapak/Ibu:',
-      isiTemplate: 'Jenis Kiriman  : Berkas Administrasi Akreditasi & Data Induk Santri Tahun 2026\nJumlah Berkas  : 1 (Satu) Bundel Lengkap\nPembawa Berkas : Ustadz Muhammad Yusuf, S.Pd (Sekretaris Umum)\nKeterangan     : Disampaikan untuk diproses dan ditindaklanjuti sebagaimana mestinya.',
+      isiTemplate: 'Jenis Kiriman  : Berkas Administrasi Akreditasi & Data Induk Santri Tahun 2026\nJumlah Berkas  : 1 (Satu) Bundel Lengkap\nPembawa Berkas : Sekretaris Umum / Utusan Pondok\nKeterangan     : Disampaikan untuk diproses dan ditindaklanjuti sebagaimana mestinya.',
       kalimatPenutup: 'Atas perhatian dan kerjasamanya kami sampaikan terima kasih. Wassalamu\'alaikum Warahmatullahi Wabarakatuh.',
       catatanKaki: 'Harap tanda tangan bukti penerimaan jika diperlukan.'
     },
