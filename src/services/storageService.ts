@@ -40,7 +40,10 @@ import {
   INITIAL_TRANSAKSI_KEUANGAN,
   INITIAL_BARANG_INVENTARIS,
   INITIAL_PEMINJAMAN_BARANG,
-  INITIAL_BENDAHARA_CONFIG
+  INITIAL_BENDAHARA_CONFIG,
+  INITIAL_FASILITAS_GEDUNG_LIST,
+  INITIAL_PERLENGKAPAN_CONFIG,
+  INITIAL_PUSAT_INFORMASI_LIST
 } from '../data/seedData';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import {
@@ -252,6 +255,16 @@ class StorageService {
         mutasiBarangList: parsedCfg.mutasiBarangList?.length ? parsedCfg.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
         jadwalPerbaikanList: parsedCfg.jadwalPerbaikanList?.length ? parsedCfg.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
         kamarSantriList: parsedCfg.kamarSantriList?.length ? parsedCfg.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
+        fasilitasGedungList: Array.isArray(parsedCfg.fasilitasGedungList)
+          ? parsedCfg.fasilitasGedungList
+          : INITIAL_FASILITAS_GEDUNG_LIST,
+        perlengkapanConfig: {
+          ...INITIAL_PERLENGKAPAN_CONFIG,
+          ...(parsedCfg.perlengkapanConfig || {}),
+        },
+        pusatInformasiList: Array.isArray(parsedCfg.pusatInformasiList)
+          ? parsedCfg.pusatInformasiList
+          : INITIAL_PUSAT_INFORMASI_LIST,
         suratSekretarisConfig: applyPengaturanSuratToConfig({
           ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
           ...(parsedCfg.suratSekretarisConfig || {}),
@@ -634,6 +647,16 @@ class StorageService {
               mutasiBarangList: cloudData.mutasiBarangList?.length ? cloudData.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
               jadwalPerbaikanList: cloudData.jadwalPerbaikanList?.length ? cloudData.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
               kamarSantriList: cloudData.kamarSantriList?.length ? cloudData.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
+              fasilitasGedungList: Array.isArray(cloudData.fasilitasGedungList)
+                ? cloudData.fasilitasGedungList
+                : INITIAL_FASILITAS_GEDUNG_LIST,
+              perlengkapanConfig: {
+                ...INITIAL_PERLENGKAPAN_CONFIG,
+                ...(cloudData.perlengkapanConfig || {}),
+              },
+              pusatInformasiList: Array.isArray(cloudData.pusatInformasiList)
+                ? cloudData.pusatInformasiList
+                : INITIAL_PUSAT_INFORMASI_LIST,
               suratSekretarisConfig: (() => {
                 const cloudSekCfg = {
                   ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,

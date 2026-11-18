@@ -18,8 +18,81 @@ import {
   TransaksiKeuangan,
   BarangInventaris,
   PeminjamanBarang,
-  BendaharaConfig
+  BendaharaConfig,
+  DataFasilitasGedung,
+  PerlengkapanConfig,
+  PusatInformasiItem
 } from '../types';
+
+export const INITIAL_PERLENGKAPAN_CONFIG: PerlengkapanConfig = {
+  namaUnitPerlengkapan: 'DIVISI PERLENGKAPAN, INVENTARIS & SARANA PRASARANA',
+  kepalaPerlengkapan: 'Ustadz Ahmad Fauzi',
+  jabatanKepala: 'Kepala Divisi Perlengkapan',
+  kategoriInventaris: [
+    'Elektronik',
+    'Meubel & Asrama',
+    'Dapur & Konsumsi',
+    'Ibadah & Kitab',
+    'Keamanan & Pos',
+    'Kebersihan & Umum',
+  ],
+  satuanList: ['Unit', 'Set', 'Buah', 'Pcs', 'Roll', 'Lembar', 'Paket'],
+};
+
+export const INITIAL_FASILITAS_GEDUNG_LIST: DataFasilitasGedung[] = [
+  {
+    id: 'gdg_a',
+    namaGedung: 'Gedung A (Asrama Putra Utama)',
+    kategoriGedung: 'Asrama Putra',
+    penanggungJawab: 'Ustadz Abdul Rohman, S.Pd.I',
+    daftarFasilitas: [
+      { id: 'fas_a1', namaFasilitas: 'Lampu LED Ruangan', jumlah: 24, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Terpasang di seluruh kamar & koridor' },
+      { id: 'fas_a2', namaFasilitas: 'Sound System Murottal', jumlah: 2, satuan: 'Set', kondisi: 'Baik', keterangan: 'Sentral lantai 1 & 2' },
+      { id: 'fas_a3', namaFasilitas: 'Microphone Wireless', jumlah: 2, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Pengumuman asrama' },
+      { id: 'fas_a4', namaFasilitas: 'Kipas Angin Dinding', jumlah: 10, satuan: 'Unit', kondisi: 'Baik', keterangan: '2 unit tiap kamar' },
+      { id: 'fas_a5', namaFasilitas: 'Lemari Kayu Jati Santri', jumlah: 24, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Kondisi terawat' },
+    ],
+  },
+  {
+    id: 'gdg_b',
+    namaGedung: 'Gedung B (Asrama Putri)',
+    kategoriGedung: 'Asrama Putri',
+    penanggungJawab: 'Ustadzah Khadijah Al-Munawwarah',
+    daftarFasilitas: [
+      { id: 'fas_b1', namaFasilitas: 'Lampu LED Ruangan', jumlah: 20, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Koridor & kamar santriwati' },
+      { id: 'fas_b2', namaFasilitas: 'Sound Murottal Asrama', jumlah: 1, satuan: 'Set', kondisi: 'Baik', keterangan: 'Ruang tengah asrama' },
+      { id: 'fas_b3', namaFasilitas: 'Microphone Kabel', jumlah: 2, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Taklim putri' },
+      { id: 'fas_b4', namaFasilitas: 'Dispenser Air Minum', jumlah: 4, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Air panas & dingin' },
+      { id: 'fas_b5', namaFasilitas: 'Kipas Angin Dinding', jumlah: 8, satuan: 'Unit', kondisi: 'Perlu Perbaikan', keterangan: '1 unit perlu servis' },
+    ],
+  },
+  {
+    id: 'gdg_c',
+    namaGedung: 'Gedung C (Madrasah & Kelas)',
+    kategoriGedung: 'Pendidikan',
+    penanggungJawab: 'Ustadz Muhammad Yusuf, S.Pd',
+    daftarFasilitas: [
+      { id: 'fas_c1', namaFasilitas: 'Lampu LED Kelas', jumlah: 18, satuan: 'Unit', kondisi: 'Baik', keterangan: '6 ruang kelas aktif' },
+      { id: 'fas_c2', namaFasilitas: 'Sound System Kelas', jumlah: 2, satuan: 'Set', kondisi: 'Baik', keterangan: 'Untuk pengajian kitab' },
+      { id: 'fas_c3', namaFasilitas: 'Microphone Wireless', jumlah: 4, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Asatidz pengajar' },
+      { id: 'fas_c4', namaFasilitas: 'Whiteboard & Papan Tulis', jumlah: 6, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Tiap kelas 1 unit' },
+      { id: 'fas_c5', namaFasilitas: 'Meja & Bangku Belajar', jumlah: 60, satuan: 'Set', kondisi: 'Baik', keterangan: 'Kayu jati standar' },
+    ],
+  },
+  {
+    id: 'gdg_d',
+    namaGedung: 'Gedung D (Aula Utama & Masjid)',
+    kategoriGedung: 'Ibadah & Aula',
+    penanggungJawab: 'Ustadz Ahmad Fauzi',
+    daftarFasilitas: [
+      { id: 'fas_d1', namaFasilitas: 'Lampu Sorot & Gantung', jumlah: 16, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Penerangan utama aula' },
+      { id: 'fas_d2', namaFasilitas: 'Sound System Utama', jumlah: 2, satuan: 'Set', kondisi: 'Baik', keterangan: 'Mixer 16 Channel + Speaker Aktif' },
+      { id: 'fas_d3', namaFasilitas: 'Microphone Wireless & Kabel', jumlah: 6, satuan: 'Unit', kondisi: 'Baik', keterangan: 'Mimbar & acara besar' },
+      { id: 'fas_d4', namaFasilitas: 'Karpet Sajadah Turki', jumlah: 12, satuan: 'Roll', kondisi: 'Baik', keterangan: 'Shaf jamaah utama' },
+      { id: 'fas_d5', namaFasilitas: 'Proyektor LCD & Layar', jumlah: 1, satuan: 'Set', kondisi: 'Baik', keterangan: 'Rapat & seminar pondok' },
+    ],
+  },
+];
 
 export const INITIAL_SURAT_SEKRETARIS_CONFIG: SuratSekretarisConfig = {
   kopNamaYayasan: 'YAYASAN PENDIDIKAN ISLAM SALAF AL-MALIKI',
@@ -248,6 +321,35 @@ export const INITIAL_BENDAHARA_CONFIG: BendaharaConfig = {
   ],
 };
 
+export const INITIAL_PUSAT_INFORMASI_LIST: PusatInformasiItem[] = [
+  {
+    id: 'pinf_001',
+    kategori: 'Pengumuman',
+    judul: 'Persiapan Imtihan Akhir Semester Ganjil & Penertiban Jadwal Muthalaah',
+    isi: 'Seluruh pengurus divisi diminta memastikan kesiapan ruang ujian, ketertiban jam belajar malam, dan rekap administrasi santri sebelum tanggal 20 November 2026.',
+    tanggal: '2026-11-15',
+    waktu: '08:00 WIB',
+    tempat: 'Seluruh Komplek Pondok',
+    pengirim: 'Admin Pusat / Pengasuh Pondok',
+    targetDivisi: 'Seluruh Pengurus',
+    prioritas: 'Penting',
+    createdAt: '2026-11-15',
+  },
+  {
+    id: 'pinf_002',
+    kategori: 'Undangan Masuk',
+    judul: 'Undangan Rapat Koordinasi Persiapan Haflah Akhirussanah & Bahtsul Masail',
+    isi: 'Mengharap kehadiran Ketua Pondok dan seluruh Kepala Divisi (Sekretaris, Bendahara, Perlengkapan, dan Keamanan) dalam forum musyawarah teknis kepanitiaan.',
+    tanggal: '2026-11-18',
+    waktu: '20:00 WIB',
+    tempat: 'Aula Majelis Ndalem Al-Maliki',
+    pengirim: 'Pengasuh Pondok Pesantren Salaf Al-Maliki',
+    targetDivisi: 'Seluruh Pengurus',
+    prioritas: 'Mendesak',
+    createdAt: '2026-11-15',
+  },
+];
+
 export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
   namaPondok: 'Pondok Pesantren Salaf Al-Maliki',
   logoUrl: 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png',
@@ -265,6 +367,7 @@ export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
   modeOperasiDarurat: false,
   bendaharaConfig: INITIAL_BENDAHARA_CONFIG,
   suratSekretarisConfig: INITIAL_SURAT_SEKRETARIS_CONFIG,
+  pusatInformasiList: INITIAL_PUSAT_INFORMASI_LIST,
   suratIzinLayout: {
     teksBismillah: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
     kopNamaInstansi: 'PONDOK PESANTREN SALAF AL-MALIKI',
@@ -901,6 +1004,8 @@ export const INITIAL_SYSTEM_CONFIG: SystemConfig = {
       kondisi: 'Baik',
     }
   ],
+  fasilitasGedungList: INITIAL_FASILITAS_GEDUNG_LIST,
+  perlengkapanConfig: INITIAL_PERLENGKAPAN_CONFIG,
 };
 
 export const INITIAL_USERS: UserAccount[] = [

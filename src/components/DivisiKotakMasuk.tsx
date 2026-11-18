@@ -21,6 +21,7 @@ import {
   UserAccount,
 } from '../types';
 import { storageService } from '../services/storageService';
+import { PusatInformasiSection } from './PusatInformasiSection';
 
 export type ViewerDivision = 'Sekretaris' | 'Bendahara' | 'Perlengkapan' | 'Keamanan';
 export type DivisiBucketKey =
@@ -346,6 +347,9 @@ export const DivisiKotakMasuk: React.FC<DivisiKotakMasukProps> = ({
 
   return (
     <div className="space-y-5">
+      {/* PUSAT INFORMASI TERPADU (KALENDER, PENGUMUMAN, UNDANGAN & NOTULENSI RAPAT) */}
+      <PusatInformasiSection viewerLabel={`Divisi ${viewerDivision}`} />
+
       {/* HEADER & FILTER BAR */}
       <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-emerald-800/70 pb-4">

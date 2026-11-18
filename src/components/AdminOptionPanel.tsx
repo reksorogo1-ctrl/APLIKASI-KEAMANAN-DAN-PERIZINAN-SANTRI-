@@ -32,11 +32,15 @@ import {
   Calendar,
   Clock,
   MapPin,
-  Bell
+  Bell,
+  Save,
+  Building2,
+  Megaphone,
+  Mail
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { syncPWAIdentity } from '../services/pwaSyncService';
-import { INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
+import { INITIAL_PUSAT_INFORMASI_LIST, INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
 import {
   SystemConfig,
   UserAccount,
@@ -48,6 +52,8 @@ import {
   SuratSekretarisConfig,
   AgendaPengurus,
   DivisiPondok,
+  PusatInformasiItem,
+  PusatInformasiKategori,
 } from '../types';
 
 interface AdminOptionPanelProps {
@@ -68,7 +74,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   onConfigUpdated,
 }) => {
   const effectiveAgendaList = propAgendaPengurus || storageService.getAgendaPengurus();
-  const [activeSubTab, setActiveSubTab] = useState<'control' | 'visual' | 'agenda_crud' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database'>('control');
+  const [activeSubTab, setActiveSubTab] = useState<'control' | 'visual' | 'agenda_crud' | 'pusat_informasi' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database'>('control');
   const [settingCategory, setSettingCategory] = useState<'all' | 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db'>('all');
   const [settingSearch, setSettingSearch] = useState('');
   const [selectedKodeSuratEdit, setSelectedKodeSuratEdit] = useState<KodeJenisSurat>('SK');
@@ -79,8 +85,24 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
-  // Agenda CRUD state
+  // Pusat Informasi (Pengumuman & Undangan Masuk) Admin-Only CRUD state
   const todayWibIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+  const pusatInformasiList: PusatInformasiItem[] =
+    systemConfig.pusatInformasiList || INITIAL_PUSAT_INFORMASI_LIST;
+  const [editingInfoId, setEditingInfoId] = useState<string | null>(null);
+  const [infoForm, setInfoForm] = useState<Partial<PusatInformasiItem>>({
+    kategori: 'Pengumuman',
+    judul: '',
+    isi: '',
+    tanggal: todayWibIso,
+    waktu: '08:00 WIB',
+    tempat: 'Aula Utama Pondok',
+    pengirim: 'Admin Pusat Al-Maliki',
+    targetDivisi: 'Seluruh Pengurus',
+    prioritas: 'Penting',
+  });
+
+  // Agenda CRUD state
   const [isAgendaModalOpen, setIsAgendaModalOpen] = useState(false);
   const [editingAgenda, setEditingAgenda] = useState<AgendaPengurus | null>(null);
   const [agendaForm, setAgendaForm] = useState<Partial<AgendaPengurus>>({
@@ -93,6 +115,28 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     status: 'Terjadwal',
     catatan: '',
   });
+
+  // RBAC Per-Division Search, Inline Quick Add & Inline Edit State
+  const [searchRbac, setSearchRbac] = useState('');
+  const [inlineRbacEditId, setInlineRbacEditId] = useState<string | null>(null);
+  const [inlineRbacEditData, setInlineRbacEditData] = useState<Partial<UserAccount>>({});
+  const [rbacQuickRows, setRbacQuickRows] = useState<
+    Record<
+      string,
+      {
+        nama: string;
+        jabatan: string;
+        nrp: string;
+        noWa: string;
+        pin: string;
+        username: string;
+        password: string;
+        role: UserRole;
+        genderAccess: 'all' | 'putra' | 'putri';
+        divisiLabel: string;
+      }
+    >
+  >({});
 
   // Search in CRUD tabs
   const [searchSantri, setSearchSantri] = useState('');
@@ -175,6 +219,8 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       syahriyahList: latest.syahriyahList,
       uangSakuList: latest.uangSakuList,
       anggaranList: latest.anggaranList,
+      pusatInformasiList: latest.pusatInformasiList,
+      notulenRapatList: latest.notulenRapatList,
     };
     storageService.updateSystemConfig(mergedWebsiteConfig);
     syncPWAIdentity(mergedWebsiteConfig);
@@ -391,7 +437,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   };
 
   const optionModules: {
-    key: 'control' | 'visual' | 'agenda_crud' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database';
+    key: 'control' | 'visual' | 'agenda_crud' | 'pusat_informasi' | 'surat_sekretaris_config' | 'santri_crud' | 'dewan_crud' | 'rbac' | 'database';
     category: 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db';
     categoryLabel: string;
     title: string;
@@ -407,7 +453,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       title: 'Operasional, Gerbang & Berita Website',
       subtitle: 'Kelola Berita & Informasi Terkini di Dashboard Utama, aturan gerbang, dan toleransi waktu.',
       badge: 'OPERASIONAL & BERITA',
-      keywords: 'berita informasi pengumuman maklumat dashboard gerbang operasional toleransi terlambat waktu wib',
+      keywords: 'berita informasi maklumat dashboard gerbang operasional toleransi terlambat waktu wib',
       icon: Sliders,
     },
     {
@@ -424,10 +470,10 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       key: 'agenda_crud',
       category: 'sistem',
       categoryLabel: 'Kalender & Notifikasi',
-      title: 'Agenda & Kalender Kegiatan Pondok',
-      subtitle: 'Buat, edit, dan jadwalkan agenda Masehi/Hijriah dengan notifikasi otomatis di hari-H.',
-      badge: `${effectiveAgendaList.length} AGENDA`,
-      keywords: 'agenda kalender kegiatan rapat pengajian jadwal hijriah masehi notifikasi hari ini',
+      title: 'Update Kalender & Agenda Kegiatan Pondok',
+      subtitle: 'Kelola Update Kalender (tampil otomatis di Pusat Informasi semua divisi & notifikasi hari-H).',
+      badge: `${effectiveAgendaList.length} KALENDER`,
+      keywords: 'agenda kalender update kalender kegiatan rapat pengajian jadwal hijriah masehi notifikasi pusat informasi',
       icon: Calendar,
     },
     {
@@ -480,11 +526,21 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       keywords: 'database backup restore json sinkronisasi cloud firestore reset',
       icon: Database,
     },
+    {
+      key: 'pusat_informasi',
+      category: 'sistem',
+      categoryLabel: 'Kalender & Notifikasi',
+      title: 'Pusat Informasi: Pengumuman & Undangan Masuk',
+      subtitle: 'Tambah, edit & hapus Pengumuman maupun Undangan Masuk yang tampil di Kotak Masuk seluruh divisi.',
+      badge: `${pusatInformasiList.length} INFO`,
+      keywords: 'pusat informasi pengumuman undangan masuk maklumat kotak masuk ketua sekretaris bendahara perlengkapan keamanan',
+      icon: Megaphone,
+    },
   ];
 
   const categoryTabs: { id: 'all' | 'sistem' | 'persuratan' | 'datamaster' | 'keamanan_db'; label: string; count: number }[] = [
     { id: 'all', label: 'Semua Pengaturan Website', count: optionModules.length },
-    { id: 'sistem', label: 'Visual, Kalender & PWA', count: 3 },
+    { id: 'sistem', label: 'Visual, Kalender & Informasi', count: 4 },
     { id: 'persuratan', label: 'Persuratan Sekretaris', count: 1 },
     { id: 'datamaster', label: 'Data Master Pondok', count: 2 },
     { id: 'keamanan_db', label: 'Hak Akses & Database', count: 2 },
@@ -1909,141 +1965,765 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
         </div>
       )}
 
-      {/* SUB-TAB 5: RBAC USER ACCOUNTS MANAGEMENT */}
-      {activeSubTab === 'rbac' && (
-        <div className="metallic-glass-card rounded-3xl p-6 border border-emerald-800/80 shadow-2xl space-y-4 hover-rainbow-edge">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
-                <KeyRound className="w-4 h-4 text-amber-400" />
-                Daftar Personil & Kredensial Hak Akses RBAC
-              </h3>
-              <p className="text-xs text-emerald-200/75 mt-1 font-mono">
-                Atur hak akses login, kata sandi, NRP, jabatan, dan kewenangan personil keamanan
-              </p>
+      {/* SUB-TAB 5: RBAC USER ACCOUNTS MANAGEMENT (TABEL PER DIVISI SESUAI DIVISI) */}
+      {activeSubTab === 'rbac' && (() => {
+        interface RbacDivisionDef {
+          key: string;
+          title: string;
+          subtitle: string;
+          defaultDivisi: string;
+          nrpPrefix: string;
+          jabatanPlaceholder: string;
+          roles: { value: UserRole; label: string }[];
+          matchUser: (u: UserAccount) => boolean;
+        }
+
+        const RBAC_DIVISIONS: RbacDivisionDef[] = [
+          {
+            key: 'admin',
+            title: 'Divisi Admin Pusat & Pengasuh',
+            subtitle: 'Otoritas kendali sistem pusat, RBAC, konfigurasi website, kalender, pengumuman & undangan masuk.',
+            defaultDivisi: 'Pusat Kendali & Pengasuh',
+            nrpPrefix: 'ADM',
+            jabatanPlaceholder: 'Cth: Super Administrator / Staf IT Pusat',
+            roles: [{ value: 'admin', label: 'Admin (Super Administrator)' }],
+            matchUser: (u) => u.role === 'admin',
+          },
+          {
+            key: 'ketua_pondok',
+            title: 'Divisi Ketua Pondok & Pimpinan',
+            subtitle: 'Pimpinan tertinggi operasional pondok, persetujuan divisi, evaluasi kinerja & koordinasi.',
+            defaultDivisi: 'Pimpinan Pondok',
+            nrpPrefix: 'KTP',
+            jabatanPlaceholder: 'Cth: Ketua Pondok / Wakil Ketua Pondok',
+            roles: [{ value: 'ketua_pondok', label: 'Ketua Pondok (Pimpinan)' }],
+            matchUser: (u) => u.role === 'ketua_pondok',
+          },
+          {
+            key: 'sekretaris',
+            title: 'Divisi Sekretaris & Persuratan',
+            subtitle: 'Persuratan 15 template resmi, buku induk santri, asatidz & pencatatan notulensi rapat.',
+            defaultDivisi: 'Kesekretariatan & Persuratan',
+            nrpPrefix: 'SEK',
+            jabatanPlaceholder: 'Cth: Sekretaris Umum / Staf Kearsipan',
+            roles: [{ value: 'sekretaris', label: 'Sekretaris Pondok' }],
+            matchUser: (u) => u.role === 'sekretaris',
+          },
+          {
+            key: 'bendahara',
+            title: 'Divisi Bendahara & Keuangan',
+            subtitle: 'Pengelolaan kas masuk/keluar, syahriyah santri, uang saku & laporan anggaran pondok.',
+            defaultDivisi: 'Keuangan & Kas Pondok',
+            nrpPrefix: 'BND',
+            jabatanPlaceholder: 'Cth: Bendahara Umum / Kasir Syahriyah',
+            roles: [{ value: 'bendahara', label: 'Bendahara Pondok' }],
+            matchUser: (u) => u.role === 'bendahara',
+          },
+          {
+            key: 'perlengkapan',
+            title: 'Divisi Perlengkapan & Sarpras',
+            subtitle: 'Inventaris barang, peminjaman aset, data fasilitas per gedung & jadwal pemeliharaan.',
+            defaultDivisi: 'Perlengkapan & Aset Pondok',
+            nrpPrefix: 'PRL',
+            jabatanPlaceholder: 'Cth: Kabag Perlengkapan / Teknisi Sarpras',
+            roles: [{ value: 'perlengkapan', label: 'Bagian Perlengkapan' }],
+            matchUser: (u) => u.role === 'perlengkapan',
+          },
+          {
+            key: 'keamanan',
+            title: 'Divisi Keamanan & Pos Gerbang',
+            subtitle: 'Dewan keamanan, kontrol gerbang keluar-masuk santri, scan QR izin, pelanggaran & takzir.',
+            defaultDivisi: 'Keamanan & Ketertiban',
+            nrpPrefix: 'KAMTIB',
+            jabatanPlaceholder: 'Cth: Ketua Keamanan / Patroli / Pos Gerbang',
+            roles: [
+              { value: 'ketua_keamanan', label: 'Ketua Keamanan' },
+              { value: 'anggota_keamanan', label: 'Anggota Keamanan' },
+              { value: 'petugas_gerbang', label: 'Petugas Pos Gerbang' },
+            ],
+            matchUser: (u) =>
+              u.role === 'ketua_keamanan' ||
+              u.role === 'anggota_keamanan' ||
+              u.role === 'petugas_gerbang',
+          },
+        ];
+
+        const qRbac = searchRbac.trim().toLowerCase();
+        const filteredUsersList = usersList.filter((u) => {
+          if (!qRbac) return true;
+          return (
+            u.nama.toLowerCase().includes(qRbac) ||
+            u.username.toLowerCase().includes(qRbac) ||
+            (u.jabatan || '').toLowerCase().includes(qRbac) ||
+            (u.divisi || '').toLowerCase().includes(qRbac) ||
+            (u.nrp || '').toLowerCase().includes(qRbac) ||
+            u.role.toLowerCase().includes(qRbac)
+          );
+        });
+
+        const getQuickRbacRow = (div: RbacDivisionDef, currentCount: number) => {
+          return (
+            rbacQuickRows[div.key] || {
+              nama: '',
+              jabatan: '',
+              nrp: `${div.nrpPrefix}-${String(currentCount + 1).padStart(3, '0')}`,
+              noWa: '0812',
+              pin: `${Math.floor(100000 + Math.random() * 900000)}`,
+              username: '',
+              password: '',
+              role: div.roles[0].value,
+              genderAccess: 'all' as const,
+              divisiLabel: div.defaultDivisi,
+            }
+          );
+        };
+
+        const patchQuickRbacRow = (
+          div: RbacDivisionDef,
+          currentCount: number,
+          patch: Partial<{
+            nama: string;
+            jabatan: string;
+            nrp: string;
+            noWa: string;
+            pin: string;
+            username: string;
+            password: string;
+            role: UserRole;
+            genderAccess: 'all' | 'putra' | 'putri';
+            divisiLabel: string;
+          }>
+        ) => {
+          const cur = getQuickRbacRow(div, currentCount);
+          setRbacQuickRows((prev) => ({
+            ...prev,
+            [div.key]: { ...cur, ...patch },
+          }));
+        };
+
+        const handleQuickAddRbac = (div: RbacDivisionDef, currentCount: number) => {
+          const row = getQuickRbacRow(div, currentCount);
+          if (!row.nama.trim() || !row.username.trim()) {
+            setSaveSuccessMsg(
+              `Nama Personil dan Username wajib diisi pada tabel ${div.title}.`
+            );
+            setTimeout(() => setSaveSuccessMsg(''), 3500);
+            return;
+          }
+          const cleanPin = (row.pin || '').replace(/\D/g, '').slice(0, 6);
+          const saved: UserAccount = {
+            id: `usr_${Date.now()}`,
+            username: row.username.trim().toLowerCase(),
+            password: row.password.trim() || 'almaliki123',
+            pin: cleanPin.length === 6 ? cleanPin : `${Math.floor(100000 + Math.random() * 900000)}`,
+            nama: row.nama.trim(),
+            role: row.role,
+            nrp: row.nrp.trim() || `${div.nrpPrefix}-${String(currentCount + 1).padStart(3, '0')}`,
+            jabatan: row.jabatan.trim() || div.roles.find((r) => r.value === row.role)?.label || div.title,
+            divisi: row.divisiLabel.trim() || div.defaultDivisi,
+            genderAccess: row.genderAccess,
+            noWa: row.noWa.trim() || '0812',
+            alamat: 'Komplek Ponpes Salaf Al-Maliki',
+            avatar: '',
+            statusAktif: true,
+          };
+          storageService.saveUser(saved);
+          setRbacQuickRows((prev) => ({
+            ...prev,
+            [div.key]: {
+              nama: '',
+              jabatan: '',
+              nrp: `${div.nrpPrefix}-${String(currentCount + 2).padStart(3, '0')}`,
+              noWa: '0812',
+              pin: `${Math.floor(100000 + Math.random() * 900000)}`,
+              username: '',
+              password: '',
+              role: div.roles[0].value,
+              genderAccess: 'all',
+              divisiLabel: div.defaultDivisi,
+            },
+          }));
+          setSaveSuccessMsg(
+            `Akun RBAC "${saved.nama}" (${saved.role.toUpperCase()}) berhasil ditambahkan ke ${div.title} (PIN: ${saved.pin}).`
+          );
+          setTimeout(() => setSaveSuccessMsg(''), 4000);
+          onConfigUpdated();
+        };
+
+        return (
+          <div className="metallic-glass-card rounded-3xl p-5 sm:p-6 border border-emerald-800/80 shadow-2xl space-y-5 hover-rainbow-edge">
+            {/* Header & Search Bar RBAC */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-emerald-800/70 pb-4">
+              <div>
+                <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
+                  <KeyRound className="w-4 h-4 text-amber-400" />
+                  Daftar Personil &amp; Kredensial Hak Akses RBAC Per Divisi ({usersList.length} Akun)
+                </h3>
+                <p className="text-xs text-emerald-200/75 mt-1 font-mono">
+                  Tabel dikelompokkan &amp; disesuaikan per divisi untuk mempermudah input langsung username, kata sandi, PIN 6 digit, jabatan &amp; wilayah otoritas.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-amber-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchRbac}
+                    onChange={(e) => setSearchRbac(e.target.value)}
+                    placeholder="Cari nama, username, NRP, jabatan..."
+                    className="pl-9 pr-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white placeholder-emerald-200/45 focus:outline-none focus:border-amber-400 w-full sm:w-60"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingUser(null);
+                    setUserFormData({
+                      username: '',
+                      password: '',
+                      pin: `${Math.floor(100000 + Math.random() * 900000)}`,
+                      nama: '',
+                      role: 'anggota_keamanan',
+                      nrp: `KAMTIB-${Math.floor(100 + Math.random() * 900)}`,
+                      jabatan: 'Petugas Keamanan & Disiplin',
+                      divisi: 'Keamanan & Ketertiban',
+                      genderAccess: 'all',
+                      noWa: '0812',
+                      alamat: 'Komplek Ponpes Salaf Al-Maliki',
+                      avatar: '',
+                      statusAktif: true,
+                    });
+                    setIsUserModalOpen(true);
+                  }}
+                  className="tactile-interactive inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 rounded-xl transition-all cursor-pointer shadow-xl border border-amber-300/60 shrink-0"
+                >
+                  <UserPlus className="w-4 h-4 text-slate-950" />
+                  <span>Tambah via Modal</span>
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={() => {
-                setEditingUser(null);
-                setUserFormData({
-                  username: '',
-                  password: '',
-                  pin: `${Math.floor(100000 + Math.random() * 900000)}`,
-                  nama: '',
-                  role: 'anggota_keamanan',
-                  nrp: `KAMTIB-${Math.floor(100 + Math.random() * 900)}`,
-                  jabatan: 'Petugas Keamanan & Disiplin',
-                  divisi: 'Patroli & Intelijen',
-                  genderAccess: 'all',
-                  noWa: '0812',
-                  alamat: 'Komplek Ponpes Salaf Al-Maliki',
-                  avatar: '',
-                  statusAktif: true,
-                });
-                setIsUserModalOpen(true);
-              }}
-              className="tactile-interactive inline-flex items-center gap-2 px-4 py-2.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 rounded-2xl transition-all cursor-pointer shadow-xl border border-amber-300/60 hover-rainbow-edge"
-            >
-              <UserPlus className="w-4 h-4 text-slate-950" />
-              <span>Tambah Akun Login Personil</span>
-            </button>
-          </div>
+            {/* Tabel Terpisah Per Divisi */}
+            <div className="space-y-5">
+              {RBAC_DIVISIONS.map((div) => {
+                const divUsers = filteredUsersList.filter(div.matchUser);
+                const totalInDiv = usersList.filter(div.matchUser).length;
+                const qRow = getQuickRbacRow(div, totalInDiv);
 
-          <div className="overflow-x-auto rounded-2xl border border-emerald-800/80">
-            <table className="w-full text-left text-xs text-slate-200">
-              <thead className="table-header-metallic text-emerald-100/90 uppercase text-[10px] font-mono tracking-wider">
-                <tr>
-                  <th className="px-4 py-3.5">Personil</th>
-                  <th className="px-4 py-3.5">PIN 6 Digit & Kredensial</th>
-                  <th className="px-4 py-3.5">Peran / Role</th>
-                  <th className="px-4 py-3.5">Divisi & Otoritas</th>
-                  <th className="px-4 py-3.5">Status</th>
-                  <th className="px-4 py-3.5 text-right">Kelola</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-emerald-800/60 bg-[#02100a]/40 font-mono">
-                {usersList.map((u) => {
-                  const isAdmin = u.role === 'admin';
-                  return (
-                    <tr key={u.id} className="table-row-rainbow transition-all cursor-pointer">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {u.avatar ? (
-                            <img src={u.avatar} alt="" className="w-9 h-9 rounded-full object-cover border border-emerald-800" />
-                          ) : (
-                            <div className="w-9 h-9 rounded-full bg-[#072c1e] border border-emerald-800 flex items-center justify-center text-amber-400">
-                              <User className="w-5 h-5" />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-bold text-white text-xs">{u.nama}</p>
-                            <p className="text-[10px] font-mono text-emerald-200/75">NRP: {u.nrp || '-'} · WA: {u.noWa || '-'}</p>
-                          </div>
+                return (
+                  <div
+                    key={div.key}
+                    className="rounded-2xl border border-[#d4af37]/30 bg-[#03160f]/95 overflow-hidden shadow-lg"
+                  >
+                    {/* Header Divisi */}
+                    <div className="px-4 py-3 bg-gradient-to-r from-[#072c1e] via-[#041d13] to-[#03160f] border-b border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/45 flex items-center justify-center text-[#f3d266] shrink-0">
+                          <Building2 className="w-4 h-4" />
                         </div>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-xs space-y-1">
                         <div>
-                          <span className="px-2 py-0.5 rounded bg-[#d4af37]/20 border border-[#d4af37]/50 text-[#f9e29c] font-black text-[11px]">
-                            PIN: {u.pin || '111111'}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-white">
+                              {div.title}
+                            </h4>
+                            <span className="px-2 py-0.5 rounded-md bg-[#d4af37]/20 border border-[#d4af37]/45 text-[#f3d266] text-[10px] font-mono font-bold tabular-nums">
+                              {divUsers.length} Akun
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-200/75">{div.subtitle}</p>
                         </div>
-                        <div className="text-[11px]">
-                          User: <strong className="text-amber-400">{u.username}</strong> · Pass: <strong className="text-yellow-400">{u.password || '••••••••'}</strong>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
-                          isAdmin ? 'bg-amber-400/20 text-yellow-300 border border-amber-400/40' : 'bg-emerald-600/20 text-amber-400 border border-emerald-600/40'
-                        }`}>
-                          {u.role.toUpperCase()}
-                        </span>
-                        <p className="text-[10px] text-emerald-200/75 mt-0.5">{u.jabatan}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-white text-[11px]">{u.divisi}</p>
-                        <p className="text-[10px] text-emerald-300/60 font-mono capitalize">Wilayah: {u.genderAccess}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`text-[10px] font-bold ${u.statusAktif ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {u.statusAktif ? '● Aktif' : '○ Nonaktif'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right space-x-1 whitespace-nowrap">
-                        <button
-                          onClick={() => {
-                            setEditingUser(u);
-                            setUserFormData({ ...u });
-                            setIsUserModalOpen(true);
-                          }}
-                          className="p-1.5 text-emerald-200/75 hover:text-yellow-400 hover:bg-[#072c1e] rounded-lg cursor-pointer"
-                          title="Ubah Data & Password"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        {!isAdmin && (
-                          <button
-                            onClick={() => {
-                              if (confirm(`Hapus akun ${u.nama}?`)) {
-                                storageService.deleteUser(u.id);
-                                onConfigUpdated();
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingUser(null);
+                          setUserFormData({
+                            username: '',
+                            password: '',
+                            pin: `${Math.floor(100000 + Math.random() * 900000)}`,
+                            nama: '',
+                            role: div.roles[0].value,
+                            nrp: `${div.nrpPrefix}-${String(totalInDiv + 1).padStart(3, '0')}`,
+                            jabatan: div.roles[0].label,
+                            divisi: div.defaultDivisi,
+                            genderAccess: 'all',
+                            noWa: '0812',
+                            alamat: 'Komplek Ponpes Salaf Al-Maliki',
+                            avatar: '',
+                            statusAktif: true,
+                          });
+                          setIsUserModalOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-[#d4af37]/20 hover:bg-[#d4af37]/30 border border-[#d4af37]/45 text-[#f3d266] text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer shrink-0 self-start sm:self-auto"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Modal {div.nrpPrefix}</span>
+                      </button>
+                    </div>
+
+                    {/* Tabel Akun RBAC Divisi */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs text-slate-200 border-collapse">
+                        <thead className="table-header-metallic text-emerald-100/90 uppercase text-[10px] font-mono tracking-wider">
+                          <tr>
+                            <th className="px-3.5 py-3 min-w-[190px]">Personil &amp; Jabatan</th>
+                            <th className="px-3.5 py-3 min-w-[115px]">PIN 6 Digit</th>
+                            <th className="px-3.5 py-3 min-w-[195px]">Username &amp; Password</th>
+                            <th className="px-3.5 py-3 min-w-[175px]">Role &amp; Wilayah</th>
+                            <th className="px-3.5 py-3 whitespace-nowrap">Status</th>
+                            <th className="px-3.5 py-3 text-right whitespace-nowrap">Kelola</th>
+                          </tr>
+                        </thead>
+
+                        <tbody className="divide-y divide-emerald-800/60 bg-[#02100a]/50 font-mono">
+                          {divUsers.length === 0 ? (
+                            <tr>
+                              <td
+                                colSpan={6}
+                                className="px-4 py-4 text-center text-xs text-emerald-200/65 font-sans"
+                              >
+                                Tidak ada akun pada divisi ini. Gunakan baris input di bawah tabel untuk langsung menambahkan akun {div.title}.
+                              </td>
+                            </tr>
+                          ) : (
+                            divUsers.map((u) => {
+                              const isAdmin = u.role === 'admin';
+                              const isInlineEdit = inlineRbacEditId === u.id;
+
+                              if (isInlineEdit) {
+                                return (
+                                  <tr key={u.id} className="bg-[#072e20]/80 align-top">
+                                    <td className="px-3 py-2.5 space-y-1.5">
+                                      <input
+                                        type="text"
+                                        placeholder="Nama Lengkap"
+                                        value={inlineRbacEditData.nama ?? ''}
+                                        onChange={(e) =>
+                                          setInlineRbacEditData({
+                                            ...inlineRbacEditData,
+                                            nama: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-amber-400/50 text-xs text-white font-sans font-bold"
+                                      />
+                                      <input
+                                        type="text"
+                                        placeholder="Jabatan"
+                                        value={inlineRbacEditData.jabatan ?? ''}
+                                        onChange={(e) =>
+                                          setInlineRbacEditData({
+                                            ...inlineRbacEditData,
+                                            jabatan: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-2.5 py-1 rounded-lg bg-[#02100a] border border-emerald-700 text-[11px] text-emerald-100 font-sans"
+                                      />
+                                      <div className="grid grid-cols-2 gap-1">
+                                        <input
+                                          type="text"
+                                          placeholder="NRP"
+                                          value={inlineRbacEditData.nrp ?? ''}
+                                          onChange={(e) =>
+                                            setInlineRbacEditData({
+                                              ...inlineRbacEditData,
+                                              nrp: e.target.value,
+                                            })
+                                          }
+                                          className="px-2 py-1 rounded-lg bg-[#02100a] border border-emerald-700 text-[10px] text-white"
+                                        />
+                                        <input
+                                          type="text"
+                                          placeholder="No. WA"
+                                          value={inlineRbacEditData.noWa ?? ''}
+                                          onChange={(e) =>
+                                            setInlineRbacEditData({
+                                              ...inlineRbacEditData,
+                                              noWa: e.target.value,
+                                            })
+                                          }
+                                          className="px-2 py-1 rounded-lg bg-[#02100a] border border-emerald-700 text-[10px] text-white"
+                                        />
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                      <input
+                                        type="text"
+                                        maxLength={6}
+                                        placeholder="6 Digit"
+                                        value={inlineRbacEditData.pin ?? ''}
+                                        onChange={(e) =>
+                                          setInlineRbacEditData({
+                                            ...inlineRbacEditData,
+                                            pin: e.target.value.replace(/\D/g, '').slice(0, 6),
+                                          })
+                                        }
+                                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-[#d4af37]/60 text-xs text-[#f9e29c] font-black tracking-widest"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2.5 space-y-1.5">
+                                      <input
+                                        type="text"
+                                        placeholder="Username"
+                                        value={inlineRbacEditData.username ?? ''}
+                                        onChange={(e) =>
+                                          setInlineRbacEditData({
+                                            ...inlineRbacEditData,
+                                            username: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-700 text-xs text-amber-300"
+                                      />
+                                      <input
+                                        type="text"
+                                        placeholder="Password"
+                                        value={inlineRbacEditData.password ?? ''}
+                                        onChange={(e) =>
+                                          setInlineRbacEditData({
+                                            ...inlineRbacEditData,
+                                            password: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-700 text-xs text-yellow-300 font-bold"
+                                      />
+                                    </td>
+                                    <td className="px-3 py-2.5 space-y-1.5">
+                                      <select
+                                        value={inlineRbacEditData.role ?? u.role}
+                                        onChange={(e) =>
+                                          setInlineRbacEditData({
+                                            ...inlineRbacEditData,
+                                            role: e.target.value as UserRole,
+                                          })
+                                        }
+                                        disabled={isAdmin}
+                                        className="w-full px-2 py-1.5 rounded-lg bg-[#02100a] border border-emerald-700 text-[11px] text-white font-sans"
+                                      >
+                                        <option value="admin">Admin</option>
+                                        <option value="ketua_pondok">Ketua Pondok</option>
+                                        <option value="sekretaris">Sekretaris</option>
+                                        <option value="bendahara">Bendahara</option>
+                                        <option value="perlengkapan">Perlengkapan</option>
+                                        <option value="ketua_keamanan">Ketua Keamanan</option>
+                                        <option value="anggota_keamanan">Anggota Keamanan</option>
+                                        <option value="petugas_gerbang">Petugas Pos Gerbang</option>
+                                      </select>
+                                      <select
+                                        value={inlineRbacEditData.genderAccess ?? u.genderAccess}
+                                        onChange={(e) =>
+                                          setInlineRbacEditData({
+                                            ...inlineRbacEditData,
+                                            genderAccess: e.target.value as 'all' | 'putra' | 'putri',
+                                          })
+                                        }
+                                        className="w-full px-2 py-1 rounded-lg bg-[#02100a] border border-emerald-700 text-[11px] text-emerald-200 font-sans"
+                                      >
+                                        <option value="all">Semua (Banin &amp; Banat)</option>
+                                        <option value="putra">Khusus Putra (Banin)</option>
+                                        <option value="putri">Khusus Putri (Banat)</option>
+                                      </select>
+                                    </td>
+                                    <td className="px-3 py-2.5">
+                                      <label className="inline-flex items-center gap-1.5 text-[11px] text-emerald-200 cursor-pointer font-sans">
+                                        <input
+                                          type="checkbox"
+                                          checked={inlineRbacEditData.statusAktif ?? true}
+                                          onChange={(e) =>
+                                            setInlineRbacEditData({
+                                              ...inlineRbacEditData,
+                                              statusAktif: e.target.checked,
+                                            })
+                                          }
+                                        />
+                                        <span>Aktif</span>
+                                      </label>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                      <div className="inline-flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const cleanPin = (
+                                              inlineRbacEditData.pin ||
+                                              u.pin ||
+                                              '999999'
+                                            )
+                                              .replace(/\D/g, '')
+                                              .slice(0, 6);
+                                            const updatedUser: UserAccount = {
+                                              ...u,
+                                              ...inlineRbacEditData,
+                                              nama:
+                                                (inlineRbacEditData.nama ?? u.nama).trim() ||
+                                                u.nama,
+                                              username:
+                                                (inlineRbacEditData.username ?? u.username)
+                                                  .trim()
+                                                  .toLowerCase() || u.username,
+                                              password:
+                                                (inlineRbacEditData.password ?? u.password) ||
+                                                u.password,
+                                              pin:
+                                                cleanPin.length === 6
+                                                  ? cleanPin
+                                                  : u.pin || '999999',
+                                            };
+                                            storageService.saveUser(updatedUser);
+                                            setInlineRbacEditId(null);
+                                            setSaveSuccessMsg(
+                                              `Kredensial RBAC "${updatedUser.nama}" berhasil diperbarui!`
+                                            );
+                                            setTimeout(() => setSaveSuccessMsg(''), 4000);
+                                            onConfigUpdated();
+                                          }}
+                                          className="px-2.5 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer font-sans"
+                                        >
+                                          <Save className="w-3.5 h-3.5" />
+                                          <span>Simpan</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setInlineRbacEditId(null)}
+                                          className="p-1.5 rounded-lg bg-[#03160f] text-emerald-200 hover:text-white border border-emerald-700 cursor-pointer"
+                                          title="Batal Edit"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
                               }
-                            }}
-                            className="p-1.5 text-emerald-200/75 hover:text-red-400 hover:bg-[#072c1e] rounded-lg cursor-pointer"
-                            title="Hapus Akun"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+
+                              return (
+                                <tr key={u.id} className="table-row-rainbow transition-all align-top">
+                                  <td className="px-3.5 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                      {u.avatar ? (
+                                        <img
+                                          src={u.avatar}
+                                          alt=""
+                                          className="w-8 h-8 rounded-full object-cover border border-emerald-800 shrink-0"
+                                        />
+                                      ) : (
+                                        <div className="w-8 h-8 rounded-full bg-[#072c1e] border border-emerald-800 flex items-center justify-center text-amber-400 shrink-0">
+                                          <User className="w-4 h-4" />
+                                        </div>
+                                      )}
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-white text-xs font-sans truncate">
+                                          {u.nama}
+                                        </p>
+                                        <p className="text-[10px] text-emerald-200/85 font-sans truncate">
+                                          {u.jabatan}
+                                        </p>
+                                        <p className="text-[10px] text-emerald-300/70">
+                                          NRP: {u.nrp || '-'} · WA: {u.noWa || '-'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-3.5 py-3 whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded bg-[#d4af37]/20 border border-[#d4af37]/50 text-[#f9e29c] font-black text-[11px] tracking-wider">
+                                      PIN: {u.pin || '111111'}
+                                    </span>
+                                  </td>
+                                  <td className="px-3.5 py-3 text-[11px] space-y-0.5">
+                                    <div>
+                                      User: <strong className="text-amber-400">{u.username}</strong>
+                                    </div>
+                                    <div>
+                                      Pass:{' '}
+                                      <strong className="text-yellow-400">
+                                        {u.password || '••••••••'}
+                                      </strong>
+                                    </div>
+                                  </td>
+                                  <td className="px-3.5 py-3">
+                                    <span
+                                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                        isAdmin
+                                          ? 'bg-amber-400/20 text-yellow-300 border border-amber-400/40'
+                                          : 'bg-emerald-600/20 text-amber-300 border border-emerald-600/40'
+                                      }`}
+                                    >
+                                      {u.role.toUpperCase()}
+                                    </span>
+                                    <p className="text-[10px] text-emerald-200/75 mt-0.5 font-sans">
+                                      {u.divisi} · Wilayah:{' '}
+                                      <span className="capitalize text-white">{u.genderAccess}</span>
+                                    </p>
+                                  </td>
+                                  <td className="px-3.5 py-3 whitespace-nowrap">
+                                    <span
+                                      className={`text-[10px] font-bold ${
+                                        u.statusAktif ? 'text-emerald-400' : 'text-red-400'
+                                      }`}
+                                    >
+                                      {u.statusAktif ? '● Aktif' : '○ Nonaktif'}
+                                    </span>
+                                  </td>
+                                  <td className="px-3.5 py-3 text-right space-x-1 whitespace-nowrap">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setInlineRbacEditId(u.id);
+                                        setInlineRbacEditData({ ...u });
+                                      }}
+                                      className="p-1.5 text-emerald-200/80 hover:text-yellow-400 hover:bg-[#072c1e] rounded-lg cursor-pointer"
+                                      title="Edit Langsung di Tabel"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    {!isAdmin && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (confirm(`Hapus akun ${u.nama}?`)) {
+                                            storageService.deleteUser(u.id);
+                                            onConfigUpdated();
+                                          }
+                                        }}
+                                        className="p-1.5 text-emerald-200/80 hover:text-red-400 hover:bg-[#072c1e] rounded-lg cursor-pointer"
+                                        title="Hapus Akun"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+
+                        {/* Baris Input Cepat Langsung Per Divisi di Bagian Bawah Tabel */}
+                        <tfoot>
+                          <tr className="bg-[#052419]/90 border-t-2 border-[#d4af37]/35 align-middle">
+                            <td className="px-3 py-2.5 space-y-1">
+                              <input
+                                type="text"
+                                placeholder={`Nama Personil ${div.nrpPrefix}...`}
+                                value={qRow.nama}
+                                onChange={(e) =>
+                                  patchQuickRbacRow(div, totalInDiv, { nama: e.target.value })
+                                }
+                                className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-700/80 text-xs text-white placeholder-emerald-200/40 focus:outline-none focus:border-amber-400"
+                              />
+                              <input
+                                type="text"
+                                placeholder={div.jabatanPlaceholder}
+                                value={qRow.jabatan}
+                                onChange={(e) =>
+                                  patchQuickRbacRow(div, totalInDiv, { jabatan: e.target.value })
+                                }
+                                className="w-full px-2.5 py-1 rounded-lg bg-[#02100a] border border-emerald-800 text-[11px] text-emerald-100 placeholder-emerald-200/35 focus:outline-none focus:border-amber-400"
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 space-y-1">
+                              <input
+                                type="text"
+                                maxLength={6}
+                                placeholder="PIN 6 Digit"
+                                value={qRow.pin}
+                                onChange={(e) =>
+                                  patchQuickRbacRow(div, totalInDiv, {
+                                    pin: e.target.value.replace(/\D/g, '').slice(0, 6),
+                                  })
+                                }
+                                className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-[#d4af37]/50 text-xs text-[#f9e29c] font-mono font-bold tracking-widest focus:outline-none"
+                              />
+                              <input
+                                type="text"
+                                placeholder="No. WA (0812...)"
+                                value={qRow.noWa}
+                                onChange={(e) =>
+                                  patchQuickRbacRow(div, totalInDiv, { noWa: e.target.value })
+                                }
+                                className="w-full px-2 py-1 rounded-lg bg-[#02100a] border border-emerald-800 text-[10px] text-white font-mono focus:outline-none"
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 space-y-1">
+                              <input
+                                type="text"
+                                placeholder="Username login..."
+                                value={qRow.username}
+                                onChange={(e) =>
+                                  patchQuickRbacRow(div, totalInDiv, { username: e.target.value })
+                                }
+                                className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-700/80 text-xs text-amber-300 font-mono placeholder-emerald-200/40 focus:outline-none focus:border-amber-400"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Password (min. 6)"
+                                value={qRow.password}
+                                onChange={(e) =>
+                                  patchQuickRbacRow(div, totalInDiv, { password: e.target.value })
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleQuickAddRbac(div, totalInDiv);
+                                  }
+                                }}
+                                className="w-full px-2.5 py-1 rounded-lg bg-[#02100a] border border-emerald-800 text-[11px] text-yellow-300 font-mono placeholder-emerald-200/35 focus:outline-none focus:border-amber-400"
+                              />
+                            </td>
+                            <td className="px-3 py-2.5 space-y-1">
+                              <select
+                                value={qRow.role}
+                                onChange={(e) =>
+                                  patchQuickRbacRow(div, totalInDiv, {
+                                    role: e.target.value as UserRole,
+                                  })
+                                }
+                                className="w-full px-2 py-1.5 rounded-lg bg-[#02100a] border border-emerald-700/80 text-[11px] text-white focus:outline-none"
+                              >
+                                {div.roles.map((r) => (
+                                  <option key={r.value} value={r.value}>
+                                    {r.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                value={qRow.genderAccess}
+                                onChange={(e) =>
+                                  patchQuickRbacRow(div, totalInDiv, {
+                                    genderAccess: e.target.value as 'all' | 'putra' | 'putri',
+                                  })
+                                }
+                                className="w-full px-2 py-1 rounded-lg bg-[#02100a] border border-emerald-800 text-[10px] text-emerald-200 focus:outline-none"
+                              >
+                                <option value="all">Semua (Banin &amp; Banat)</option>
+                                <option value="putra">Khusus Putra (Banin)</option>
+                                <option value="putri">Khusus Putri (Banat)</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-2.5 text-[10px] font-mono text-emerald-300">
+                              {qRow.nrp}
+                            </td>
+                            <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => handleQuickAddRbac(div, totalInDiv)}
+                                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 text-[11px] font-extrabold inline-flex items-center gap-1 cursor-pointer shadow"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Tambah</span>
+                              </button>
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* SUB-TAB 6: DATABASE BACKUP & MASTER RESTORE */}
       {activeSubTab === 'database' && (
@@ -2964,6 +3644,327 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-TAB PUSAT INFORMASI: PENGUMUMAN & UNDANGAN MASUK (ADMIN ONLY) */}
+      {activeSubTab === 'pusat_informasi' && (
+        <div className="metallic-glass-card rounded-3xl p-6 border border-emerald-800/80 shadow-2xl space-y-5 hover-rainbow-edge">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-800/70 pb-4">
+            <div>
+              <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
+                <Megaphone className="w-4 h-4 text-[#f3d266]" />
+                Manajemen Pusat Informasi: Pengumuman &amp; Undangan Masuk
+              </h3>
+              <p className="text-xs text-emerald-200/75 mt-1">
+                Hanya dapat dikelola dari Option Panel Admin. Perubahan langsung tampil di fitur Pusat Informasi pada Tab Ketua Pondok, Sekretaris, Bendahara, Perlengkapan, dan Keamanan.
+              </p>
+            </div>
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!infoForm.judul?.trim() || !infoForm.isi?.trim()) return;
+              const entry: PusatInformasiItem = {
+                id: editingInfoId || `pinf_${Date.now()}`,
+                kategori: (infoForm.kategori as PusatInformasiKategori) || 'Pengumuman',
+                judul: infoForm.judul.trim(),
+                isi: infoForm.isi.trim(),
+                tanggal: infoForm.tanggal || todayWibIso,
+                waktu: infoForm.waktu?.trim() || '08:00 WIB',
+                tempat: infoForm.tempat?.trim() || 'Aula Utama Pondok',
+                pengirim: infoForm.pengirim?.trim() || 'Admin Pusat Al-Maliki',
+                targetDivisi: infoForm.targetDivisi?.trim() || 'Seluruh Pengurus',
+                prioritas: (infoForm.prioritas as 'Normal' | 'Penting' | 'Mendesak') || 'Penting',
+                createdAt: todayWibIso,
+              };
+              const updatedList = editingInfoId
+                ? pusatInformasiList.map((item) => (item.id === editingInfoId ? entry : item))
+                : [entry, ...pusatInformasiList];
+              storageService.updateSystemConfig({
+                ...storageService.getSystemConfig(),
+                pusatInformasiList: updatedList,
+              });
+              setEditingInfoId(null);
+              setInfoForm({
+                kategori: 'Pengumuman',
+                judul: '',
+                isi: '',
+                tanggal: todayWibIso,
+                waktu: '08:00 WIB',
+                tempat: 'Aula Utama Pondok',
+                pengirim: 'Admin Pusat Al-Maliki',
+                targetDivisi: 'Seluruh Pengurus',
+                prioritas: 'Penting',
+              });
+              setSaveSuccessMsg(
+                `${entry.kategori} "${entry.judul}" berhasil disimpan & disinkronkan ke Pusat Informasi seluruh divisi!`
+              );
+              setTimeout(() => setSaveSuccessMsg(''), 4500);
+              onConfigUpdated();
+            }}
+            className="p-4 sm:p-5 rounded-2xl bg-[#03160f]/95 border border-[#d4af37]/35 space-y-3 text-xs"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-mono font-bold uppercase text-[#f3d266]">
+                {editingInfoId
+                  ? 'Edit Pengumuman / Undangan Masuk'
+                  : 'Tambah Pengumuman atau Undangan Masuk Baru'}
+              </span>
+              {editingInfoId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingInfoId(null);
+                    setInfoForm({
+                      kategori: 'Pengumuman',
+                      judul: '',
+                      isi: '',
+                      tanggal: todayWibIso,
+                      waktu: '08:00 WIB',
+                      tempat: 'Aula Utama Pondok',
+                      pengirim: 'Admin Pusat Al-Maliki',
+                      targetDivisi: 'Seluruh Pengurus',
+                      prioritas: 'Penting',
+                    });
+                  }}
+                  className="text-[11px] font-bold text-rose-300 hover:underline cursor-pointer"
+                >
+                  Batal Edit
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                  Kategori Informasi
+                </label>
+                <select
+                  value={infoForm.kategori || 'Pengumuman'}
+                  onChange={(e) =>
+                    setInfoForm({
+                      ...infoForm,
+                      kategori: e.target.value as PusatInformasiKategori,
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white"
+                >
+                  <option value="Pengumuman">Pengumuman</option>
+                  <option value="Undangan Masuk">Undangan Masuk</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                  Prioritas
+                </label>
+                <select
+                  value={infoForm.prioritas || 'Penting'}
+                  onChange={(e) =>
+                    setInfoForm({
+                      ...infoForm,
+                      prioritas: e.target.value as 'Normal' | 'Penting' | 'Mendesak',
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white"
+                >
+                  <option value="Normal">Normal</option>
+                  <option value="Penting">Penting</option>
+                  <option value="Mendesak">Mendesak</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                  Tanggal
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={infoForm.tanggal || todayWibIso}
+                  onChange={(e) => setInfoForm({ ...infoForm, tanggal: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                  Waktu
+                </label>
+                <input
+                  type="text"
+                  placeholder="08:00 WIB"
+                  value={infoForm.waktu || ''}
+                  onChange={(e) => setInfoForm({ ...infoForm, waktu: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                  Judul Pengumuman / Perihal Undangan
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Undangan Rapat Wali Santri / Pengumuman Libur Maulid..."
+                  value={infoForm.judul || ''}
+                  onChange={(e) => setInfoForm({ ...infoForm, judul: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white font-semibold"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                  Tempat / Lokasi
+                </label>
+                <input
+                  type="text"
+                  placeholder="Aula Utama / Ndalem"
+                  value={infoForm.tempat || ''}
+                  onChange={(e) => setInfoForm({ ...infoForm, tempat: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                  Pengirim / Sumber Undangan
+                </label>
+                <input
+                  type="text"
+                  placeholder="Pengasuh / Instansi Pengundang"
+                  value={infoForm.pengirim || ''}
+                  onChange={(e) => setInfoForm({ ...infoForm, pengirim: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                  Sasaran Divisi
+                </label>
+                <input
+                  type="text"
+                  placeholder="Seluruh Pengurus / Ketua Pondok & Sekretaris"
+                  value={infoForm.targetDivisi || ''}
+                  onChange={(e) => setInfoForm({ ...infoForm, targetDivisi: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                Isi Pengumuman / Rincian Undangan
+              </label>
+              <textarea
+                rows={3}
+                required
+                placeholder="Tuliskan isi pengumuman atau rincian undangan secara jelas..."
+                value={infoForm.isi || ''}
+                onChange={(e) => setInfoForm({ ...infoForm, isi: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-black/60 border border-emerald-800 text-white"
+              />
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="tactile-interactive px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#f3d266] text-[#02120a] font-extrabold text-xs cursor-pointer shadow-lg"
+              >
+                {editingInfoId
+                  ? 'Simpan Perubahan Informasi'
+                  : '+ Terbitkan ke Pusat Informasi'}
+              </button>
+            </div>
+          </form>
+
+          {/* Daftar Pengumuman & Undangan Masuk */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {pusatInformasiList.length === 0 ? (
+              <div className="md:col-span-2 py-8 text-center text-xs text-emerald-200/70">
+                Belum ada data Pengumuman atau Undangan Masuk.
+              </div>
+            ) : (
+              pusatInformasiList.map((info) => (
+                <div
+                  key={info.id}
+                  className="p-4 rounded-2xl bg-[#03160f]/95 border border-emerald-800/80 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                          info.kategori === 'Undangan Masuk'
+                            ? 'bg-sky-500/20 text-sky-200 border-sky-400/50'
+                            : 'bg-amber-500/20 text-amber-200 border-amber-400/50'
+                        }`}
+                      >
+                        {info.kategori === 'Undangan Masuk' ? (
+                          <Mail className="w-3 h-3" />
+                        ) : (
+                          <Megaphone className="w-3 h-3" />
+                        )}
+                        <span>{info.kategori}</span>
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-[#06281c] text-[#f3d266] text-[10px] font-mono font-bold">
+                        {info.tanggal}
+                      </span>
+                      {info.prioritas && (
+                        <span className="text-[10px] font-mono text-emerald-300">
+                          · {info.prioritas}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingInfoId(info.id);
+                          setInfoForm({ ...info });
+                        }}
+                        className="p-1.5 rounded-lg text-emerald-200 hover:text-amber-300 hover:bg-[#072c1e] cursor-pointer"
+                        title="Edit Informasi"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = pusatInformasiList.filter((item) => item.id !== info.id);
+                          storageService.updateSystemConfig({
+                            ...storageService.getSystemConfig(),
+                            pusatInformasiList: updated,
+                          });
+                          if (editingInfoId === info.id) setEditingInfoId(null);
+                          setSaveSuccessMsg(`"${info.judul}" berhasil dihapus dari Pusat Informasi.`);
+                          setTimeout(() => setSaveSuccessMsg(''), 4000);
+                          onConfigUpdated();
+                        }}
+                        className="p-1.5 rounded-lg text-emerald-200 hover:text-rose-400 hover:bg-[#072c1e] cursor-pointer"
+                        title="Hapus Informasi"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <h4 className="text-sm font-bold text-white">{info.judul}</h4>
+                  <p className="text-xs text-emerald-100/80 whitespace-pre-line leading-relaxed">
+                    {info.isi}
+                  </p>
+                  <div className="text-[11px] font-mono text-emerald-300/75 pt-1 border-t border-emerald-800/60 flex flex-wrap gap-3">
+                    {info.waktu && <span>Waktu: {info.waktu}</span>}
+                    {info.tempat && <span>Tempat: {info.tempat}</span>}
+                    {info.pengirim && <span>Dari: {info.pengirim}</span>}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

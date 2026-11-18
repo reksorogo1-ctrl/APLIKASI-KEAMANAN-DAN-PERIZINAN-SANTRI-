@@ -761,10 +761,10 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               if (linkMenu === 'perizinan' || linkMenu === 'monitoring' || linkMenu === 'pelanggaran' || linkMenu === 'pos_gerbang' || linkMenu === 'sanksi') {
                 const mapLabel: Record<string, string> = {
                   perizinan: 'Perizinan Santri',
-                  monitoring: 'Radar Monitoring',
-                  pelanggaran: 'Pelanggaran Santri',
-                  pos_gerbang: 'Pos Gerbang',
-                  sanksi: 'Sanksi Santri',
+                  monitoring: 'Radar & Pos Gerbang',
+                  pelanggaran: 'Pelanggaran & Sanksi',
+                  pos_gerbang: 'Radar & Pos Gerbang',
+                  sanksi: 'Pelanggaran & Sanksi',
                 };
                 return { menu: 'keamanan', subTab: linkMenu, label: mapLabel[linkMenu] || 'Keamanan' };
               }

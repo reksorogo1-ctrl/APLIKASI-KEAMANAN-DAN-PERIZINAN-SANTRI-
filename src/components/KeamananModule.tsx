@@ -5,13 +5,10 @@ import {
   LayoutDashboard,
   MessageSquare,
   GraduationCap,
-  Users,
   FileCheck,
-  QrCode,
   Activity,
   BookOpen,
   ShieldAlert,
-  Gavel,
   ShieldCheck,
   BarChart3,
   Database,
@@ -68,14 +65,11 @@ import { KeamananSubTab } from './Sidebar';
 import { Dashboard } from './Dashboard';
 import { DivisiKotakMasuk } from './DivisiKotakMasuk';
 import { SantriPerKelas } from './SantriPerKelas';
-import { SantriList } from './SantriList';
 import { DewanKeamananList } from './DewanKeamananList';
 import { PerizinanList } from './PerizinanList';
-import { GateScanner } from './GateScanner';
-import { MonitoringRealtime } from './MonitoringRealtime';
+import { RadarPosGerbang } from './RadarPosGerbang';
 import { TataTertibList } from './TataTertibList';
-import { PelanggaranList } from './PelanggaranList';
-import { SanksiList } from './SanksiList';
+import { PelanggaranSanksiPanel } from './PelanggaranSanksiPanel';
 import { LaporanStatistik } from './LaporanStatistik';
 import { DatabaseSettings } from './DatabaseSettings';
 import { openPrintWindow } from '../utils/printDocument';
@@ -397,19 +391,16 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
     },
     {
       id: 'monitoring',
-      label: 'Radar Monitoring',
+      label: 'Radar & Pos Gerbang',
       icon: Activity,
       badge: lateSantriCount > 0 ? lateSantriCount : undefined,
       badgeTone: 'red',
     },
-    { id: 'pelanggaran', label: 'Pelanggaran', icon: ShieldAlert },
-    { id: 'sanksi', label: 'Sanksi', icon: Gavel },
-    { id: 'santri', label: 'Data Santri', icon: Users },
+    { id: 'pelanggaran', label: 'Pelanggaran & Sanksi', icon: ShieldAlert },
+    { id: 'santri_per_kelas', label: 'Data Santri & Kelas', icon: GraduationCap },
     { id: 'tata_tertib', label: 'Tata Tertib & Piket', icon: BookOpen },
     { id: 'laporan', label: 'Laporan', icon: BarChart3 },
     { id: 'option_keamanan', label: 'Option Panel Keamanan', icon: Sliders },
-    { id: 'pos_gerbang', label: 'Pos Gerbang', icon: QrCode },
-    { id: 'santri_per_kelas', label: 'Santri Kelas', icon: GraduationCap },
     { id: 'database', label: 'Audit & DB', icon: Database, adminOnly: true },
   ];
 
@@ -441,7 +432,7 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                 Dashboard Dewan Keamanan &amp; Ketertiban Pondok (SIM-KAMTIB)
               </h2>
               <p className="text-[11px] text-emerald-200/75">
-                Dashboard Utama Keamanan, Kotak Masuk, Perizinan Real-Time WIB, Radar Monitoring, Pelanggaran, Sanksi, Tata Tertib &amp; Option Panel Keamanan
+                Dashboard Utama Keamanan, Kotak Masuk, Perizinan Real-Time WIB, Radar &amp; Pos Gerbang, Pelanggaran &amp; Sanksi, Data Santri &amp; Kelas, Tata Tertib &amp; Option Panel Keamanan
               </p>
             </div>
           </div>
@@ -455,7 +446,11 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
         <div className="flex flex-wrap items-center gap-1.5">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
-            const active = subTab === tab.id;
+            const active =
+              subTab === tab.id ||
+              (tab.id === 'monitoring' && subTab === 'pos_gerbang') ||
+              (tab.id === 'pelanggaran' && subTab === 'sanksi') ||
+              (tab.id === 'santri_per_kelas' && subTab === 'santri');
             return (
               <button
                 key={tab.id}
@@ -491,6 +486,18 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
         {/* 1. TAB DASHBOARD UTAMA KEAMANAN (MENGGANTIKAN DASBOR KAMTIB) */}
         {subTab === 'ringkasan' && (
           <div className="space-y-6">
+            {/* Pusat Komando Keamanan Terpadu Al-Maliki (Dipindahkan ke Paling Atas) */}
+            <Dashboard
+              santriList={scopedSantriList}
+              perizinanList={scopedPerizinanList}
+              pelanggaranList={scopedPelanggaranList}
+              sanksiList={scopedSanksiList}
+              currentUser={currentUser}
+              onNavigate={(nextSub) => onChangeSubTab(nextSub)}
+              onViewSuratIzin={onViewSuratIzin}
+              onOpenQRScanner={onOpenQRScanner}
+            />
+
             {/* Ucapan Selamat Datang & Notifikasi Permintaan Surat / Pesan dari Divisi Lain */}
             <div className="rounded-3xl bg-gradient-to-r from-[#062c1e] via-[#041d14] to-[#03150e] border border-[#d4af37]/45 p-5 shadow-xl space-y-4">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -838,18 +845,6 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                 ))}
               </div>
             </div>
-
-            {/* Mengelola Seluruh Sistem Keamanan yang Sudah Ada Sebelumnya */}
-            <Dashboard
-              santriList={scopedSantriList}
-              perizinanList={scopedPerizinanList}
-              pelanggaranList={scopedPelanggaranList}
-              sanksiList={scopedSanksiList}
-              currentUser={currentUser}
-              onNavigate={(nextSub) => onChangeSubTab(nextSub)}
-              onViewSuratIzin={onViewSuratIzin}
-              onOpenQRScanner={onOpenQRScanner}
-            />
           </div>
         )}
 
@@ -862,21 +857,17 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
           />
         )}
 
-        {/* 3. TAB SANTRI PER KELAS */}
-        {subTab === 'santri_per_kelas' && (
+        {/* 3. TAB DATA SANTRI & KELAS TERPADU (FORMAT SANTRI KELAS + FITUR DATA SANTRI) */}
+        {(subTab === 'santri_per_kelas' || subTab === 'santri') && (
           <SantriPerKelas
             santriList={scopedSantriList}
             perizinanList={scopedPerizinanList}
             pelanggaranList={scopedPelanggaranList}
             currentUser={currentUser}
+            currentGenderScope={genderScope}
             onNavigateToPermitWithSantri={() => onChangeSubTab('perizinan')}
             onNavigateToPelanggaranWithSantri={() => onChangeSubTab('pelanggaran')}
           />
-        )}
-
-        {/* 4. TAB DATA SANTRI (TERHUBUNG KE DASHBOARD SEKRETARIS) */}
-        {subTab === 'santri' && (
-          <SantriList santriList={scopedSantriList} currentGenderScope={genderScope} />
         )}
 
         {/* 5. TAB DEWAN PIKET */}
@@ -892,25 +883,15 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
           />
         )}
 
-        {/* 7. POS GERBANG */}
-        {subTab === 'pos_gerbang' && (
-          <GateScanner
+        {/* 7. TAB RADAR MONITORING & POS GERBANG TERPADU */}
+        {(subTab === 'monitoring' || subTab === 'pos_gerbang') && (
+          <RadarPosGerbang
             perizinanList={scopedPerizinanList}
             santriList={scopedSantriList}
             currentUser={currentUser}
             onViewSuratIzin={onViewSuratIzin}
             onOpenQRScanner={onOpenQRScanner}
-          />
-        )}
-
-        {/* 8. TAB RADAR MONITORING */}
-        {subTab === 'monitoring' && (
-          <MonitoringRealtime
-            perizinanList={scopedPerizinanList}
-            pelanggaranList={scopedPelanggaranList}
-            sanksiList={scopedSanksiList}
-            currentUser={currentUser}
-            onViewSuratIzin={onViewSuratIzin}
+            initialView={subTab === 'pos_gerbang' ? 'keluar' : 'diluar'}
           />
         )}
 
@@ -924,23 +905,13 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
           </div>
         )}
 
-        {/* 10. TAB PELANGGARAN */}
-        {subTab === 'pelanggaran' && (
-          <PelanggaranList
+        {/* 10. TAB PELANGGARAN & SANKSI TERPADU */}
+        {(subTab === 'pelanggaran' || subTab === 'sanksi') && (
+          <PelanggaranSanksiPanel
             pelanggaranList={scopedPelanggaranList}
+            sanksiList={scopedSanksiList}
             santriList={scopedSantriList}
             tataTertibList={tataTertibList}
-            currentUser={currentUser}
-            onOpenSanksiModalForPelanggaran={onOpenSanksiFromPelanggaran}
-          />
-        )}
-
-        {/* 11. TAB SANKSI */}
-        {subTab === 'sanksi' && (
-          <SanksiList
-            sanksiList={scopedSanksiList}
-            pelanggaranList={scopedPelanggaranList}
-            santriList={scopedSantriList}
             currentUser={currentUser}
             preSelectedPelanggaran={preSelectedPelanggaran}
             onClearPreSelectedPelanggaran={onClearPreSelectedPelanggaran}

@@ -304,6 +304,22 @@ export interface SuratIzinLayoutConfig {
   tampilkanQrCode?: boolean;
 }
 
+export type PusatInformasiKategori = 'Pengumuman' | 'Undangan Masuk';
+
+export interface PusatInformasiItem {
+  id: string;
+  kategori: PusatInformasiKategori;
+  judul: string;
+  isi: string;
+  tanggal: string;
+  waktu?: string;
+  tempat?: string;
+  pengirim?: string;
+  targetDivisi?: string;
+  prioritas?: 'Normal' | 'Penting' | 'Mendesak';
+  createdAt?: string;
+}
+
 // System configuration options for Admin Control Panel
 export interface SystemConfig {
   namaPondok: string;
@@ -345,6 +361,9 @@ export interface SystemConfig {
   mutasiBarangList?: MutasiBarang[];
   jadwalPerbaikanList?: JadwalPerbaikanAset[];
   kamarSantriList?: DataKamarAsrama[];
+  fasilitasGedungList?: DataFasilitasGedung[];
+  perlengkapanConfig?: PerlengkapanConfig;
+  pusatInformasiList?: PusatInformasiItem[];
   alamatPondok?: string;
   namaPimpinan?: string;
   sekretarisNama?: string;
@@ -826,5 +845,30 @@ export interface DataKamarAsrama {
   musyrif: string;
   fasilitas: string[];
   kondisi: 'Baik' | 'Perlu Perbaikan';
+}
+
+export interface FasilitasItemGedung {
+  id: string;
+  namaFasilitas: string;
+  jumlah: number;
+  satuan: string;
+  kondisi: 'Baik' | 'Perlu Perbaikan' | 'Rusak';
+  keterangan?: string;
+}
+
+export interface DataFasilitasGedung {
+  id: string;
+  namaGedung: string;
+  kategoriGedung?: string;
+  penanggungJawab?: string;
+  daftarFasilitas: FasilitasItemGedung[];
+}
+
+export interface PerlengkapanConfig {
+  namaUnitPerlengkapan?: string;
+  kepalaPerlengkapan?: string;
+  jabatanKepala?: string;
+  kategoriInventaris?: string[];
+  satuanList?: string[];
 }
 

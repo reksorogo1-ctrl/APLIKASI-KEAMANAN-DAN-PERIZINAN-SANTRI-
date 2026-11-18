@@ -129,7 +129,10 @@
       "properties": {
         "namaPondok": { "type": "string" },
         "logoUrl": { "type": "string" },
-        "bgUrl": { "type": "string" }
+        "bgUrl": { "type": "string" },
+        "fasilitasGedungList": { "type": "array" },
+        "perlengkapanConfig": { "type": "object" },
+        "pusatInformasiList": { "type": "array" }
       },
       "required": ["namaPondok"]
     },

@@ -63,11 +63,11 @@ import {
   PesanKoordinasi,
   ProgramKerja,
   IzinPengurus,
-  NotulenRapat
 } from '../types';
 import { storageService } from '../services/storageService';
 import { openPrintWindow } from '../utils/printDocument';
 import { downloadWordDocument } from '../utils/wordExport';
+import { PusatInformasiSection } from './PusatInformasiSection';
 
 interface KetuaPondokDashboardProps {
   currentUser: UserAccount;
@@ -309,18 +309,6 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
     });
   }, [systemConfig.namaPondok, systemConfig.namaPimpinan, systemConfig.kotaInstansi, systemConfig.alamatPondok]);
 
-  const [notulenForm, setNotulenForm] = useState<Partial<NotulenRapat>>({
-    judulRapat: '',
-    tanggal: new Date().toISOString().split('T')[0],
-    waktu: '20:00 WIB',
-    tempat: 'Aula Utama Pondok',
-    pimpinanRapat: currentUser.nama,
-    jumlahPeserta: 12,
-    agendaBahasan: '',
-    hasilKeputusan: '',
-    notulis: 'Sekretaris Umum',
-  });
-
   const [pengurusForm, setPengurusForm] = useState({
     nip: '',
     nama: '',
@@ -337,9 +325,6 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
 
   const [editingEvalId, setEditingEvalId] = useState<string | null>(null);
   const [editEvalData, setEditEvalData] = useState<Partial<EvaluasiKepengurusan>>({});
-
-  const [editingNotulenId, setEditingNotulenId] = useState<string | null>(null);
-  const [editNotulenData, setEditNotulenData] = useState<Partial<NotulenRapat>>({});
 
   const [editingUstadzId, setEditingUstadzId] = useState<string | null>(null);
   const [editUstadzData, setEditUstadzData] = useState<Record<string, any>>({});
@@ -2068,6 +2053,9 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
 
         return (
           <div className="space-y-6">
+            {/* PUSAT INFORMASI TERPADU (UPDATE KALENDER, PENGUMUMAN, UNDANGAN MASUK & NOTULENSI RAPAT) */}
+            <PusatInformasiSection viewerLabel="Ketua Pondok" />
+
             {/* HEADER KOTAK MASUK + HAPUS SEMUA PESAN MASUK */}
             <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl space-y-5">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-emerald-800/70 pb-3">
@@ -2948,158 +2936,30 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
                 </div>
               </div>
 
-              {/* Tambah / Edit / Hapus Notulen Rapat Pleno */}
+              {/* Arsip Notulen Rapat Pleno (Dikelola Khusus oleh Sekretaris) */}
               <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Kelola Notulen Rapat Pleno ({(systemConfig.notulenRapatList || []).length})
-                </h3>
-
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!notulenForm.judulRapat || !notulenForm.hasilKeputusan) return;
-                    const newNotulen: NotulenRapat = {
-                      id: `not_${Date.now()}`,
-                      judulRapat: notulenForm.judulRapat,
-                      tanggal: notulenForm.tanggal || new Date().toISOString().split('T')[0],
-                      waktu: notulenForm.waktu || '20:00 WIB',
-                      tempat: notulenForm.tempat || 'Aula Utama Pondok',
-                      pimpinanRapat: notulenForm.pimpinanRapat || currentUser.nama,
-                      jumlahPeserta: Number(notulenForm.jumlahPeserta) || 10,
-                      agendaBahasan: notulenForm.agendaBahasan || '-',
-                      hasilKeputusan: notulenForm.hasilKeputusan,
-                      notulis: notulenForm.notulis || 'Sekretaris Umum',
-                    };
-                    storageService.updateSystemConfig({
-                      notulenRapatList: [newNotulen, ...(systemConfig.notulenRapatList || [])],
-                    });
-                    setNotulenForm({ ...notulenForm, judulRapat: '', agendaBahasan: '', hasilKeputusan: '' });
-                    notifySaved('Notulen rapat baru berhasil ditambahkan!');
-                  }}
-                  className="p-3.5 rounded-xl bg-[#03160f] border border-emerald-800/70 space-y-2.5"
-                >
-                  <input
-                    type="text"
-                    required
-                    placeholder="Judul Rapat Pleno..."
-                    value={notulenForm.judulRapat || ''}
-                    onChange={(e) => setNotulenForm({ ...notulenForm, judulRapat: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg bg-black/60 border border-emerald-800 text-xs text-white"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="date"
-                      value={notulenForm.tanggal || ''}
-                      onChange={(e) => setNotulenForm({ ...notulenForm, tanggal: e.target.value })}
-                      className="px-3 py-1.5 rounded-lg bg-black/60 border border-emerald-800 text-xs text-white font-mono"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Waktu (20:00 WIB)"
-                      value={notulenForm.waktu || ''}
-                      onChange={(e) => setNotulenForm({ ...notulenForm, waktu: e.target.value })}
-                      className="px-3 py-1.5 rounded-lg bg-black/60 border border-emerald-800 text-xs text-white"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Agenda Bahasan..."
-                    value={notulenForm.agendaBahasan || ''}
-                    onChange={(e) => setNotulenForm({ ...notulenForm, agendaBahasan: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg bg-black/60 border border-emerald-800 text-xs text-white"
-                  />
-                  <textarea
-                    rows={2}
-                    required
-                    placeholder="Hasil Keputusan Rapat..."
-                    value={notulenForm.hasilKeputusan || ''}
-                    onChange={(e) => setNotulenForm({ ...notulenForm, hasilKeputusan: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg bg-black/60 border border-emerald-800 text-xs text-white"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full py-2 rounded-lg bg-[#d4af37] text-[#02120a] font-bold text-xs cursor-pointer"
-                  >
-                    + Tambah Notulen Rapat
-                  </button>
-                </form>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    Arsip Notulen Rapat Pleno ({(systemConfig.notulenRapatList || []).length})
+                  </h3>
+                  <p className="text-[11px] text-emerald-200/75">
+                    Pengisian dan pengeditan Notulensi Rapat dikelola khusus oleh Sekretaris melalui Tab Sekretaris → Notulensi &amp; Rapat.
+                  </p>
+                </div>
 
                 <div className="space-y-2.5">
-                  {(systemConfig.notulenRapatList || []).map((nt) => {
-                    const isEditing = editingNotulenId === nt.id;
-                    return (
-                      <div key={nt.id} className="p-3.5 rounded-xl bg-[#03160f] border border-emerald-800/70 space-y-2">
-                        {isEditing ? (
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              value={editNotulenData.judulRapat || ''}
-                              onChange={(e) => setEditNotulenData({ ...editNotulenData, judulRapat: e.target.value })}
-                              className="w-full px-3 py-1.5 rounded-lg bg-black/60 border border-emerald-700 text-xs text-white"
-                            />
-                            <textarea
-                              rows={3}
-                              value={editNotulenData.hasilKeputusan || ''}
-                              onChange={(e) => setEditNotulenData({ ...editNotulenData, hasilKeputusan: e.target.value })}
-                              className="w-full px-3 py-1.5 rounded-lg bg-black/60 border border-emerald-700 text-xs text-white"
-                            />
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = (systemConfig.notulenRapatList || []).map((item) =>
-                                    item.id === nt.id ? { ...item, ...editNotulenData } : item
-                                  );
-                                  storageService.updateSystemConfig({ notulenRapatList: updated });
-                                  setEditingNotulenId(null);
-                                  notifySaved('Notulen rapat berhasil diperbarui!');
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-[#d4af37] text-[#02120a] text-xs font-bold cursor-pointer"
-                              >
-                                Simpan
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setEditingNotulenId(null)}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-950 text-emerald-200 text-xs cursor-pointer"
-                              >
-                                Batal
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <p className="text-[10px] font-mono text-[#f3d266]">{nt.tanggal} · {nt.waktu}</p>
-                            <p className="text-xs font-bold text-white">{nt.judulRapat}</p>
-                            <p className="text-[11px] text-emerald-100/80 whitespace-pre-line">{nt.hasilKeputusan}</p>
-                            <div className="flex items-center gap-2 pt-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingNotulenId(nt.id);
-                                  setEditNotulenData({ ...nt });
-                                }}
-                                className="px-2.5 py-1 rounded bg-[#072c1e] text-[#f3d266] text-[11px] font-bold cursor-pointer"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = (systemConfig.notulenRapatList || []).filter((item) => item.id !== nt.id);
-                                  storageService.updateSystemConfig({ notulenRapatList: updated });
-                                  notifySaved('Notulen rapat dihapus.');
-                                }}
-                                className="px-2.5 py-1 rounded bg-rose-950/80 text-rose-200 text-[11px] font-bold cursor-pointer"
-                              >
-                                Hapus
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
+                  {(systemConfig.notulenRapatList || []).map((nt) => (
+                    <div key={nt.id} className="p-3.5 rounded-xl bg-[#03160f] border border-emerald-800/70 space-y-1.5">
+                      <p className="text-[10px] font-mono text-[#f3d266]">{nt.tanggal} · {nt.waktu}</p>
+                      <p className="text-xs font-bold text-white">{nt.judulRapat}</p>
+                      {nt.pesertaHadir && (
+                        <p className="text-[11px] text-emerald-300/85">
+                          <strong>Hadir:</strong> {nt.pesertaHadir}
+                        </p>
+                      )}
+                      <p className="text-[11px] text-emerald-100/80 whitespace-pre-line">{nt.hasilKeputusan}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
