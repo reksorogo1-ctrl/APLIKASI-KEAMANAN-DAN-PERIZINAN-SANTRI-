@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MotionConfig } from 'motion/react';
-import { StaggeredTabPanel } from './components/MotionPrimitives';
-import { DashboardErrorBoundary } from './components/DashboardErrorBoundary';
+import { AnimatePresence, motion, MotionConfig } from 'motion/react';
+import { StaggeredTabPanel, METALLIC_EASE } from './components/MotionPrimitives';
 import { storageService } from './services/storageService';
 import {
   Santri,
@@ -43,7 +42,6 @@ import { QuickQRScannerModal } from './components/QuickQRScannerModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LoginScreen } from './components/LoginScreen';
 import { syncPWAIdentity } from './services/pwaSyncService';
-import { unlockAudioAndSpeech, playClickSound, stopWelcomeSpeech } from './utils/soundEffects';
 
 const KEAMANAN_SUBTABS: KeamananSubTab[] = [
   'ringkasan',
@@ -152,19 +150,6 @@ export default function App() {
     };
   }, []);
 
-  // Automatically unlock Web Audio API & Speech Synthesis on first user interaction (iOS Safari & Android)
-  useEffect(() => {
-    const handleFirstTouch = () => {
-      unlockAudioAndSpeech();
-    };
-    window.addEventListener('touchstart', handleFirstTouch, { passive: true, once: true });
-    window.addEventListener('pointerdown', handleFirstTouch, { passive: true, once: true });
-    return () => {
-      window.removeEventListener('touchstart', handleFirstTouch);
-      window.removeEventListener('pointerdown', handleFirstTouch);
-    };
-  }, []);
-
   // Sync PWA Identity whenever systemConfig updates
   useEffect(() => {
     syncPWAIdentity(systemConfig);
@@ -172,9 +157,6 @@ export default function App() {
 
   // Handle Reset / Kembali ke Dashboard Utama Administrator
   const handleLogout = () => {
-    unlockAudioAndSpeech();
-    playClickSound();
-    stopWelcomeSpeech();
     storageService.logout();
     setCurrentUser(storageService.getCurrentUser());
     setActiveMenu('dashboard');
@@ -191,8 +173,6 @@ export default function App() {
 
   // Handle Sidebar menu & subTab selection
   const handleSelectSidebarMenu = (menu: ActiveMenu, subTab?: string) => {
-    unlockAudioAndSpeech();
-    playClickSound();
     setActiveMenu(menu);
     if (menu === 'keamanan') {
       const nextSub = (subTab as KeamananSubTab) || 'ringkasan';
@@ -326,39 +306,48 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-[100dvh] w-full bg-[#041A13] overflow-x-hidden overflow-y-auto">
-        {!currentUser ? (
-          <div
-            className="min-h-[100dvh] w-full"
-            style={{ opacity: 1, visibility: 'visible' }}
-          >
-            <LoginScreen
-              onLoginSuccess={(user) => {
-                setCurrentUser(user);
-                if (
-                  user.role === 'ketua_keamanan' ||
-                  user.role === 'anggota_keamanan' ||
-                  user.role === 'petugas_gerbang'
-                ) {
-                  setActiveMenu('keamanan');
-                  setKeamananSubTab('ringkasan');
-                  setActiveSubTab('ringkasan');
-                } else if (user.role === 'pengurus_murotil') {
-                  setActiveMenu('murotil_tahfidz');
-                  setActiveSubTab('dashboard_murotil');
-                } else {
-                  setActiveMenu('dashboard');
-                  setActiveSubTab('');
-                }
-              }}
-            />
-            <OfflineIndicator />
-          </div>
-        ) : (
-          <div
-            style={{ opacity: 1, visibility: 'visible' }}
-            className="min-h-[100dvh] w-full bg-[#041A13] text-white flex flex-col font-sans antialiased selection:bg-[#D4AF37] selection:text-[#041A13] overflow-y-auto overflow-x-hidden"
-          >
+      <div className="min-h-screen w-full bg-[#041A13] overflow-x-hidden">
+        <AnimatePresence mode="wait">
+          {!currentUser ? (
+            <motion.div
+              key="login-screen"
+              initial={{ opacity: 0, x: -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.35, ease: METALLIC_EASE }}
+              className="min-h-screen w-full"
+            >
+              <LoginScreen
+                onLoginSuccess={(user) => {
+                  setCurrentUser(user);
+                  if (
+                    user.role === 'ketua_keamanan' ||
+                    user.role === 'anggota_keamanan' ||
+                    user.role === 'petugas_gerbang'
+                  ) {
+                    setActiveMenu('keamanan');
+                    setKeamananSubTab('ringkasan');
+                    setActiveSubTab('ringkasan');
+                  } else if (user.role === 'pengurus_murotil') {
+                    setActiveMenu('murotil_tahfidz');
+                    setActiveSubTab('dashboard_murotil');
+                  } else {
+                    setActiveMenu('dashboard');
+                    setActiveSubTab('');
+                  }
+                }}
+              />
+              <OfflineIndicator />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="dashboard-shell"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 24 }}
+              transition={{ duration: 0.35, ease: METALLIC_EASE }}
+              className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-[#041A13] text-white flex flex-col font-sans antialiased selection:bg-[#D4AF37] selection:text-[#041A13]"
+            >
               {/* Luxury Top Header Bar */}
               <Header
                 currentUser={currentUser}
@@ -395,7 +384,7 @@ export default function App() {
               )}
 
               {/* Main Layout Container */}
-              <div className="flex-1 flex w-full relative min-h-[calc(100dvh-57px)] items-stretch">
+              <div className="flex-1 flex w-full relative min-h-[calc(100vh-57px)] md:h-[calc(100vh-57px)] md:max-h-[calc(100vh-57px)] md:overflow-hidden items-stretch">
                 {/* Sidebar Navigation */}
                 <Sidebar
                   activeMenu={activeMenu}
@@ -414,20 +403,12 @@ export default function App() {
 
                 {/* Viewport Content Area */}
                 <main
-                  onClickCapture={(e) => {
-                    const target = e.target as HTMLElement | null;
-                    if (target?.closest('button:not(:disabled)')) {
-                      unlockAudioAndSpeech();
-                      playClickSound();
-                    }
-                  }}
-                  style={{ opacity: 1, visibility: 'visible' }}
-                  className={`flex-1 min-w-0 p-2.5 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-[#041A13] bg-security-grid transition-all ${
+                  className={`flex-1 h-full min-w-0 p-2.5 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-[#041A13] bg-security-grid transition-all ${
                     isSidebarOpen ? 'max-md:overflow-hidden max-md:pointer-events-none' : ''
                   }`}
                 >
-          <div className="w-full max-w-full" style={{ opacity: 1, visibility: 'visible' }}>
-            <DashboardErrorBoundary onResetSession={handleLogout}>
+          <div className="w-full max-w-full">
+            <AnimatePresence mode="wait">
               <StaggeredTabPanel key={activeMenu} tabKey={activeMenu}>
                 {/* 1. Dashboard Utama Pesantren */}
                 {activeMenu === 'dashboard' && (
@@ -598,7 +579,7 @@ export default function App() {
               />
             )}
               </StaggeredTabPanel>
-            </DashboardErrorBoundary>
+            </AnimatePresence>
           </div>
         </main>
       </div>
@@ -621,10 +602,11 @@ export default function App() {
         onNavigate={handleNavigateFromNotification}
       />
 
-            {/* Real-time PWA Connectivity Indicator */}
-            <OfflineIndicator />
-          </div>
-        )}
+              {/* Real-time PWA Connectivity Indicator */}
+              <OfflineIndicator />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </MotionConfig>
   );

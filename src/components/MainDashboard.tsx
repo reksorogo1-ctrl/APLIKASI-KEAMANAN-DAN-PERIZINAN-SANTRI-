@@ -985,7 +985,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       </div>
 
       {/* 3. 8 KARTU RINGKASAN JUMLAH SANTRI PUTRA, PUTRI, USTADZ & USTADZAH, SANTRI IZIN, SAKIT, SERTA SANTRI MUQIM */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
         <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-mono uppercase tracking-wider text-[#D1FAE5]">Total Santri</span>
@@ -1693,7 +1693,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                   <h3 className="text-sm font-bold text-[#FFFFFF]">Statistik & Aktivitas Sekretaris</h3>
                   <p className="text-[11px] text-[#D1FAE5] mt-0.5">Rekapitulasi persuratan resmi & buku induk</p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4">
+                  <div className="grid grid-cols-2 gap-2.5 mt-4">
                     <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
                       <p className="text-[10px] font-mono text-[#D1FAE5]">Total Arsip Surat</p>
                       <p className="text-xl font-black text-[#FFFFFF] font-mono mt-0.5">{sekretarisStats.totalArsip}</p>
@@ -1736,7 +1736,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                   <h3 className="text-sm font-bold text-[#FFFFFF]">Statistik & Aktivitas Perlengkapan</h3>
                   <p className="text-[11px] text-[#D1FAE5] mt-0.5">Kondisi aset sarpras & peminjaman aktif</p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4">
+                  <div className="grid grid-cols-2 gap-2.5 mt-4">
                     <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
                       <p className="text-[10px] font-mono text-[#D1FAE5]">Total Unit Aset</p>
                       <p className="text-xl font-black text-[#FFFFFF] font-mono mt-0.5">{perlengkapanStats.totalAset}</p>

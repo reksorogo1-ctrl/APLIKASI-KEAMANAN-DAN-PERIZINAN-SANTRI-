@@ -4,26 +4,28 @@ import { motion, useAnimate, stagger, type Variants } from 'motion/react';
 export const METALLIC_EASE = [0.22, 1, 0.36, 1] as const;
 
 export const metallicContainerVariants: Variants = {
-  hidden: { opacity: 1 },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.035,
-      delayChildren: 0,
+      staggerChildren: 0.045,
+      delayChildren: 0.02,
     },
   },
 };
 
 export const metallicCardVariants: Variants = {
   hidden: {
-    opacity: 1,
-    y: 6,
+    opacity: 0,
+    y: 14,
+    scale: 0.985,
   },
   visible: {
     opacity: 1,
     y: 0,
+    scale: 1,
     transition: {
-      duration: 0.24,
+      duration: 0.32,
       ease: METALLIC_EASE,
     },
   },
@@ -121,11 +123,13 @@ export const StaggeredTabPanel: React.FC<StaggeredTabPanelProps> = ({
     const primaryAnim = animate(
       primaryCards,
       {
-        y: [8, 0],
+        opacity: [0, 1],
+        y: [14, 0],
+        scale: [0.985, 1],
       },
       {
-        duration: 0.24,
-        delay: stagger(0.03, { startDelay: 0 }),
+        duration: 0.32,
+        delay: stagger(0.045, { startDelay: 0.02 }),
         ease: METALLIC_EASE,
       }
     );
@@ -135,11 +139,12 @@ export const StaggeredTabPanel: React.FC<StaggeredTabPanelProps> = ({
         ? animate(
             overflowCards,
             {
-              y: [6, 0],
+              opacity: [0, 1],
+              y: [10, 0],
             },
             {
-              duration: 0.22,
-              delay: 0.15,
+              duration: 0.28,
+              delay: 0.38,
               ease: METALLIC_EASE,
             }
           )
@@ -172,14 +177,17 @@ export const StaggeredTabPanel: React.FC<StaggeredTabPanelProps> = ({
   }, [tabKey, animate, scope]);
 
   return (
-    <div
+    <motion.div
       ref={scope}
       data-stagger-scope="true"
-      style={{ opacity: 1, visibility: 'visible' }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.22, ease: METALLIC_EASE }}
       className={className}
     >
       {children}
-    </div>
+    </motion.div>
   );
 };
 

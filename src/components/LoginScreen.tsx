@@ -14,13 +14,6 @@ import {
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { UserAccount } from '../types';
-import {
-  unlockAudioAndSpeech,
-  playClickSound,
-  playSuccessChime,
-  playErrorTone,
-  speakWelcomeMessage,
-} from '../utils/soundEffects';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserAccount) => void;
@@ -48,55 +41,46 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const verifyPinCode = useCallback((code: string) => {
     setErrorMessage('');
     setIsLoading(true);
-
-    const res = storageService.authenticateByPin(code);
-    if (res.success && res.user) {
-      playSuccessChime();
-      onLoginSuccess(res.user);
-      speakWelcomeMessage(res.user.nama, { delayMs: 300 });
-    } else {
-      playErrorTone();
-      setErrorMessage(res.message || 'PIN 6 Digit tidak dikenali.');
-      setPinShake(true);
-      setTimeout(() => {
-        setPinShake(false);
-        setPinDigits('');
-        setIsLoading(false);
-      }, 450);
-    }
+    setTimeout(() => {
+      const res = storageService.authenticateByPin(code);
+      if (res.success && res.user) {
+        onLoginSuccess(res.user);
+      } else {
+        setErrorMessage(res.message || 'PIN 6 Digit tidak dikenali.');
+        setPinShake(true);
+        setTimeout(() => {
+          setPinShake(false);
+          setPinDigits('');
+          setIsLoading(false);
+        }, 450);
+      }
+    }, 180);
   }, [onLoginSuccess]);
 
-  // Monitor PIN digit length in real-time so the final digit verifies & enters Dashboard automatically
-  useEffect(() => {
-    if (loginMode !== 'pin' || isLoading || pinShake) return;
-    if (pinDigits.length === 6) {
-      verifyPinCode(pinDigits);
-    }
-  }, [pinDigits, loginMode, isLoading, pinShake, verifyPinCode]);
-
   const handleDigitPress = useCallback((digit: string) => {
-    unlockAudioAndSpeech();
-    if (isLoading || pinShake) return;
-    playClickSound();
+    if (isLoading) return;
     setErrorMessage('');
-    setPinDigits((prev) => (prev.length >= 6 ? prev : prev + digit));
-  }, [isLoading, pinShake]);
+    setPinDigits((prev) => {
+      if (prev.length >= 6) return prev;
+      const next = prev + digit;
+      if (next.length === 6) {
+        verifyPinCode(next);
+      }
+      return next;
+    });
+  }, [isLoading, verifyPinCode]);
 
   const handleBackspace = useCallback(() => {
-    unlockAudioAndSpeech();
-    if (isLoading || pinShake) return;
-    playClickSound();
+    if (isLoading) return;
     setErrorMessage('');
     setPinDigits((prev) => prev.slice(0, -1));
-  }, [isLoading, pinShake]);
+  }, [isLoading]);
 
   const handleClearPin = useCallback(() => {
-    unlockAudioAndSpeech();
-    if (isLoading || pinShake) return;
-    playClickSound();
+    if (isLoading) return;
     setErrorMessage('');
     setPinDigits('');
-  }, [isLoading, pinShake]);
+  }, [isLoading]);
 
   // Physical keyboard support for 6-digit PIN Lock Screen
   useEffect(() => {
@@ -120,21 +104,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   const handleClassicLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    unlockAudioAndSpeech();
-    playClickSound();
     setErrorMessage('');
     setIsLoading(true);
 
-    const res = storageService.authenticate(username, password);
-    if (res.success && res.user) {
-      playSuccessChime();
-      onLoginSuccess(res.user);
-      speakWelcomeMessage(res.user.nama, { delayMs: 300 });
-    } else {
-      playErrorTone();
-      setErrorMessage(res.message || 'Kredensial tidak valid.');
-      setIsLoading(false);
-    }
+    setTimeout(() => {
+      const res = storageService.authenticate(username, password);
+      if (res.success && res.user) {
+        onLoginSuccess(res.user);
+      } else {
+        setErrorMessage(res.message || 'Kredensial tidak valid.');
+        setIsLoading(false);
+      }
+    }, 250);
   };
 
   const timeFormatted = new Intl.DateTimeFormat('id-ID', {
@@ -178,7 +159,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   ];
 
   return (
-    <div className="relative min-h-[100dvh] w-full flex items-center justify-center p-3 sm:p-4 bg-[#041A13] overflow-x-hidden overflow-y-auto font-sans selection:bg-[#D4AF37] selection:text-[#041A13] bg-luxury-grid">
+    <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-[#041A13] overflow-x-hidden font-sans selection:bg-[#D4AF37] selection:text-[#041A13] bg-luxury-grid">
       {/* Ambient Background Glow */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         {systemConfig.bgUrl && (
@@ -194,13 +175,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       </div>
 
       {/* Main Container: Centered iPhone Lock Screen */}
-      <div className="relative z-10 w-full max-w-md my-2 sm:my-4 mx-auto">
+      <div className="relative z-10 w-full max-w-md my-4 mx-auto">
         
         {/* CENTER: IPHONE LOCK SCREEN 6-DIGIT PIN PAD */}
         <div className="flex justify-center">
-          <div className="w-full max-w-[400px] p-5 sm:p-8 bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] relative overflow-hidden">
+          <div className="w-full max-w-[400px] p-6 sm:p-8 bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.85)] relative overflow-hidden">
             {/* iPhone Dynamic Island / Top Speaker Bar */}
-            <div className="flex justify-center mb-3 sm:mb-4">
+            <div className="flex justify-center mb-4">
               <div className="w-28 h-5 rounded-full bg-black/90 border border-[#d4af37]/30 flex items-center justify-between px-3 shadow-inner">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-[9px] font-mono text-[#e5c158] tracking-widest uppercase">WIB LIVE</span>
@@ -208,9 +189,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
 
             {/* Lock Screen Clock & Crest */}
-            <div className="text-center space-y-1.5 sm:space-y-2">
-              <div className="inline-flex items-center justify-center relative mb-1">
-                <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-[22%] bg-[#041d13] border-2 border-[#d4af37]/80 p-0 shadow-[0_12px_35px_rgba(0,0,0,0.8),0_0_24px_rgba(212,175,55,0.3)] flex items-center justify-center overflow-hidden">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center relative mb-1.5">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-[22%] bg-[#041d13] border-2 border-[#d4af37]/80 p-0 shadow-[0_12px_35px_rgba(0,0,0,0.8),0_0_24px_rgba(212,175,55,0.3)] flex items-center justify-center overflow-hidden">
                   <img
                     src={
                       !systemConfig.logoUrl ||
@@ -238,7 +219,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </div>
               <p className="text-xs font-semibold text-[#D1FAE5]">{dateFormatted}</p>
               <p className="text-[11px] font-mono text-[#D4AF37]">{hijriFormatted}</p>
-              <div className="pt-0.5">
+              <div className="pt-1">
                 <p className="text-[10px] font-serif text-[#D4AF37] tracking-widest font-bold uppercase">
                   {systemConfig.namaPondok || 'PONDOK PESANTREN SALAF AL-MALIKI'}
                 </p>
@@ -246,17 +227,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
 
             {/* Mode Switcher Pill */}
-            <div className="mt-4 flex p-1 rounded-2xl bg-[#041A13]/85 border border-emerald-500/25 touch-manipulation select-none">
+            <div className="mt-4 flex p-1 rounded-2xl bg-[#041A13]/85 border border-emerald-500/25">
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.97 }}
                 onClick={() => {
-                  unlockAudioAndSpeech();
-                  playClickSound();
                   setLoginMode('pin');
                   setErrorMessage('');
                 }}
-                className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer touch-manipulation select-none ${
+                className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   loginMode === 'pin'
                     ? 'bg-gradient-to-r from-[#D4AF37] to-[#b58e24] text-[#041A13] shadow-md'
                     : 'text-[#D1FAE5] hover:text-white'
@@ -269,12 +248,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                 type="button"
                 whileTap={{ scale: 0.97 }}
                 onClick={() => {
-                  unlockAudioAndSpeech();
-                  playClickSound();
                   setLoginMode('classic');
                   setErrorMessage('');
                 }}
-                className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer touch-manipulation select-none ${
+                className={`flex-1 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   loginMode === 'classic'
                     ? 'bg-gradient-to-r from-[#D4AF37] to-[#b58e24] text-[#041A13] shadow-md'
                     : 'text-[#D1FAE5] hover:text-white'
@@ -286,32 +263,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
 
             {errorMessage && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-3 p-2.5 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[11px] flex items-center justify-center gap-2 text-center"
-              >
+              <div className="mt-3 p-2.5 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[11px] flex items-center justify-center gap-2 text-center">
                 <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
                 <span>{errorMessage}</span>
-              </motion.div>
+              </div>
             )}
 
             {loginMode === 'pin' ? (
-              <div className="mt-4 sm:mt-5 space-y-4 sm:space-y-5">
-                {/* Prompt & 6 PIN Dots with smooth shake animation on wrong PIN */}
-                <div className="text-center space-y-2.5 sm:space-y-3">
+              <div className="mt-5 space-y-5">
+                {/* Prompt & 6 PIN Dots */}
+                <div className="text-center space-y-3">
                   <p className="text-xs font-semibold text-[#f4f9f5] tracking-wide flex items-center justify-center gap-1.5">
                     <Lock className="w-3.5 h-3.5 text-[#d4af37]" />
                     <span>Masukkan Kode PIN 6 Digit Pengurus</span>
                   </p>
-                  <motion.div
-                    animate={
-                      pinShake
-                        ? { x: [0, -11, 11, -8, 8, -4, 4, 0] }
-                        : { x: 0 }
-                    }
-                    transition={{ duration: 0.4, ease: 'easeInOut' }}
-                    className="flex items-center justify-center gap-3.5 py-1"
+                  <div
+                    className={`flex items-center justify-center gap-3.5 py-1 transition-transform ${
+                      pinShake ? 'translate-x-2' : ''
+                    }`}
                   >
                     {[0, 1, 2, 3, 4, 5].map((idx) => {
                       const filled = idx < pinDigits.length;
@@ -319,40 +288,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                         <div
                           key={idx}
                           className={`w-3.5 h-3.5 rounded-full transition-all duration-150 border ${
-                            pinShake
-                              ? 'bg-red-500 border-red-300 scale-110 shadow-[0_0_12px_rgba(239,68,68,0.85)]'
-                              : filled
-                                ? 'bg-[#e5c158] border-[#f9e29c] scale-110 shadow-[0_0_12px_rgba(229,193,88,0.9)]'
-                                : 'bg-transparent border-[#d4af37]/50'
+                            filled
+                              ? 'bg-[#e5c158] border-[#f9e29c] scale-110 shadow-[0_0_12px_rgba(229,193,88,0.9)]'
+                              : 'bg-transparent border-[#d4af37]/50'
                           }`}
                         />
                       );
                     })}
-                  </motion.div>
+                  </div>
                 </div>
 
-                {/* iPhone Circular Glass Keypad (Responsive max-w-xs mx-auto, touch-action: manipulation) */}
-                <div
-                  className="grid grid-cols-3 gap-3 sm:gap-4 max-w-xs mx-auto w-full place-items-center select-none touch-manipulation"
-                  style={{ touchAction: 'manipulation', WebkitUserSelect: 'none' }}
-                >
+                {/* iPhone Circular Glass Keypad */}
+                <div className="grid grid-cols-3 gap-3.5 max-w-[280px] mx-auto select-none">
                   {keypadButtons.map((btn) => (
                     <motion.button
                       key={btn.num}
                       type="button"
-                      data-no-tap="true"
-                      whileTap={{ scale: 0.92 }}
+                      whileTap={{ scale: 0.97 }}
                       disabled={isLoading}
                       onClick={() => handleDigitPress(btn.num)}
-                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      aria-label={`Angka ${btn.num}`}
-                      className="w-16 h-16 sm:w-[74px] sm:h-[74px] aspect-square rounded-full bg-emerald-950/65 backdrop-blur-md hover:bg-[#10B981]/20 active:bg-[#10B981]/30 border border-emerald-500/30 hover:border-[#D4AF37] active:border-[#D4AF37] flex flex-col items-center justify-center transition-colors cursor-pointer touch-manipulation select-none shadow-[inset_0_1px_1px_rgba(255,255,255,0.14),0_6px_16px_rgba(0,0,0,0.45)] group"
+                      className="w-18 h-18 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-950/60 backdrop-blur-md hover:bg-[#10B981]/20 border border-emerald-500/30 hover:border-[#D4AF37] flex flex-col items-center justify-center transition-colors cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_6px_16px_rgba(0,0,0,0.4)] group"
                     >
-                      <span className="text-2xl font-bold text-white group-hover:text-[#D4AF37] leading-none font-sans pointer-events-none">
+                      <span className="text-2xl font-bold text-white group-hover:text-[#D4AF37] leading-none font-sans">
                         {btn.num}
                       </span>
                       {btn.sub && (
-                        <span className="text-[8px] font-mono tracking-[0.2em] text-[#D1FAE5] group-hover:text-[#D4AF37] mt-1 pointer-events-none">
+                        <span className="text-[8px] font-mono tracking-[0.2em] text-[#D1FAE5] group-hover:text-[#D4AF37] mt-1">
                           {btn.sub}
                         </span>
                       )}
@@ -362,50 +323,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                   {/* Bottom Row: Reset / 0 / Backspace */}
                   <motion.button
                     type="button"
-                    data-no-tap="true"
-                    whileTap={{ scale: 0.92 }}
-                    disabled={isLoading}
+                    whileTap={{ scale: 0.97 }}
                     onClick={handleClearPin}
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    aria-label="Ulangi PIN"
-                    className="w-16 h-16 sm:w-[74px] sm:h-[74px] aspect-square rounded-full bg-[#041A13]/80 hover:bg-red-950/50 active:bg-red-950/70 border border-emerald-500/25 hover:border-red-500/50 flex flex-col items-center justify-center text-[10px] font-mono font-bold text-[#D1FAE5] hover:text-red-300 transition-colors cursor-pointer touch-manipulation select-none"
+                    className="w-18 h-18 sm:w-20 sm:h-20 mx-auto rounded-full bg-[#041A13]/80 hover:bg-red-950/50 border border-emerald-500/25 hover:border-red-500/50 flex flex-col items-center justify-center text-[10px] font-mono font-bold text-[#D1FAE5] hover:text-red-300 transition-colors cursor-pointer"
                   >
-                    <span className="pointer-events-none">ULANG</span>
+                    ULANG
                   </motion.button>
 
                   <motion.button
                     type="button"
-                    data-no-tap="true"
-                    whileTap={{ scale: 0.92 }}
+                    whileTap={{ scale: 0.97 }}
                     disabled={isLoading}
                     onClick={() => handleDigitPress('0')}
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    aria-label="Angka 0"
-                    className="w-16 h-16 sm:w-[74px] sm:h-[74px] aspect-square rounded-full bg-emerald-950/65 backdrop-blur-md hover:bg-[#10B981]/20 active:bg-[#10B981]/30 border border-emerald-500/30 hover:border-[#D4AF37] active:border-[#D4AF37] flex flex-col items-center justify-center transition-colors cursor-pointer touch-manipulation select-none shadow-[inset_0_1px_1px_rgba(255,255,255,0.14),0_6px_16px_rgba(0,0,0,0.45)] group"
+                    className="w-18 h-18 sm:w-20 sm:h-20 mx-auto rounded-full bg-emerald-950/60 backdrop-blur-md hover:bg-[#10B981]/20 border border-emerald-500/30 hover:border-[#D4AF37] flex flex-col items-center justify-center transition-colors cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),0_6px_16px_rgba(0,0,0,0.4)] group"
                   >
-                    <span className="text-2xl font-bold text-white group-hover:text-[#D4AF37] leading-none pointer-events-none">
+                    <span className="text-2xl font-bold text-white group-hover:text-[#D4AF37] leading-none">
                       0
                     </span>
-                    <span className="text-[8px] font-mono text-[#D1FAE5] mt-1 pointer-events-none">+</span>
+                    <span className="text-[8px] font-mono text-[#D1FAE5] mt-1">+</span>
                   </motion.button>
 
                   <motion.button
                     type="button"
-                    data-no-tap="true"
-                    whileTap={{ scale: 0.92 }}
-                    disabled={isLoading}
+                    whileTap={{ scale: 0.97 }}
                     onClick={handleBackspace}
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    aria-label="Hapus 1 Digit"
+                    className="w-18 h-18 sm:w-20 sm:h-20 mx-auto rounded-full bg-[#041A13]/80 hover:bg-[#10B981]/20 border border-emerald-500/25 hover:border-[#D4AF37]/60 flex flex-col items-center justify-center text-[#D1FAE5] hover:text-[#D4AF37] transition-colors cursor-pointer"
                     title="Hapus 1 Digit"
-                    className="w-16 h-16 sm:w-[74px] sm:h-[74px] aspect-square rounded-full bg-[#041A13]/80 hover:bg-[#10B981]/20 active:bg-[#10B981]/30 border border-emerald-500/25 hover:border-[#D4AF37]/60 flex flex-col items-center justify-center text-[#D1FAE5] hover:text-[#D4AF37] transition-colors cursor-pointer touch-manipulation select-none"
                   >
-                    <Delete className="w-5 h-5 pointer-events-none" />
-                    <span className="text-[8px] font-mono mt-0.5 pointer-events-none">HAPUS</span>
+                    <Delete className="w-5 h-5" />
+                    <span className="text-[8px] font-mono mt-0.5">HAPUS</span>
                   </motion.button>
                 </div>
 
-                <div className="pt-1 sm:pt-2 text-center">
+                <div className="pt-2 text-center">
                   <div className="w-32 h-1 rounded-full bg-white/30 mx-auto" />
                 </div>
               </div>
