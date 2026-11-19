@@ -4,11 +4,21 @@ import {
   Moon,
   Sun,
   Bell,
-  Clock
+  Clock,
+  Volume2,
+  VolumeX,
+  RotateCcw,
 } from 'lucide-react';
 import { UserAccount } from '../types';
 import { storageService } from '../services/storageService';
 import { PWAInstallButton } from './PWAInstallButton';
+import {
+  isSoundMuted,
+  toggleSoundMuted,
+  playClickSound,
+  speakWelcomeMessage,
+  unlockAudioAndSpeech,
+} from '../utils/soundEffects';
 
 interface HeaderProps {
   currentUser: UserAccount;
@@ -23,6 +33,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  currentUser,
   logoUrl,
   namaPondok,
   namaPendekAplikasi,
@@ -32,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [theme, setThemeState] = useState<'dark' | 'light'>(storageService.getTheme());
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [isMuted, setIsMuted] = useState<boolean>(() => isSoundMuted());
 
   useEffect(() => {
     const updateTime = () => {
@@ -50,9 +62,27 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const toggleTheme = () => {
+    unlockAudioAndSpeech();
+    playClickSound();
     const next = theme === 'dark' ? 'light' : 'dark';
     storageService.setTheme(next);
     setThemeState(next);
+  };
+
+  const handleToggleMute = () => {
+    unlockAudioAndSpeech();
+    const nextMuted = toggleSoundMuted();
+    setIsMuted(nextMuted);
+    if (!nextMuted) {
+      playClickSound();
+    }
+  };
+
+  const handleReplayWelcome = () => {
+    unlockAudioAndSpeech();
+    setIsMuted(false);
+    playClickSound();
+    speakWelcomeMessage(currentUser.nama, { force: true });
   };
 
   return (
@@ -133,10 +163,41 @@ export const Header: React.FC<HeaderProps> = ({
 
         <PWAInstallButton variant="header" />
 
+        {/* Speaker Mute / Replay Welcome Speech Controls */}
+        <div className="flex items-center rounded-xl border border-emerald-500/25 bg-[#041A13]/60 overflow-hidden shrink-0">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleToggleMute}
+            className={`p-2 sm:p-2.5 transition-colors cursor-pointer touch-manipulation ${
+              isMuted
+                ? 'text-red-300 hover:bg-red-950/50'
+                : 'text-[#10B981] hover:text-[#D4AF37] hover:bg-emerald-950/80'
+            }`}
+            title={isMuted ? 'Aktifkan Suara & Efek Klik' : 'Bisukan Suara & Efek Klik'}
+            aria-label={isMuted ? 'Aktifkan Suara' : 'Bisukan Suara'}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </motion.button>
+          <div className="w-[1px] h-4 bg-emerald-500/25" />
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleReplayWelcome}
+            className="p-2 sm:p-2.5 text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 transition-colors cursor-pointer touch-manipulation"
+            title="Putar Ulang Suara Sambutan"
+            aria-label="Putar Ulang Suara Sambutan"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </motion.button>
+        </div>
+
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={onOpenNotifications}
-          className="relative p-2.5 text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 rounded-xl transition-colors border border-emerald-500/25 cursor-pointer shrink-0"
+          onClick={() => {
+            unlockAudioAndSpeech();
+            playClickSound();
+            onOpenNotifications();
+          }}
+          className="relative p-2 sm:p-2.5 text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 rounded-xl transition-colors border border-emerald-500/25 cursor-pointer shrink-0 touch-manipulation"
           title="Notifikasi Sistem"
           aria-label="Notifikasi Sistem"
         >
@@ -151,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={toggleTheme}
-          className="p-2.5 text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 rounded-xl transition-colors border border-emerald-500/25 cursor-pointer shrink-0"
+          className="p-2 sm:p-2.5 text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 rounded-xl transition-colors border border-emerald-500/25 cursor-pointer shrink-0 touch-manipulation"
           title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
           aria-label="Ganti Tema"
         >
@@ -161,8 +222,12 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Mobile 3-Line Hamburger Button at Top Right */}
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={onToggleSidebar}
-          className="md:hidden flex items-center justify-center gap-1.5 px-3 py-2.5 text-[#D4AF37] hover:text-white bg-emerald-950/75 hover:bg-emerald-900/75 rounded-xl transition-colors cursor-pointer border border-[#D4AF37]/50 shadow-lg shrink-0"
+          onClick={() => {
+            unlockAudioAndSpeech();
+            playClickSound();
+            onToggleSidebar();
+          }}
+          className="md:hidden flex items-center justify-center gap-1.5 px-3 py-2.5 text-[#D4AF37] hover:text-white bg-emerald-950/75 hover:bg-emerald-900/75 rounded-xl transition-colors cursor-pointer border border-[#D4AF37]/50 shadow-lg shrink-0 touch-manipulation"
           aria-label="Buka Menu Navigasi"
           title="Buka Menu"
         >

@@ -42,6 +42,7 @@ import { QuickQRScannerModal } from './components/QuickQRScannerModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { LoginScreen } from './components/LoginScreen';
 import { syncPWAIdentity } from './services/pwaSyncService';
+import { unlockAudioAndSpeech, playClickSound, stopWelcomeSpeech } from './utils/soundEffects';
 
 const KEAMANAN_SUBTABS: KeamananSubTab[] = [
   'ringkasan',
@@ -150,6 +151,19 @@ export default function App() {
     };
   }, []);
 
+  // Automatically unlock Web Audio API & Speech Synthesis on first user interaction (iOS Safari & Android)
+  useEffect(() => {
+    const handleFirstTouch = () => {
+      unlockAudioAndSpeech();
+    };
+    window.addEventListener('touchstart', handleFirstTouch, { passive: true, once: true });
+    window.addEventListener('pointerdown', handleFirstTouch, { passive: true, once: true });
+    return () => {
+      window.removeEventListener('touchstart', handleFirstTouch);
+      window.removeEventListener('pointerdown', handleFirstTouch);
+    };
+  }, []);
+
   // Sync PWA Identity whenever systemConfig updates
   useEffect(() => {
     syncPWAIdentity(systemConfig);
@@ -157,6 +171,9 @@ export default function App() {
 
   // Handle Reset / Kembali ke Dashboard Utama Administrator
   const handleLogout = () => {
+    unlockAudioAndSpeech();
+    playClickSound();
+    stopWelcomeSpeech();
     storageService.logout();
     setCurrentUser(storageService.getCurrentUser());
     setActiveMenu('dashboard');
@@ -173,6 +190,8 @@ export default function App() {
 
   // Handle Sidebar menu & subTab selection
   const handleSelectSidebarMenu = (menu: ActiveMenu, subTab?: string) => {
+    unlockAudioAndSpeech();
+    playClickSound();
     setActiveMenu(menu);
     if (menu === 'keamanan') {
       const nextSub = (subTab as KeamananSubTab) || 'ringkasan';
@@ -403,6 +422,13 @@ export default function App() {
 
                 {/* Viewport Content Area */}
                 <main
+                  onClickCapture={(e) => {
+                    const target = e.target as HTMLElement | null;
+                    if (target?.closest('button:not(:disabled)')) {
+                      unlockAudioAndSpeech();
+                      playClickSound();
+                    }
+                  }}
                   className={`flex-1 h-full min-w-0 p-2.5 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-[#041A13] bg-security-grid transition-all ${
                     isSidebarOpen ? 'max-md:overflow-hidden max-md:pointer-events-none' : ''
                   }`}

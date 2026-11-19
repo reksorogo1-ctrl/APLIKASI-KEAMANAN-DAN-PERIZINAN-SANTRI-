@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
+import { playClickSound, unlockAudioAndSpeech } from '../utils/soundEffects';
 
 export type ActiveMenu =
   | 'dashboard'
@@ -815,8 +816,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={onClose}
-              className="md:hidden p-2 text-[#D4AF37] hover:text-white rounded-xl hover:bg-emerald-900/60 transition-colors cursor-pointer shrink-0 border border-emerald-500/30"
+              onClick={() => {
+                unlockAudioAndSpeech();
+                playClickSound();
+                onClose();
+              }}
+              className="md:hidden p-2 text-[#D4AF37] hover:text-white rounded-xl hover:bg-emerald-900/60 transition-colors cursor-pointer shrink-0 border border-emerald-500/30 touch-manipulation"
               aria-label="Tutup Menu"
             >
               <X className="w-5 h-5" />
