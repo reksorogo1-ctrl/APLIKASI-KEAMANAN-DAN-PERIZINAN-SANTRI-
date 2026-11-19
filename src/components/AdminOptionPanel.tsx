@@ -195,41 +195,31 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
     statusAktif: true,
   });
 
-  // Save Config & Visual Options (strictly for Website — preserves Keamanan Option Panel settings)
+  // Save Config & Visual Options (partial patch only — never overwrites concurrent fields like ustadzList, absensi, or keamanan)
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     const latest = storageService.getSystemConfig();
-    const mergedWebsiteConfig: SystemConfig = {
-      ...configForm,
-      logoDashboardKeamananUrl: latest.logoDashboardKeamananUrl,
-      logoSuratPerizinanUrl: latest.logoSuratPerizinanUrl,
-      suratIzinLayout: latest.suratIzinLayout,
-      suratSanksiLayout: latest.suratSanksiLayout,
-      kopSuratBaris1: latest.kopSuratBaris1,
-      kopSuratBaris2: latest.kopSuratBaris2,
-      alamatKopSurat: latest.alamatKopSurat,
-      judulSuratSanksi: latest.judulSuratSanksi,
-      pembukaSuratSanksi: latest.pembukaSuratSanksi,
-      penutupSuratSanksi: latest.penutupSuratSanksi,
-      catatanKakiSuratSanksi: latest.catatanKakiSuratSanksi,
-      ketuaKeamananPutra: latest.ketuaKeamananPutra,
-      ketuaKeamananPutri: latest.ketuaKeamananPutri,
-      hotlineWa: latest.hotlineWa,
-      bendaharaConfig: latest.bendaharaConfig,
-      syahriyahList: latest.syahriyahList,
-      uangSakuList: latest.uangSakuList,
-      anggaranList: latest.anggaranList,
-      pusatInformasiList: latest.pusatInformasiList,
-      notulenRapatList: latest.notulenRapatList,
-      murotilTingkatanList: latest.murotilTingkatanList,
-      murotilKelompokList: latest.murotilKelompokList,
-      murotilAbsensiSantriList: latest.murotilAbsensiSantriList,
-      murotilSetoranList: latest.murotilSetoranList,
-      murotilAbsensiPjList: latest.murotilAbsensiPjList,
-      murotilConfig: latest.murotilConfig,
+    const websitePatch: Partial<SystemConfig> = {
+      namaPondok: configForm.namaPondok,
+      alamatPondok: configForm.alamatPondok,
+      namaAplikasi: configForm.namaAplikasi,
+      namaPendekAplikasi: configForm.namaPendekAplikasi,
+      themeColor: configForm.themeColor,
+      backgroundColor: configForm.backgroundColor,
+      appIconUrl: configForm.appIconUrl,
+      logoUrl: configForm.logoUrl,
+      bgUrl: configForm.bgUrl,
+      bgOpacity: configForm.bgOpacity,
+      gerbangStrictEnforcement: configForm.gerbangStrictEnforcement,
+      autoGenerateViolationOnLate: configForm.autoGenerateViolationOnLate,
+      toleransiKeterlambatanMenit: configForm.toleransiKeterlambatanMenit,
+      kuotaIzinHarian: configForm.kuotaIzinHarian,
+      modeOperasiDarurat: configForm.modeOperasiDarurat,
+      beritaTerkini: configForm.beritaTerkini,
+      suratSekretarisConfig: configForm.suratSekretarisConfig,
     };
-    storageService.updateSystemConfig(mergedWebsiteConfig);
-    syncPWAIdentity(mergedWebsiteConfig);
+    storageService.updateSystemConfig(websitePatch);
+    syncPWAIdentity({ ...latest, ...websitePatch });
     setSaveSuccessMsg('Konfigurasi website, logo website, dan identitas PWA berhasil disimpan & disinkronkan!');
     setTimeout(() => setSaveSuccessMsg(''), 4500);
     onConfigUpdated();
@@ -1188,8 +1178,8 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    storageService.updateSystemConfig({ ...configForm });
-                    syncPWAIdentity(configForm);
+                    storageService.updateSystemConfig({ appIconUrl: configForm.appIconUrl });
+                    syncPWAIdentity({ ...storageService.getSystemConfig(), appIconUrl: configForm.appIconUrl });
                     onConfigUpdated();
                     setSaveSuccessMsg('Ikon PWA dan manifest berhasil disinkronkan secara instan!');
                     setTimeout(() => setSaveSuccessMsg(''), 4500);
@@ -2789,13 +2779,39 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-              <div className="p-3 rounded-xl bg-[#02100a]/80 border border-emerald-800">
-                <span className="text-emerald-200/75 text-[10px] block">STATUS KONEKSI</span>
-                <span className="font-bold text-emerald-400 flex items-center gap-1.5 mt-0.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  TERHUBUNG KE FIRESTORE
-                </span>
-              </div>
+              {(() => {
+                const cloudStatus = storageService.getCloudSyncStatus();
+                const isConnected = cloudStatus.status === 'connected';
+                const isSyncing = cloudStatus.status === 'syncing';
+                return (
+                  <div className={`p-3 rounded-xl border ${
+                    isConnected
+                      ? 'bg-[#02100a]/80 border-emerald-800'
+                      : isSyncing
+                        ? 'bg-amber-950/50 border-amber-700/60'
+                        : 'bg-red-950/70 border-red-500/60'
+                  }`}>
+                    <span className="text-emerald-200/75 text-[10px] block">STATUS KONEKSI</span>
+                    <span className={`font-bold flex items-center gap-1.5 mt-0.5 ${
+                      isConnected ? 'text-emerald-400' : isSyncing ? 'text-amber-300' : 'text-red-300'
+                    }`}>
+                      <span className={`w-2 h-2 rounded-full ${
+                        isConnected ? 'bg-emerald-400 animate-pulse' : isSyncing ? 'bg-amber-400 animate-ping' : 'bg-red-500 animate-pulse'
+                      }`}></span>
+                      {isConnected
+                        ? 'Cloud Synced (Firebase)'
+                        : isSyncing
+                          ? 'Menghubungkan Firebase...'
+                          : 'Offline / Gagal Koneksi Firebase'}
+                    </span>
+                    {!isConnected && !isSyncing && cloudStatus.errorMessage && (
+                      <span className="block mt-1 text-[10px] text-red-200 break-words">
+                        {cloudStatus.errorMessage}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="p-3 rounded-xl bg-[#02100a]/80 border border-emerald-800">
                 <span className="text-emerald-200/75 text-[10px] block">PLATFORM TERKONEKSI</span>
                 <span className="font-bold text-emerald-300 mt-0.5 block">
@@ -3757,7 +3773,6 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 ? pusatInformasiList.map((item) => (item.id === editingInfoId ? entry : item))
                 : [entry, ...pusatInformasiList];
               storageService.updateSystemConfig({
-                ...storageService.getSystemConfig(),
                 pusatInformasiList: updatedList,
               });
               setEditingInfoId(null);
@@ -4010,7 +4025,6 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                         onClick={() => {
                           const updated = pusatInformasiList.filter((item) => item.id !== info.id);
                           storageService.updateSystemConfig({
-                            ...storageService.getSystemConfig(),
                             pusatInformasiList: updated,
                           });
                           if (editingInfoId === info.id) setEditingInfoId(null);

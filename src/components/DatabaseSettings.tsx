@@ -44,10 +44,14 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
   const [confirmClearSample, setConfirmClearSample] = useState<boolean>(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSyncTelemetry(storageService.getCloudSyncStatus());
-    }, 2000);
-    return () => clearInterval(interval);
+    const syncState = () => setSyncTelemetry(storageService.getCloudSyncStatus());
+    syncState();
+    const unsub = storageService.subscribe(syncState);
+    const interval = setInterval(syncState, 4000);
+    return () => {
+      unsub();
+      clearInterval(interval);
+    };
   }, []);
 
   const handleDownloadBackup = () => {
@@ -158,11 +162,38 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 bg-[#02100a]/90 border border-emerald-500/40 px-4 py-2 rounded-2xl text-xs font-mono shadow-inner glow-gold">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-emerald-300 font-bold tracking-wide">
-              {syncTelemetry.cloudConnected ? 'TERHUBUNG (REALTIME SYNC)' : 'MENGHUBUNGKAN CLOUD...'}
-            </span>
+          <div className="flex flex-col items-end gap-1.5">
+            <div
+              className={`flex items-center gap-2.5 px-4 py-2 rounded-2xl text-xs font-mono shadow-inner border ${
+                syncTelemetry.status === 'connected'
+                  ? 'bg-[#02100a]/90 border-emerald-500/45 text-emerald-300 glow-gold'
+                  : syncTelemetry.status === 'syncing'
+                    ? 'bg-amber-950/80 border-amber-500/45 text-amber-200'
+                    : 'bg-red-950/90 border-red-500/60 text-red-200'
+              }`}
+            >
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  syncTelemetry.status === 'connected'
+                    ? 'bg-emerald-400 animate-pulse'
+                    : syncTelemetry.status === 'syncing'
+                      ? 'bg-amber-400 animate-ping'
+                      : 'bg-red-500 animate-pulse'
+                }`}
+              />
+              <span className="font-bold tracking-wide">
+                {syncTelemetry.status === 'connected'
+                  ? 'Cloud Synced (Firebase)'
+                  : syncTelemetry.status === 'syncing'
+                    ? 'Menghubungkan Firebase...'
+                    : 'Offline / Gagal Koneksi Firebase'}
+              </span>
+            </div>
+            {(syncTelemetry.status === 'error' || syncTelemetry.status === 'offline') && syncTelemetry.errorMessage && (
+              <div className="px-3 py-1.5 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[11px] font-mono max-w-md break-words">
+                Error Firebase: {syncTelemetry.errorMessage}
+              </div>
+            )}
           </div>
         </div>
       </div>

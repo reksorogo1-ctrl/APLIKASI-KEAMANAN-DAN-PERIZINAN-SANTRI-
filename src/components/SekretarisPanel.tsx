@@ -906,7 +906,6 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     }));
 
     storageService.updateSystemConfig({
-      ...systemConfig,
       suratSekretarisConfig: syncedCfg,
     });
     onDataChanged();
@@ -1119,20 +1118,14 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       jadwalPiket: ustadzForm.jadwalPiket || 'Harian',
       statusAktif: true,
     };
-    storageService.updateSystemConfig({
-      ...systemConfig,
-      ustadzList: [item, ...ustadzList],
-    });
+    storageService.saveUstadz(item);
     onDataChanged();
     setUstadzForm({ ...ustadzForm, nama: '' });
     showToast(`Data ${item.nama} berhasil disimpan ke direktori Ustadz/Ustadzah.`);
   };
 
   const handleDeleteUstadz = (id: string) => {
-    storageService.updateSystemConfig({
-      ...systemConfig,
-      ustadzList: ustadzList.filter((u) => u.id !== id),
-    });
+    storageService.deleteUstadz(id);
     onDataChanged();
   };
 
@@ -1169,7 +1162,6 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       notulis: notulenForm.notulis || currentUser.nama,
     };
     storageService.updateSystemConfig({
-      ...systemConfig,
       notulenRapatList: [item, ...notulenList],
     });
 
@@ -3507,7 +3499,6 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                                     : item
                                 );
                                 storageService.updateSystemConfig({
-                                  ...systemConfig,
                                   notulenRapatList: updated,
                                 });
                                 onDataChanged();
@@ -3555,7 +3546,6 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                                 onClick={() => {
                                   const updated = notulenList.filter((item) => item.id !== n.id);
                                   storageService.updateSystemConfig({
-                                    ...systemConfig,
                                     notulenRapatList: updated,
                                   });
                                   onDataChanged();

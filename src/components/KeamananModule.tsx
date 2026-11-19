@@ -258,9 +258,7 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
 
   const handleSaveLogoKeamanan = (e: React.FormEvent) => {
     e.preventDefault();
-    const latest = storageService.getSystemConfig();
     storageService.updateSystemConfig({
-      ...latest,
       logoDashboardKeamananUrl: logoKeamananForm.logoDashboardKeamananUrl || OFFICIAL_KEAMANAN_LOGO,
       logoSuratPerizinanUrl: logoKeamananForm.logoSuratPerizinanUrl || OFFICIAL_KEAMANAN_LOGO,
     });
@@ -272,9 +270,7 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
 
   const handleSaveSuratIzinLayout = (e: React.FormEvent) => {
     e.preventDefault();
-    const latest = storageService.getSystemConfig();
     storageService.updateSystemConfig({
-      ...latest,
       suratIzinLayout: suratIzinLayoutForm,
     });
     setOptionSavedMsg('Layout & Redaksi Surat Perizinan Santri berhasil disimpan!');
@@ -283,9 +279,7 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
 
   const handleSaveFormatSanksi = (e: React.FormEvent) => {
     e.preventDefault();
-    const latest = storageService.getSystemConfig();
     storageService.updateSystemConfig({
-      ...latest,
       ...formatSanksiForm,
       suratSanksiLayout: suratSanksiLayoutForm,
     });

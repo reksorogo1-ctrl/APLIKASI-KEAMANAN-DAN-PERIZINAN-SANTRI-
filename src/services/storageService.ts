@@ -54,6 +54,7 @@ import {
   OperationType,
   resyncFirestoreNetwork,
   isFirestoreQuotaError,
+  isFirestorePermissionError,
   testFirestoreConnection,
   extractFirebaseErrorMessage,
   FIRESTORE_DATABASE_ID,
@@ -1075,10 +1076,12 @@ class StorageService {
   public async forcePullFromCloud(): Promise<boolean> {
     try {
       let hitQuota = false;
+      let permissionErrorMsg: string | null = null;
+      let networkErrorMsg: string | null = null;
 
       const fetchCollectionFromCloud = async <T extends { id: string }>(colName: string): Promise<T[]> => {
         const colRef = collection(db, colName);
-        if (hitQuota) {
+        if (hitQuota || permissionErrorMsg) {
           const cachedSnap = await getDocsFromCache(colRef).catch(() => null);
           return cachedSnap ? cachedSnap.docs.map(d => ({ ...d.data(), id: d.id } as T)) : [];
         }
@@ -1089,12 +1092,16 @@ class StorageService {
           if (isFirestoreQuotaError(err)) {
             hitQuota = true;
             this.quotaExceeded = true;
+          } else if (isFirestorePermissionError(err)) {
+            permissionErrorMsg = extractFirebaseErrorMessage(err);
+          } else if (!networkErrorMsg) {
+            networkErrorMsg = extractFirebaseErrorMessage(err);
           }
           try {
             const cachedSnap = await getDocsFromCache(colRef);
             return cachedSnap.docs.map(d => ({ ...d.data(), id: d.id } as T));
           } catch {
-            if (!hitQuota) {
+            if (!hitQuota && !permissionErrorMsg) {
               const fallbackSnap = await getDocs(colRef);
               return fallbackSnap.docs.map(d => ({ ...d.data(), id: d.id } as T));
             }
@@ -1114,6 +1121,10 @@ class StorageService {
           if (isFirestoreQuotaError(err)) {
             hitQuota = true;
             this.quotaExceeded = true;
+          } else if (isFirestorePermissionError(err)) {
+            permissionErrorMsg = extractFirebaseErrorMessage(err);
+          } else if (!networkErrorMsg) {
+            networkErrorMsg = extractFirebaseErrorMessage(err);
           }
           try {
             const cachedSnap = await getDocFromCache(docRef);
@@ -1121,7 +1132,7 @@ class StorageService {
               this.cache.systemConfig = buildCleanSystemConfig(cachedSnap.data() as Partial<SystemConfig>);
             }
           } catch {
-            if (!hitQuota) {
+            if (!hitQuota && !permissionErrorMsg) {
               const fallbackSnap = await getDoc(docRef);
               if (fallbackSnap.exists()) {
                 this.cache.systemConfig = buildCleanSystemConfig(fallbackSnap.data() as Partial<SystemConfig>);
@@ -1173,13 +1184,35 @@ class StorageService {
         fetchCollectionFromCloud<PeminjamanBarang>(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN),
       ]);
 
+      if (permissionErrorMsg) {
+        this.cloudConnected = false;
+        this.serverConfirmed = false;
+        this.cloudError = permissionErrorMsg;
+        this.lastSyncTime = 'Akses Firebase Ditolak Rules';
+        this.notify();
+        return false;
+      }
+
       if (hitQuota) {
+        this.cloudConnected = false;
+        this.cloudError = 'Kuota baca harian Firestore tercapai.';
         this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
         this.notify();
         return false;
       }
 
+      if (networkErrorMsg && !this.isNavigatorOnline) {
+        this.cloudConnected = false;
+        this.serverConfirmed = false;
+        this.cloudError = networkErrorMsg;
+        this.lastSyncTime = 'Perangkat Offline';
+        this.notify();
+        return false;
+      }
+
       this.quotaExceeded = false;
+      this.cloudError = null;
+      this.serverConfirmed = true;
       this.cache.santri = santri;
       this.cache.perizinan = perizinan.sort((a, b) => (b.id > a.id ? 1 : -1));
       this.cache.pelanggaran = pelanggaran.sort((a, b) => (b.id > a.id ? 1 : -1));
@@ -1215,11 +1248,18 @@ class StorageService {
       this.notify();
       return true;
     } catch (err) {
+      const errMsg = extractFirebaseErrorMessage(err);
       if (isFirestoreQuotaError(err)) {
         this.quotaExceeded = true;
+        this.cloudError = errMsg;
         this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
-        this.notify();
+      } else {
+        this.cloudError = errMsg;
+        this.lastSyncTime = 'Gagal Koneksi Firebase';
       }
+      this.cloudConnected = false;
+      this.serverConfirmed = false;
+      this.notify();
       console.warn('Force pull paused:', err);
       return false;
     }
@@ -1688,8 +1728,11 @@ class StorageService {
     this.notify();
 
     // Realtime write to central Firestore database
-    setDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, izin.id), sanitizeForFirestore(izin), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PERIZINAN}/${izin.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, izin.id), sanitizeForFirestore(izin), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.PERIZINAN}/${izin.id}`
+    );
   }
 
   public deletePerizinan(id: string, alasan?: string) {
@@ -1715,8 +1758,11 @@ class StorageService {
     this.cache.perizinan = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PERIZINAN}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.PERIZINAN}/${id}`
+    );
   }
 
   // Automated Tardiness Detection
@@ -1788,8 +1834,11 @@ class StorageService {
     this.cache.tataTertib = list;
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.TATA_TERTIB, tt.id), sanitizeForFirestore(tt), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.TATA_TERTIB}/${tt.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.TATA_TERTIB, tt.id), sanitizeForFirestore(tt), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.TATA_TERTIB}/${tt.id}`
+    );
   }
 
   public deleteTataTertib(id: string) {
@@ -1797,8 +1846,11 @@ class StorageService {
     this.cache.tataTertib = list;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.TATA_TERTIB, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.TATA_TERTIB}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.TATA_TERTIB, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.TATA_TERTIB}/${id}`
+    );
   }
 
   // ==========================================
@@ -1859,8 +1911,11 @@ class StorageService {
     this.notify();
 
     // Central Firestore sync
-    setDoc(doc(db, CLOUD_COLLECTIONS.PELANGGARAN, pel.id), sanitizeForFirestore(pel), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PELANGGARAN}/${pel.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.PELANGGARAN, pel.id), sanitizeForFirestore(pel), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.PELANGGARAN}/${pel.id}`
+    );
   }
 
   public deletePelanggaran(id: string, alasan?: string) {
@@ -1885,8 +1940,11 @@ class StorageService {
     this.cache.pelanggaran = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.PELANGGARAN, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PELANGGARAN}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.PELANGGARAN, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.PELANGGARAN}/${id}`
+    );
   }
 
   private updateSantriPoin(santriId: string, poinDelta: number) {
@@ -1895,8 +1953,11 @@ class StorageService {
     if (santri) {
       santri.poinPelanggaran = Math.max(0, (santri.poinPelanggaran || 0) + poinDelta);
       this.cache.santri = santriList;
-      setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
-        .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`));
+      this.trackCloudWrite(
+        setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true }),
+        OperationType.WRITE,
+        `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`
+      );
     }
   }
 
@@ -1971,8 +2032,11 @@ class StorageService {
     this.notify();
 
     // Central Firestore sync
-    setDoc(doc(db, CLOUD_COLLECTIONS.SANKSI, preparedSanksi.id), sanitizeForFirestore(preparedSanksi), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANKSI}/${preparedSanksi.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.SANKSI, preparedSanksi.id), sanitizeForFirestore(preparedSanksi), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.SANKSI}/${preparedSanksi.id}`
+    );
   }
 
   public deleteSanksi(id: string, alasan?: string) {
@@ -1998,8 +2062,11 @@ class StorageService {
     this.cache.sanksi = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.SANKSI, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.SANKSI}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.SANKSI, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.SANKSI}/${id}`
+    );
   }
 
   // Audit Hash & Immutable Log Engine
@@ -2424,8 +2491,11 @@ class StorageService {
     this.addLog('Agenda Pengurus', `Menyimpan agenda kepengurusan: ${agenda.judul} (${agenda.tanggal})`, 'admin');
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, agenda.id), sanitizeForFirestore(agenda), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${agenda.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, agenda.id), sanitizeForFirestore(agenda), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${agenda.id}`
+    );
 
     this.checkAndDetectTodayAgendas();
   }
@@ -2435,8 +2505,11 @@ class StorageService {
     this.cache.agendaPengurus = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${id}`
+    );
   }
 
   public getEvaluasiKepengurusan(): EvaluasiKepengurusan[] {
@@ -2452,8 +2525,11 @@ class StorageService {
     this.addLog('Evaluasi Kepengurusan', `Ketua Pondok mencatat evaluasi divisi ${evaluasi.divisi}: ${evaluasi.judul}`, 'admin');
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, evaluasi.id), sanitizeForFirestore(evaluasi), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN}/${evaluasi.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, evaluasi.id), sanitizeForFirestore(evaluasi), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN}/${evaluasi.id}`
+    );
   }
 
   public deleteEvaluasiKepengurusan(id: string) {
@@ -2461,8 +2537,11 @@ class StorageService {
     this.cache.evaluasiKepengurusan = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN}/${id}`
+    );
   }
 
   public getPengajuanDivisi(): PengajuanDivisi[] {
@@ -2486,8 +2565,11 @@ class StorageService {
     this.addLog('Pengajuan Divisi', `Update pengajuan ${pengajuan.nomorPengajuan} (${pengajuan.status}): ${pengajuan.judul}`, 'admin');
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, pengajuan.id), sanitizeForFirestore(pengajuan), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PENGAJUAN_DIVISI}/${pengajuan.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, pengajuan.id), sanitizeForFirestore(pengajuan), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.PENGAJUAN_DIVISI}/${pengajuan.id}`
+    );
   }
 
   public deletePengajuanDivisi(id: string) {
@@ -2495,8 +2577,11 @@ class StorageService {
     this.cache.pengajuanDivisi = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PENGAJUAN_DIVISI}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.PENGAJUAN_DIVISI}/${id}`
+    );
   }
 
   // ==========================================
@@ -2515,8 +2600,11 @@ class StorageService {
     this.addLog('Administrasi Persuratan', `Menyimpan Surat ${surat.arah} (${surat.kodeJenis}) No. ${surat.nomorSurat}`, 'admin');
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.SURAT_MENYURAT, surat.id), sanitizeForFirestore(surat), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SURAT_MENYURAT}/${surat.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.SURAT_MENYURAT, surat.id), sanitizeForFirestore(surat), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.SURAT_MENYURAT}/${surat.id}`
+    );
   }
 
   public deleteArsipSurat(id: string) {
@@ -2524,8 +2612,11 @@ class StorageService {
     this.cache.arsipSurat = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.SURAT_MENYURAT, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.SURAT_MENYURAT}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.SURAT_MENYURAT, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.SURAT_MENYURAT}/${id}`
+    );
   }
 
   // ==========================================
@@ -2544,8 +2635,11 @@ class StorageService {
     this.addLog('Transaksi Keuangan', `${trx.tipe} Rp ${trx.nominal.toLocaleString('id-ID')} (${trx.kategori}) - ${trx.kodeTransaksi}`, 'admin');
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, trx.id), sanitizeForFirestore(trx), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI}/${trx.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, trx.id), sanitizeForFirestore(trx), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI}/${trx.id}`
+    );
   }
 
   public deleteTransaksiKeuangan(id: string) {
@@ -2553,8 +2647,11 @@ class StorageService {
     this.cache.transaksiKeuangan = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI}/${id}`
+    );
   }
 
   // ==========================================
@@ -2573,8 +2670,11 @@ class StorageService {
     this.addLog('Inventaris Sarpras', `Memperbarui aset ${barang.kodeBarang}: ${barang.namaBarang} (${barang.jumlah} ${barang.satuan})`, 'admin');
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, barang.id), sanitizeForFirestore(barang), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS}/${barang.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, barang.id), sanitizeForFirestore(barang), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS}/${barang.id}`
+    );
   }
 
   public deleteBarangInventaris(id: string) {
@@ -2582,8 +2682,11 @@ class StorageService {
     this.cache.barangInventaris = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS}/${id}`
+    );
   }
 
   public getPeminjamanBarang(): PeminjamanBarang[] {
@@ -2599,8 +2702,11 @@ class StorageService {
     this.addLog('Peminjaman Perlengkapan', `${pjm.kodePeminjaman}: ${pjm.namaBarang} oleh ${pjm.peminjamNama} (${pjm.status})`, 'admin');
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, pjm.id), sanitizeForFirestore(pjm), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN}/${pjm.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, pjm.id), sanitizeForFirestore(pjm), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN}/${pjm.id}`
+    );
   }
 
   public deletePeminjamanBarang(id: string) {
@@ -2608,8 +2714,11 @@ class StorageService {
     this.cache.peminjamanBarang = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN}/${id}`
+    );
   }
 
   // ==========================================

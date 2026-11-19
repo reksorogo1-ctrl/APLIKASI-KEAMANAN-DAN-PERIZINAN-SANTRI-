@@ -41,6 +41,7 @@ import { SuratIzinModal } from './components/SuratIzinModal';
 import { NotificationModal } from './components/NotificationModal';
 import { QuickQRScannerModal } from './components/QuickQRScannerModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { CloudMigrationToast } from './components/CloudSyncBadge';
 import { LoginScreen } from './components/LoginScreen';
 import { SplitDoorTransitionOverlay } from './components/SplitDoorTransitionOverlay';
 import { syncPWAIdentity } from './services/pwaSyncService';
@@ -647,6 +648,7 @@ export default function App() {
             onComplete={() => setShowDoorOverlay(false)}
           />
         )}
+        <CloudMigrationToast />
       </div>
     </MotionConfig>
   );

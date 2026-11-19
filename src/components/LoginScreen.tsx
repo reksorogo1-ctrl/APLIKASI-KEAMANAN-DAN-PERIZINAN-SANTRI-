@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { UserAccount } from '../types';
+import { CloudSyncBadge } from './CloudSyncBadge';
 import {
   unlockAudioContext,
   playClickSound,
@@ -175,7 +176,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   ];
 
   return (
-    <div className="relative min-h-[100dvh] w-full flex items-center justify-center p-3 sm:p-4 bg-[#041A13] overflow-x-hidden overflow-y-auto font-sans selection:bg-[#D4AF37] selection:text-[#041A13] bg-luxury-grid">
+    <div className="relative min-h-[100dvh] w-full flex items-center justify-center p-3 pt-14 sm:p-4 bg-[#041A13] overflow-x-hidden overflow-y-auto font-sans selection:bg-[#D4AF37] selection:text-[#041A13] bg-luxury-grid">
+      {/* Top-Right Cloud Connection Indicator */}
+      <div className="fixed top-[max(0.75rem,env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] z-40 flex flex-col items-end max-w-[calc(100vw-1.5rem)]">
+        <CloudSyncBadge compact />
+      </div>
+
       {/* Ambient Background Glow */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         {systemConfig.bgUrl && (

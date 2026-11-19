@@ -12,6 +12,7 @@ import {
 import { UserAccount } from '../types';
 import { storageService } from '../services/storageService';
 import { PWAInstallButton } from './PWAInstallButton';
+import { CloudSyncBadge } from './CloudSyncBadge';
 import {
   isSoundMuted,
   toggleSoundMuted,
@@ -86,10 +87,11 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-4 px-2.5 sm:px-6 py-2 sm:py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(0.625rem,env(safe-area-inset-left))] pr-[max(0.625rem,env(safe-area-inset-right))] sm:px-6 bg-[#041A13]/92 sm:bg-emerald-950/60 border-b border-emerald-500/25 text-white shadow-2xl backdrop-blur-md w-full max-w-full">
+    <header className="sticky top-0 z-30 flex flex-col bg-[#041A13]/92 sm:bg-emerald-950/60 border-b border-emerald-500/25 text-white shadow-2xl backdrop-blur-md w-full max-w-full">
       {/* Subtle Top Gold & Emerald Specular Line */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent pointer-events-none" />
 
+      <div className="flex items-center justify-between gap-2 sm:gap-4 px-2.5 sm:px-6 py-2 sm:py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(0.625rem,env(safe-area-inset-left))] pr-[max(0.625rem,env(safe-area-inset-right))] sm:px-6 w-full max-w-full">
       {/* Zone 1: Official Pesantren Brand Identity */}
       <div className="flex items-center gap-2 sm:gap-2.5 flex-1 md:flex-initial min-w-0">
         {(() => {
@@ -142,11 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Zone 2: Live Sync & Official WIB Clock (Desktop) */}
       <div className="hidden lg:flex items-center gap-3 text-xs shrink-0">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#041A13]/80 border border-emerald-500/25 font-mono text-[#D1FAE5]">
-          <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-          <span className="text-[11px] text-[#D1FAE5]">Database Pusat:</span>
-          <span className="font-bold text-[#10B981]">Tersinkronisasi</span>
-        </div>
+        <CloudSyncBadge />
 
         <div className="flex items-center gap-2 font-mono bg-[#041A13]/80 px-3 py-1.5 rounded-xl border border-emerald-500/25">
           <Clock className="w-3.5 h-3.5 text-[#D4AF37]" />
@@ -239,6 +237,12 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
           <span className="hidden min-[410px]:inline text-[10px] font-mono font-bold tracking-wider whitespace-nowrap pointer-events-none">MENU</span>
         </button>
+      </div>
+      </div>
+
+      {/* Mobile & Tablet Top-Right Firebase Cloud Sync Status Bar (keeps 3-line MENU button completely unobstructed) */}
+      <div className="lg:hidden flex items-center justify-end px-2.5 sm:px-6 pb-1.5 pt-0.5 pl-[max(0.625rem,env(safe-area-inset-left))] pr-[max(0.625rem,env(safe-area-inset-right))] border-t border-emerald-500/15">
+        <CloudSyncBadge compact />
       </div>
     </header>
   );
