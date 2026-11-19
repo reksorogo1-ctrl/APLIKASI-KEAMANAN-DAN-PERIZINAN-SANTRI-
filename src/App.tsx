@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AnimatePresence } from 'motion/react';
-import { StaggeredTabPanel } from './components/MotionPrimitives';
+import { AnimatePresence, motion, MotionConfig } from 'motion/react';
+import { StaggeredTabPanel, METALLIC_EASE } from './components/MotionPrimitives';
 import { storageService } from './services/storageService';
 import {
   Santri,
@@ -28,6 +28,7 @@ import { Header } from './components/Header';
 import { Sidebar, ActiveMenu, KeamananSubTab, canAccessMainMenu } from './components/Sidebar';
 import { MainDashboard } from './components/MainDashboard';
 import { StrukturOrganisasiPanel } from './components/StrukturOrganisasiPanel';
+import { MurotilTahfidzPanel } from './components/MurotilTahfidzPanel';
 import { KetuaPondokDashboard } from './components/KetuaPondokDashboard';
 import { SekretarisPanel } from './components/SekretarisPanel';
 import { BendaharaPanel } from './components/BendaharaPanel';
@@ -255,6 +256,8 @@ export default function App() {
         handleSelectSidebarMenu('bendahara', 'kotak_masuk');
       } else if (currentUser.role === 'perlengkapan') {
         handleSelectSidebarMenu('perlengkapan', 'kotak_masuk');
+      } else if (currentUser.role === 'pengurus_murotil') {
+        handleSelectSidebarMenu('murotil_tahfidz', 'kotak_masuk');
       } else {
         handleSelectSidebarMenu('keamanan', 'koordinasi');
       }
@@ -301,92 +304,109 @@ export default function App() {
     }
   };
 
-  if (!currentUser) {
-    return (
-      <>
-        <LoginScreen
-          onLoginSuccess={(user) => {
-            setCurrentUser(user);
-            if (
-              user.role === 'ketua_keamanan' ||
-              user.role === 'anggota_keamanan' ||
-              user.role === 'petugas_gerbang'
-            ) {
-              setActiveMenu('keamanan');
-              setKeamananSubTab('ringkasan');
-              setActiveSubTab('ringkasan');
-            } else {
-              setActiveMenu('dashboard');
-              setActiveSubTab('');
-            }
-          }}
-        />
-        <OfflineIndicator />
-      </>
-    );
-  }
-
   return (
-    <div className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-[#02100a] text-[#f4f9f5] flex flex-col font-sans antialiased selection:bg-[#d4af37] selection:text-[#02100a]">
-      {/* Luxury Top Header Bar */}
-      <Header
-        currentUser={currentUser}
-        logoUrl={
-          activeMenu === 'keamanan' ||
-          currentUser.role === 'ketua_keamanan' ||
-          currentUser.role === 'anggota_keamanan' ||
-          currentUser.role === 'petugas_gerbang'
-            ? (systemConfig.logoDashboardKeamananUrl ||
-               'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png')
-            : systemConfig.logoUrl
-        }
-        namaPondok={systemConfig.namaPondok}
-        namaAplikasi={systemConfig.namaAplikasi}
-        namaPendekAplikasi={systemConfig.namaPendekAplikasi}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-        onOpenNotifications={() => setIsNotifOpen(true)}
-        onLogout={handleLogout}
-        unreadCount={unreadNotifsCount + (unreadKoordinasiCount > 0 ? 1 : 0)}
-      />
+    <MotionConfig reducedMotion="user">
+      <div className="min-h-screen w-full bg-[#041A13] overflow-x-hidden">
+        <AnimatePresence mode="wait">
+          {!currentUser ? (
+            <motion.div
+              key="login-screen"
+              initial={{ opacity: 0, x: -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.35, ease: METALLIC_EASE }}
+              className="min-h-screen w-full"
+            >
+              <LoginScreen
+                onLoginSuccess={(user) => {
+                  setCurrentUser(user);
+                  if (
+                    user.role === 'ketua_keamanan' ||
+                    user.role === 'anggota_keamanan' ||
+                    user.role === 'petugas_gerbang'
+                  ) {
+                    setActiveMenu('keamanan');
+                    setKeamananSubTab('ringkasan');
+                    setActiveSubTab('ringkasan');
+                  } else if (user.role === 'pengurus_murotil') {
+                    setActiveMenu('murotil_tahfidz');
+                    setActiveSubTab('dashboard_murotil');
+                  } else {
+                    setActiveMenu('dashboard');
+                    setActiveSubTab('');
+                  }
+                }}
+              />
+              <OfflineIndicator />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="dashboard-shell"
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 24 }}
+              transition={{ duration: 0.35, ease: METALLIC_EASE }}
+              className="min-h-screen md:h-screen md:max-h-screen md:overflow-hidden bg-[#041A13] text-white flex flex-col font-sans antialiased selection:bg-[#D4AF37] selection:text-[#041A13]"
+            >
+              {/* Luxury Top Header Bar */}
+              <Header
+                currentUser={currentUser}
+                logoUrl={
+                  activeMenu === 'keamanan' ||
+                  currentUser.role === 'ketua_keamanan' ||
+                  currentUser.role === 'anggota_keamanan' ||
+                  currentUser.role === 'petugas_gerbang'
+                    ? (systemConfig.logoDashboardKeamananUrl ||
+                       'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png')
+                    : systemConfig.logoUrl
+                }
+                namaPondok={systemConfig.namaPondok}
+                namaAplikasi={systemConfig.namaAplikasi}
+                namaPendekAplikasi={systemConfig.namaPendekAplikasi}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                onOpenNotifications={() => setIsNotifOpen(true)}
+                onLogout={handleLogout}
+                unreadCount={unreadNotifsCount + (unreadKoordinasiCount > 0 ? 1 : 0)}
+              />
 
-      {/* Dynamic Background Scrim from System Config */}
-      {systemConfig.bgUrl && (
-        <div
-          className="fixed inset-0 pointer-events-none z-0"
-          style={{ opacity: (systemConfig.bgOpacity || 15) / 100 }}
-        >
-          <img
-            src={systemConfig.bgUrl}
-            alt="Latar Belakang Pondok"
-            className="w-full h-full object-cover filter contrast-125 brightness-75"
-          />
-        </div>
-      )}
+              {/* Dynamic Background Scrim from System Config */}
+              {systemConfig.bgUrl && (
+                <div
+                  className="fixed inset-0 pointer-events-none z-0"
+                  style={{ opacity: (systemConfig.bgOpacity || 15) / 100 }}
+                >
+                  <img
+                    src={systemConfig.bgUrl}
+                    alt="Latar Belakang Pondok"
+                    className="w-full h-full object-cover filter contrast-125 brightness-75"
+                  />
+                </div>
+              )}
 
-      {/* Main Layout Container */}
-      <div className="flex-1 flex w-full relative min-h-[calc(100vh-57px)] md:h-[calc(100vh-57px)] md:max-h-[calc(100vh-57px)] md:overflow-hidden items-stretch">
-        {/* Sidebar Navigation */}
-        <Sidebar
-          activeMenu={activeMenu}
-          activeSubTab={activeSubTab}
-          onSelectMenu={handleSelectSidebarMenu}
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          userRole={currentUser.role}
-          pendingPengajuanCount={pendingPengajuanCount}
-          pendingSecurityCount={pendingApprovalsCount + unreadKoordinasiCount}
-          lateSantriCount={lateSantriCount}
-          unreadKoordinasiCount={unreadKoordinasiCount}
-          onLogout={handleLogout}
-          currentUser={currentUser}
-        />
+              {/* Main Layout Container */}
+              <div className="flex-1 flex w-full relative min-h-[calc(100vh-57px)] md:h-[calc(100vh-57px)] md:max-h-[calc(100vh-57px)] md:overflow-hidden items-stretch">
+                {/* Sidebar Navigation */}
+                <Sidebar
+                  activeMenu={activeMenu}
+                  activeSubTab={activeSubTab}
+                  onSelectMenu={handleSelectSidebarMenu}
+                  isOpen={isSidebarOpen}
+                  onClose={() => setIsSidebarOpen(false)}
+                  userRole={currentUser.role}
+                  pendingPengajuanCount={pendingPengajuanCount}
+                  pendingSecurityCount={pendingApprovalsCount + unreadKoordinasiCount}
+                  lateSantriCount={lateSantriCount}
+                  unreadKoordinasiCount={unreadKoordinasiCount}
+                  onLogout={handleLogout}
+                  currentUser={currentUser}
+                />
 
-        {/* Viewport Content Area */}
-        <main
-          className={`flex-1 h-full min-w-0 p-2.5 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-[#02100a] bg-security-grid transition-all ${
-            isSidebarOpen ? 'max-md:overflow-hidden max-md:pointer-events-none' : ''
-          }`}
-        >
+                {/* Viewport Content Area */}
+                <main
+                  className={`flex-1 h-full min-w-0 p-2.5 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-[#041A13] bg-security-grid transition-all ${
+                    isSidebarOpen ? 'max-md:overflow-hidden max-md:pointer-events-none' : ''
+                  }`}
+                >
           <div className="w-full max-w-full">
             <AnimatePresence mode="wait">
               <StaggeredTabPanel key={activeMenu} tabKey={activeMenu}>
@@ -414,6 +434,22 @@ export default function App() {
               <StrukturOrganisasiPanel
                 strukturList={strukturOrganisasi}
                 currentUser={currentUser}
+              />
+            )}
+
+            {/* 2B. Murotilil Qur'an dan Tahfidz */}
+            {activeMenu === 'murotil_tahfidz' && canAccessMainMenu(currentUser.role, 'murotil_tahfidz') && (
+              <MurotilTahfidzPanel
+                currentUser={currentUser}
+                systemConfig={systemConfig}
+                santriList={santriList}
+                usersList={usersList}
+                koordinasiList={koordinasiList}
+                initialSubTab={activeSubTab}
+                onProfileUpdated={(updatedUser) => {
+                  setCurrentUser(updatedUser);
+                  setUsersList(storageService.getUsers());
+                }}
               />
             )}
 
@@ -566,8 +602,12 @@ export default function App() {
         onNavigate={handleNavigateFromNotification}
       />
 
-      {/* Real-time PWA Connectivity Indicator */}
-      <OfflineIndicator />
-    </div>
+              {/* Real-time PWA Connectivity Indicator */}
+              <OfflineIndicator />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </MotionConfig>
   );
 }

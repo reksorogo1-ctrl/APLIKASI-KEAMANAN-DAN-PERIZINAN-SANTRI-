@@ -579,10 +579,10 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
   return (
     <div className="space-y-6 pb-10">
       {/* 1. UCAPAN SELAMAT DATANG & NOTIFIKASI PERIZINAN / PERMINTAAN SURAT / PESAN DARI DIVISI LAIN */}
-      <div className="relative rounded-3xl overflow-hidden border border-[#d4af37]/35 bg-gradient-to-br from-[#062a1d] via-[#041d14] to-[#02100a] p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(243,210,102,0.25)] space-y-5">
+      <div className="cyber-glass-card relative rounded-2xl overflow-hidden border border-emerald-500/25 bg-emerald-950/60 backdrop-blur-md p-5 sm:p-6 shadow-2xl space-y-5">
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="flex items-start sm:items-center gap-4 sm:gap-5">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-[22%] bg-[#041d13] border-2 border-[#d4af37]/80 p-0 shadow-[0_12px_35px_rgba(0,0,0,0.75),0_0_20px_rgba(212,175,55,0.25)] shrink-0 flex items-center justify-center overflow-hidden">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-[22%] bg-[#041A13] border-2 border-[#D4AF37]/80 p-0 shadow-[0_12px_35px_rgba(0,0,0,0.75),0_0_20px_rgba(212,175,55,0.22)] shrink-0 flex items-center justify-center overflow-hidden">
               <img
                 src={
                   !systemConfig.logoUrl ||
@@ -605,15 +605,15 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               />
             </div>
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#d4af37]/15 border border-[#d4af37]/40 text-[#f3d266] text-[10px] font-mono uppercase tracking-widest mb-2">
-                <Sparkles className="w-3.5 h-3.5" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-mono uppercase tracking-widest mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#10B981]" />
                 DASHBOARD UTAMA · {currentUser.jabatan.toUpperCase()}
               </div>
-              <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+              <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-[#FFFFFF] tracking-tight">
                 Ahlan wa Sahlan, {currentUser.nama}
               </h1>
-              <p className="text-xs sm:text-sm text-emerald-100/80 mt-1 max-w-2xl">
-                Selamat bertugas di Sistem Informasi Manajemen Pengurus <span className="text-[#f3d266] font-semibold">{systemConfig.namaPondok}</span>. Pantau notifikasi lintas divisi, capaian kinerja, dan perkembangan santri secara real-time.
+              <p className="text-xs sm:text-sm text-[#D1FAE5] mt-1 max-w-2xl">
+                Selamat bertugas di Sistem Informasi Manajemen Pengurus <span className="text-[#D4AF37] font-semibold">{systemConfig.namaPondok}</span>. Pantau notifikasi lintas divisi, capaian kinerja, dan perkembangan santri secara real-time.
               </p>
             </div>
           </div>
@@ -622,7 +622,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
             {(currentUser.role === 'admin' || currentUser.role === 'ketua_pondok') && (
               <button
                 onClick={handlePrintLaporanBulanan}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] hover:from-[#e5c158] hover:to-[#d4af37] text-[#02120a] font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#b58922] hover:from-[#e5c158] hover:to-[#D4AF37] text-[#041A13] font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg"
               >
                 <Printer className="w-4 h-4" />
                 Cetak Laporan Bulanan & Grafik
@@ -630,17 +630,17 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
             )}
             <button
               onClick={() => onNavigate('biodata_profil')}
-              className="px-4 py-2.5 rounded-xl bg-[#073021] hover:bg-[#0b422d] text-[#f3d266] font-bold text-xs flex items-center gap-2 transition-all cursor-pointer border border-[#d4af37]/50 shadow-lg"
+              className="px-4 py-2.5 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/70 text-[#D4AF37] font-bold text-xs flex items-center gap-2 transition-all cursor-pointer border border-[#D4AF37]/50 shadow-lg"
             >
-              <User className="w-4 h-4" />
+              <User className="w-4 h-4 text-[#10B981]" />
               Edit Biodata & Profil
             </button>
             {currentUser.role === 'admin' && (
               <button
                 onClick={() => onNavigate('admin_options')}
-                className="px-4 py-2.5 rounded-xl bg-[#041d13] hover:bg-[#073021] text-emerald-200 font-bold text-xs flex items-center gap-2 transition-all cursor-pointer border border-emerald-700/50"
+                className="px-4 py-2.5 rounded-xl bg-[#041A13]/80 hover:bg-emerald-950/80 text-[#D1FAE5] font-bold text-xs flex items-center gap-2 transition-all cursor-pointer border border-emerald-500/30"
               >
-                <Sliders className="w-4 h-4" />
+                <Sliders className="w-4 h-4 text-[#10B981]" />
                 Option Panel
               </button>
             )}
@@ -827,19 +827,19 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
             const totalUnread = combinedItems.filter((i) => i.isUnread).length;
 
             return (
-              <div className="p-3.5 rounded-2xl bg-[#03160f]/90 border border-emerald-800/75 space-y-2">
+              <div className="p-3.5 rounded-2xl bg-[#041A13]/80 backdrop-blur-md border border-emerald-500/25 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-[#f3d266] uppercase tracking-wider">
-                    <Bell className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-[#D4AF37] uppercase tracking-wider">
+                    <Bell className="w-3.5 h-3.5 text-[#10B981]" />
                     <span>Notifikasi Pesan Masuk &amp; Sistem</span>
                   </div>
-                  <span className="text-[10px] font-mono text-emerald-300">
+                  <span className="text-[10px] font-mono text-[#D1FAE5]">
                     {totalUnread > 0 ? `${totalUnread} Belum Dibaca · Klik untuk buka` : 'Semua terbaca'}
                   </span>
                 </div>
 
                 {combinedItems.length === 0 ? (
-                  <p className="text-xs text-emerald-200/65">Belum ada pesan masuk atau notifikasi terbaru.</p>
+                  <p className="text-xs text-[#D1FAE5]/80">Belum ada pesan masuk atau notifikasi terbaru.</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {combinedItems.map((item) => (
@@ -849,31 +849,31 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                         onClick={item.onClick}
                         className={`w-full text-left px-3 py-2 rounded-xl border flex items-center justify-between gap-2.5 transition-all cursor-pointer group ${
                           item.isUnread
-                            ? 'bg-[#072c1e]/95 border-[#d4af37]/55 hover:border-[#f3d266]'
-                            : 'bg-[#02120c]/85 border-emerald-900/70 hover:border-emerald-700/80'
+                            ? 'bg-emerald-950/75 border-[#D4AF37]/55 hover:border-[#D4AF37]'
+                            : 'bg-[#041A13]/70 border-emerald-500/25 hover:border-emerald-400/50'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div
                             className={`p-1.5 rounded-lg shrink-0 ${
                               item.kind === 'pesan'
-                                ? 'bg-[#d4af37]/15 text-[#f3d266]'
-                                : 'bg-emerald-500/15 text-emerald-300'
+                                ? 'bg-[#D4AF37]/15 text-[#D4AF37]'
+                                : 'bg-[#10B981]/15 text-[#10B981]'
                             }`}
                           >
                             {item.kind === 'pesan' ? <Mail className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-                              {item.isUnread && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />}
+                            <p className="text-xs font-bold text-[#FFFFFF] truncate flex items-center gap-1.5">
+                              {item.isUnread && <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] shrink-0" />}
                               <span className="truncate">{item.title}</span>
                             </p>
-                            <p className="text-[11px] text-emerald-200/75 truncate">{item.detail}</p>
+                            <p className="text-[11px] text-[#D1FAE5] truncate">{item.detail}</p>
                           </div>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#f3d266] group-hover:translate-x-0.5 transition-transform shrink-0 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-[#D4AF37] group-hover:translate-x-0.5 transition-transform shrink-0 whitespace-nowrap">
                           <span>{item.targetLabel}</span>
-                          <ArrowUpRight className="w-3 h-3" />
+                          <ArrowUpRight className="w-3 h-3 text-[#10B981]" />
                         </span>
                       </button>
                     ))}
@@ -886,20 +886,20 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       </div>
 
       {/* 2. BERITA DAN INFORMASI TERKINI PONDOK (SAMA DENGAN DASHBOARD ADMIN) */}
-      <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/35 p-4 sm:p-5 shadow-xl space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-800/60 pb-3">
+      <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-4 sm:p-5 shadow-xl space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/25 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-[#d4af37]/20 border border-[#d4af37]/50 text-[#f3d266]">
+            <div className="p-2 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#D4AF37]">
               <Megaphone className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
                 Berita & Informasi Terkini Pondok Pesantren
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-700/50">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#10B981]/15 text-[#D1FAE5] border border-[#10B981]/40">
                   LIVE MAKLUMAT
                 </span>
               </h2>
-              <p className="text-[11px] text-emerald-200/70">
+              <p className="text-[11px] text-[#D1FAE5]">
                 Kartu berita resmi terpusat yang tersinkronisasi dari Dashboard Admin ke seluruh jajaran pengurus
               </p>
             </div>
@@ -907,9 +907,9 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
           {currentUser.role === 'admin' && (
             <button
               onClick={() => onNavigate('admin_options')}
-              className="self-start sm:self-auto text-[11px] font-mono font-bold text-[#f3d266] hover:text-white flex items-center gap-1 cursor-pointer bg-[#073021] px-3 py-1.5 rounded-xl border border-[#d4af37]/40"
+              className="self-start sm:self-auto text-[11px] font-mono font-bold text-[#D4AF37] hover:text-white flex items-center gap-1 cursor-pointer bg-emerald-950/80 px-3 py-1.5 rounded-xl border border-[#D4AF37]/40"
             >
-              Kelola Berita di Option Panel <ArrowUpRight className="w-3.5 h-3.5" />
+              Kelola Berita di Option Panel <ArrowUpRight className="w-3.5 h-3.5 text-[#10B981]" />
             </button>
           )}
         </div>
@@ -925,15 +925,15 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
             return (
               <div
                 key={brt.id}
-                className={`rounded-2xl border overflow-hidden transition-all flex flex-col justify-between group ${
+                className={`cyber-glass-card rounded-2xl border overflow-hidden transition-all flex flex-col justify-between group backdrop-blur-md ${
                   brt.penting
-                    ? 'bg-gradient-to-br from-[#083322] to-[#041b12] border-[#d4af37]/50 shadow-lg'
-                    : 'bg-[#03160f]/90 border-emerald-800/60 shadow-md'
+                    ? 'bg-emerald-950/75 border-[#D4AF37]/50 shadow-lg'
+                    : 'bg-emerald-950/60 border-emerald-500/25 shadow-md'
                 }`}
               >
                 <div>
                   {/* Gambar Berita Terkini (Dapat diedit melalui Option Panel) */}
-                  <div className="relative h-36 sm:h-40 w-full overflow-hidden bg-[#02100a] border-b border-emerald-800/50">
+                  <div className="relative h-36 sm:h-40 w-full overflow-hidden bg-[#041A13] border-b border-emerald-500/25">
                     <img
                       src={imgSrc}
                       alt={brt.judul}
@@ -942,37 +942,37 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                         (e.currentTarget as HTMLImageElement).src = defaultImages[0];
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#03160f] via-transparent to-black/35 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#041A13] via-transparent to-black/35 pointer-events-none" />
                     <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-2">
-                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-[#02120a]/85 backdrop-blur-md text-[#f3d266] border border-[#d4af37]/55">
+                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-[#041A13]/85 backdrop-blur-md text-[#D4AF37] border border-[#D4AF37]/55">
                         {brt.kategori}
                       </span>
                       {brt.penting && (
-                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-[#d4af37] text-[#02120a] shadow">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-[#D4AF37] text-[#041A13] shadow">
                           ★ PENTING
                         </span>
                       )}
                     </div>
-                    <span className="absolute bottom-2 right-2.5 text-[10px] font-mono text-emerald-200 bg-[#02120a]/80 px-2 py-0.5 rounded border border-emerald-700/40">
+                    <span className="absolute bottom-2 right-2.5 text-[10px] font-mono text-[#D1FAE5] bg-[#041A13]/85 px-2 py-0.5 rounded border border-emerald-500/35">
                       {brt.tanggal}
                     </span>
                   </div>
 
                   <div className="p-4 pb-2">
-                    <h3 className="text-xs sm:text-sm font-bold text-white leading-snug mb-1.5 group-hover:text-[#f3d266] transition-colors">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#FFFFFF] leading-snug mb-1.5 group-hover:text-[#D4AF37] transition-colors">
                       {brt.judul}
                     </h3>
-                    <p className="text-[11px] text-emerald-100/80 leading-relaxed line-clamp-3">
+                    <p className="text-[11px] text-[#D1FAE5] leading-relaxed line-clamp-3">
                       {brt.isi}
                     </p>
                   </div>
                 </div>
-                <div className="px-4 pb-3.5 pt-2 border-t border-emerald-800/40 flex items-center justify-between text-[10px] text-emerald-300/80 font-mono">
+                <div className="px-4 pb-3.5 pt-2 border-t border-emerald-500/20 flex items-center justify-between text-[10px] text-[#D1FAE5] font-mono">
                   <span>Oleh: {brt.penulis}</span>
                   {currentUser.role === 'admin' && (
                     <button
                       onClick={() => onNavigate('admin_options')}
-                      className="text-[#f3d266] hover:underline cursor-pointer font-bold"
+                      className="text-[#D4AF37] hover:underline cursor-pointer font-bold"
                     >
                       Edit Gambar/Berita
                     </button>
@@ -986,94 +986,94 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
 
       {/* 3. 8 KARTU RINGKASAN JUMLAH SANTRI PUTRA, PUTRI, USTADZ & USTADZAH, SANTRI IZIN, SAKIT, SERTA SANTRI MUQIM */}
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
-        <div className="p-4 rounded-2xl bg-[#041d14]/90 border border-emerald-500/30 shadow-lg">
+        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">Total Santri</span>
-            <Users className="w-4 h-4 text-emerald-400" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D1FAE5]">Total Santri</span>
+            <Users className="w-4 h-4 text-[#10B981]" />
           </div>
-          <p className="text-2xl font-black text-white font-mono">{stats.totalSantri}</p>
-          <p className="text-[10px] text-emerald-300/80 mt-1">Santri Aktif Terdaftar</p>
+          <p className="text-2xl font-black text-[#FFFFFF] font-mono">{stats.totalSantri}</p>
+          <p className="text-[10px] text-[#D1FAE5] mt-1">Santri Aktif Terdaftar</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#041d14]/90 border border-emerald-500/30 shadow-lg">
+        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">Santri Putra</span>
-            <UserCheck className="w-4 h-4 text-emerald-400" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D1FAE5]">Santri Putra</span>
+            <UserCheck className="w-4 h-4 text-[#10B981]" />
           </div>
-          <p className="text-2xl font-black text-emerald-300 font-mono">{stats.santriPutra}</p>
-          <p className="text-[10px] text-emerald-200/70 mt-1">Asrama Banin</p>
+          <p className="text-2xl font-black text-[#FFFFFF] font-mono">{stats.santriPutra}</p>
+          <p className="text-[10px] text-[#D1FAE5] mt-1">Asrama Banin</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#041d14]/90 border border-[#d4af37]/30 shadow-lg">
+        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#f3d266]">Santri Putri</span>
-            <UserCheck className="w-4 h-4 text-[#f3d266]" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37]">Santri Putri</span>
+            <UserCheck className="w-4 h-4 text-[#D4AF37]" />
           </div>
-          <p className="text-2xl font-black text-[#f3d266] font-mono">{stats.santriPutri}</p>
-          <p className="text-[10px] text-amber-200/70 mt-1">Asrama Banat</p>
+          <p className="text-2xl font-black text-[#D4AF37] font-mono">{stats.santriPutri}</p>
+          <p className="text-[10px] text-[#D1FAE5] mt-1">Asrama Banat</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#041d14]/90 border border-emerald-500/30 shadow-lg">
+        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">Santri Muqim</span>
-            <Building2 className="w-4 h-4 text-emerald-400" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D1FAE5]">Santri Muqim</span>
+            <Building2 className="w-4 h-4 text-[#10B981]" />
           </div>
-          <p className="text-2xl font-black text-emerald-400 font-mono">{stats.santriDiPondok}</p>
-          <p className="text-[10px] text-emerald-200/70 mt-1">Berada di Pondok</p>
+          <p className="text-2xl font-black text-[#10B981] font-mono">{stats.santriDiPondok}</p>
+          <p className="text-[10px] text-[#D1FAE5] mt-1">Berada di Pondok</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#041d14]/90 border border-amber-500/30 shadow-lg">
+        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-300">Izin Pulang</span>
-            <Home className="w-4 h-4 text-amber-400" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37]">Izin Pulang</span>
+            <Home className="w-4 h-4 text-[#D4AF37]" />
           </div>
-          <p className="text-2xl font-black text-amber-400 font-mono">{stats.santriIzinPulang}</p>
-          <p className="text-[10px] text-amber-200/70 mt-1">Sedang Izin / Pulang</p>
+          <p className="text-2xl font-black text-[#D4AF37] font-mono">{stats.santriIzinPulang}</p>
+          <p className="text-[10px] text-[#D1FAE5] mt-1">Sedang Izin / Pulang</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#041d14]/90 border border-rose-500/30 shadow-lg">
+        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-mono uppercase tracking-wider text-rose-300">Santri Sakit</span>
             <HeartPulse className="w-4 h-4 text-rose-400" />
           </div>
           <p className="text-2xl font-black text-rose-400 font-mono">{stats.santriSakit}</p>
-          <p className="text-[10px] text-rose-200/70 mt-1">Poskestren / Berobat</p>
+          <p className="text-[10px] text-[#D1FAE5] mt-1">Poskestren / Berobat</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#041d14]/90 border border-[#d4af37]/40 shadow-lg">
+        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#f3d266]">Ustadz Aktif</span>
-            <GraduationCap className="w-4 h-4 text-[#f3d266]" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37]">Ustadz Aktif</span>
+            <GraduationCap className="w-4 h-4 text-[#D4AF37]" />
           </div>
-          <p className="text-2xl font-black text-white font-mono">{stats.ustadzAktif}</p>
-          <p className="text-[10px] text-emerald-200/75 mt-1">Pengajar Putra</p>
+          <p className="text-2xl font-black text-[#FFFFFF] font-mono">{stats.ustadzAktif}</p>
+          <p className="text-[10px] text-[#D1FAE5] mt-1">Pengajar Putra</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#041d14]/90 border border-[#d4af37]/40 shadow-lg">
+        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#f3d266]">Ustadzah Aktif</span>
-            <GraduationCap className="w-4 h-4 text-emerald-400" />
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37]">Ustadzah Aktif</span>
+            <GraduationCap className="w-4 h-4 text-[#10B981]" />
           </div>
-          <p className="text-2xl font-black text-white font-mono">{stats.ustadzahAktif}</p>
-          <p className="text-[10px] text-emerald-200/75 mt-1">Pengajar Putri</p>
+          <p className="text-2xl font-black text-[#FFFFFF] font-mono">{stats.ustadzahAktif}</p>
+          <p className="text-[10px] text-[#D1FAE5] mt-1">Pengajar Putri</p>
         </div>
       </div>
 
       {/* 4. INDIKATOR PENILAIAN KINERJA PENGURUS SECARA KESELURUHAN DENGAN GRAFIK PIE CHART DAN PERSENTASENYA (DI BAWAH KARTU RINGKASAN SANTRI & USTADZ) */}
-      <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-800/60 pb-3">
+      <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/25 pb-3">
           <div>
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <PieChartIcon className="w-4 h-4 text-[#f3d266]" />
+            <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
+              <PieChartIcon className="w-4 h-4 text-[#D4AF37]" />
               {currentUser.role === 'admin' || currentUser.role === 'ketua_pondok'
                 ? 'Indikator Penilaian Kinerja Ketua Pondok, Sekretaris, Bendahara, Perlengkapan & Keamanan (Pie Chart & %)'
                 : `Indikator Penilaian Kinerja ${currentUser.jabatan} Secara Keseluruhan (Pie Chart & %)`}
             </h2>
-            <p className="text-xs text-emerald-200/70">
+            <p className="text-xs text-[#D1FAE5]">
               Evaluasi kuantitatif real-time berdasarkan penyelesaian program kerja, pelayanan persuratan, kesehatan kas, inventaris, dan kedisiplinan
             </p>
           </div>
-          <span className="px-3 py-1 rounded-xl bg-[#d4af37]/20 border border-[#d4af37]/50 text-[#f3d266] font-mono text-xs font-bold self-start sm:self-auto">
+          <span className="px-3 py-1 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#D4AF37] font-mono text-xs font-bold self-start sm:self-auto">
             INDIKATOR REAL-TIME
           </span>
         </div>
@@ -1092,13 +1092,13 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               <div
                 key={kpi.key}
                 onClick={() => onNavigate(kpi.targetMenu)}
-                className="p-4 rounded-2xl bg-[#03160f] hover:bg-[#06261a] border border-[#d4af37]/30 hover:border-[#d4af37] transition-all cursor-pointer flex flex-col items-center text-center justify-between shadow-lg group"
+                className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900/60 backdrop-blur-md border border-emerald-500/25 hover:border-[#D4AF37] transition-all cursor-pointer flex flex-col items-center text-center justify-between shadow-lg group"
               >
                 <div className="w-full">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#f3d266] block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37] block">
                     PENILAIAN OVERALL
                   </span>
-                  <h3 className="text-xs sm:text-sm font-bold text-white mt-0.5 group-hover:text-[#f3d266]">
+                  <h3 className="text-xs sm:text-sm font-bold text-[#FFFFFF] mt-0.5 group-hover:text-[#D4AF37]">
                     {kpi.title}
                   </h3>
                 </div>
@@ -1123,8 +1123,8 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#02120a',
-                          borderColor: '#d4af37',
+                          backgroundColor: '#06241B',
+                          borderColor: '#D4AF37',
                           borderRadius: '10px',
                           fontSize: '11px',
                           color: '#fff',
@@ -1133,14 +1133,14 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-xl font-black text-white font-mono">{kpi.score}%</span>
-                    <span className="text-[9px] font-mono text-emerald-300 uppercase">Sangat Baik</span>
+                    <span className="text-xl font-black text-[#FFFFFF] font-mono">{kpi.score}%</span>
+                    <span className="text-[9px] font-mono text-[#10B981] uppercase">Sangat Baik</span>
                   </div>
                 </div>
 
                 <div className="w-full space-y-1">
-                  <p className="text-[10px] text-emerald-200/80 line-clamp-2">{kpi.subtitle}</p>
-                  <p className="text-[10px] font-mono text-[#f3d266] bg-[#041d13] py-1 px-2 rounded-lg border border-emerald-800/60">
+                  <p className="text-[10px] text-[#D1FAE5] line-clamp-2">{kpi.subtitle}</p>
+                  <p className="text-[10px] font-mono text-[#D4AF37] bg-[#041A13]/80 py-1 px-2 rounded-lg border border-emerald-500/25">
                     {kpi.detail}
                   </p>
                 </div>
@@ -1171,26 +1171,26 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                 : { label: 'ZONA DARURAT / PERLU INTERVENSI KAS', tone: 'text-rose-300 bg-rose-950/90 border-rose-500/60' };
 
         return (
-          <div className="rounded-3xl bg-gradient-to-b from-[#041d14]/95 via-[#031710]/95 to-[#02100b]/95 border border-[#d4af37]/45 p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.65)] space-y-5">
+          <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 sm:p-6 shadow-2xl space-y-5">
             {/* Header Bar Gaya Terminal Trader */}
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-[#d4af37]/25 pb-4">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-emerald-500/25 pb-4">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-md bg-[#d4af37]/20 border border-[#d4af37]/50 text-[10px] font-mono font-bold text-[#f3d266] uppercase">
+                  <span className="px-2.5 py-0.5 rounded-md bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[10px] font-mono font-bold text-[#D4AF37] uppercase">
                     KAS-ALMALIKI / IDR · D3.JS TRADER TERMINAL
                   </span>
                   <span className={`px-2.5 py-0.5 rounded-md border text-[10px] font-mono font-bold ${zonaKasSaatIni.tone}`}>
                     {zonaKasSaatIni.label}
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-md bg-[#d4af37] text-[#02120a] text-[10px] font-mono font-black">
+                  <span className="px-2.5 py-0.5 rounded-md bg-[#D4AF37] text-[#041A13] text-[10px] font-mono font-black">
                     SKOR EKONOMI: {financeAnalytics.skorEkonomi}/100
                   </span>
                 </div>
-                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-wide flex items-center gap-2 mt-1.5">
-                  <Wallet className="w-5 h-5 text-[#f3d266]" />
+                <h2 className="text-base sm:text-lg font-black text-[#FFFFFF] uppercase tracking-wide flex items-center gap-2 mt-1.5">
+                  <Wallet className="w-5 h-5 text-[#D4AF37]" />
                   <span>Grafik Candlestick Trader Keuangan Bendahara &amp; Indikator Penilaian Ekonomi Pondok</span>
                 </h2>
-                <p className="text-xs text-emerald-200/75 mt-0.5">
+                <p className="text-xs text-[#D1FAE5] mt-0.5">
                   Tersinkronisasi real-time dengan Buku Kas, Syahriyah &amp; Option Panel Bendahara · Dilengkapi Crosshair, Zoom/Pan D3.js, dan Pita Zona Tren.
                 </p>
               </div>
@@ -1373,21 +1373,21 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       {/* 6. GRAFIK LINE CHART KINERJA PENGURUS & KEDISIPLINAN SANTRI (PERBANDINGAN BULAN INI VS BULAN LALU) */}
       <div className={`grid grid-cols-1 ${showKinerjaPengurusLine ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-6`}>
         {showKinerjaPengurusLine && (
-          <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/40 p-5 shadow-xl">
+          <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-400" />
+                <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-[#10B981]" />
                   Grafik Line Chart Kinerja Pengurus
                 </h2>
-                <p className="text-xs text-emerald-200/70">
+                <p className="text-xs text-[#D1FAE5]">
                   Perbandingan capaian program kerja & responsivitas pengurus Bulan Ini vs Bulan Lalu
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-right">
-                  <p className="text-lg font-black text-emerald-400 font-mono">{kinerjaPengurusStats.bulanIni}%</p>
-                  <p className="text-[10px] font-mono text-emerald-300">
+                  <p className="text-lg font-black text-[#10B981] font-mono">{kinerjaPengurusStats.bulanIni}%</p>
+                  <p className="text-[10px] font-mono text-[#D1FAE5]">
                     {kinerjaPengurusStats.selisih >= 0 ? `+${kinerjaPengurusStats.selisih}%` : `${kinerjaPengurusStats.selisih}%`} dari bulan lalu ({kinerjaPengurusStats.bulanLalu}%)
                   </p>
                 </div>
@@ -1507,21 +1507,21 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
         )}
 
         {/* Line Chart Kedisiplinan Santri (Tampil di Semua Role) */}
-        <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/40 p-5 shadow-xl">
+        <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
             <div>
-              <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#f3d266]" />
+              <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
                 Grafik Line Chart Kedisiplinan Santri
               </h2>
-              <p className="text-xs text-emerald-200/70">
+              <p className="text-xs text-[#D1FAE5]">
                 Indeks kepatuhan qanun, jamaah, &amp; ketepatan izin kembali Bulan Ini vs Bulan Lalu
               </p>
             </div>
             <div className="flex items-center gap-2">
               <div className="text-right">
-                <p className="text-lg font-black text-[#f3d266] font-mono">{kedisiplinanSantriStats.bulanIni}%</p>
-                <p className="text-[10px] font-mono text-emerald-300">
+                <p className="text-lg font-black text-[#D4AF37] font-mono">{kedisiplinanSantriStats.bulanIni}%</p>
+                <p className="text-[10px] font-mono text-[#D1FAE5]">
                   {kedisiplinanSantriStats.selisih >= 0 ? `+${kedisiplinanSantriStats.selisih}%` : `${kedisiplinanSantriStats.selisih}%`} dari bulan lalu ({kedisiplinanSantriStats.bulanLalu}%)
                 </p>
               </div>
@@ -1643,14 +1643,14 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       {/* 7. GRAFIK DIAGRAM SANTRI DARI TAHUN KE TAHUN & RINGKASAN SEKRETARIS + PERLENGKAPAN */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className={showSekretarisCard || showPerlengkapanCard ? 'lg:col-span-6' : 'lg:col-span-12'}>
-          <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/40 p-5 shadow-xl h-full">
+          <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl h-full">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[#10B981]" />
                   Grafik Diagram Santri dari Tahun ke Tahun
                 </h2>
-                <p className="text-xs text-emerald-200/70">Pertumbuhan jumlah santri putra (Banin) & putri (Banat) 2022–2026</p>
+                <p className="text-xs text-[#D1FAE5]">Pertumbuhan jumlah santri putra (Banin) & putri (Banat) 2022–2026</p>
               </div>
             </div>
 
@@ -1658,19 +1658,19 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={santriYearlyChart} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                  <XAxis dataKey="tahun" stroke="#a7f3d0" fontSize={11} />
-                  <YAxis stroke="#a7f3d0" fontSize={11} />
+                  <XAxis dataKey="tahun" stroke="#D1FAE5" fontSize={11} />
+                  <YAxis stroke="#D1FAE5" fontSize={11} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#02120a',
-                      borderColor: '#d4af37',
+                      backgroundColor: '#06241B',
+                      borderColor: '#D4AF37',
                       borderRadius: '12px',
                       color: '#fff',
                     }}
                   />
                   <Legend />
-                  <Bar dataKey="putra" name="Santri Putra" fill="#10b981" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="putri" name="Santri Putri" fill="#d4af37" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="putra" name="Santri Putra" fill="#10B981" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="putri" name="Santri Putri" fill="#D4AF37" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1680,87 +1680,87 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
         {(showSekretarisCard || showPerlengkapanCard) && (
           <div className={`lg:col-span-6 grid grid-cols-1 ${showSekretarisCard && showPerlengkapanCard ? 'sm:grid-cols-2' : 'sm:grid-cols-1'} gap-4`}>
             {showSekretarisCard && (
-              <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/35 p-5 shadow-xl flex flex-col justify-between">
+              <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                    <div className="p-2.5 rounded-xl bg-[#10B981]/15 border border-[#10B981]/30 text-[#10B981]">
                       <FileText className="w-5 h-5" />
                     </div>
-                    <span className="text-[10px] font-mono uppercase text-[#f3d266] bg-[#d4af37]/15 px-2.5 py-1 rounded-lg border border-[#d4af37]/30">
+                    <span className="text-[10px] font-mono uppercase text-[#D4AF37] bg-[#D4AF37]/15 px-2.5 py-1 rounded-lg border border-[#D4AF37]/30">
                       DIVISI SEKRETARIS
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold text-white">Statistik & Aktivitas Sekretaris</h3>
-                  <p className="text-[11px] text-emerald-200/70 mt-0.5">Rekapitulasi persuratan resmi & buku induk</p>
+                  <h3 className="text-sm font-bold text-[#FFFFFF]">Statistik & Aktivitas Sekretaris</h3>
+                  <p className="text-[11px] text-[#D1FAE5] mt-0.5">Rekapitulasi persuratan resmi & buku induk</p>
 
                   <div className="grid grid-cols-2 gap-2.5 mt-4">
-                    <div className="p-3 rounded-xl bg-[#03160f] border border-emerald-800/60">
-                      <p className="text-[10px] font-mono text-emerald-300">Total Arsip Surat</p>
-                      <p className="text-xl font-black text-white font-mono mt-0.5">{sekretarisStats.totalArsip}</p>
+                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
+                      <p className="text-[10px] font-mono text-[#D1FAE5]">Total Arsip Surat</p>
+                      <p className="text-xl font-black text-[#FFFFFF] font-mono mt-0.5">{sekretarisStats.totalArsip}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-[#03160f] border border-[#d4af37]/40">
-                      <p className="text-[10px] font-mono text-[#f3d266]">Resmi Terbit</p>
-                      <p className="text-xl font-black text-[#f3d266] font-mono mt-0.5">{sekretarisStats.suratResmiTerbit}</p>
+                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-[#D4AF37]/40">
+                      <p className="text-[10px] font-mono text-[#D4AF37]">Resmi Terbit</p>
+                      <p className="text-xl font-black text-[#D4AF37] font-mono mt-0.5">{sekretarisStats.suratResmiTerbit}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-[#03160f] border border-emerald-800/60">
-                      <p className="text-[10px] font-mono text-emerald-300">Surat Keluar</p>
-                      <p className="text-lg font-bold text-emerald-400 font-mono mt-0.5">{sekretarisStats.suratKeluar}</p>
+                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
+                      <p className="text-[10px] font-mono text-[#D1FAE5]">Surat Keluar</p>
+                      <p className="text-lg font-bold text-[#10B981] font-mono mt-0.5">{sekretarisStats.suratKeluar}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-[#03160f] border border-emerald-800/60">
-                      <p className="text-[10px] font-mono text-emerald-300">Surat Masuk</p>
-                      <p className="text-lg font-bold text-amber-300 font-mono mt-0.5">{sekretarisStats.suratMasuk}</p>
+                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
+                      <p className="text-[10px] font-mono text-[#D1FAE5]">Surat Masuk</p>
+                      <p className="text-lg font-bold text-[#D4AF37] font-mono mt-0.5">{sekretarisStats.suratMasuk}</p>
                     </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => onNavigate('sekretaris')}
-                  className="mt-4 w-full py-2.5 rounded-xl bg-[#073021] hover:bg-[#0b422d] text-emerald-200 hover:text-white text-xs font-bold border border-emerald-700/50 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="mt-4 w-full py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900/75 text-[#D1FAE5] hover:text-white text-xs font-bold border border-emerald-500/30 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  Buka Panel Sekretaris <ArrowUpRight className="w-4 h-4" />
+                  Buka Panel Sekretaris <ArrowUpRight className="w-4 h-4 text-[#10B981]" />
                 </button>
               </div>
             )}
 
             {showPerlengkapanCard && (
-              <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/35 p-5 shadow-xl flex flex-col justify-between">
+              <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                    <div className="p-2.5 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[#D4AF37]">
                       <Package className="w-5 h-5" />
                     </div>
-                    <span className="text-[10px] font-mono uppercase text-[#f3d266] bg-[#d4af37]/15 px-2.5 py-1 rounded-lg border border-[#d4af37]/30">
+                    <span className="text-[10px] font-mono uppercase text-[#D4AF37] bg-[#D4AF37]/15 px-2.5 py-1 rounded-lg border border-[#D4AF37]/30">
                       DIVISI PERLENGKAPAN
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold text-white">Statistik & Aktivitas Perlengkapan</h3>
-                  <p className="text-[11px] text-emerald-200/70 mt-0.5">Kondisi aset sarpras & peminjaman aktif</p>
+                  <h3 className="text-sm font-bold text-[#FFFFFF]">Statistik & Aktivitas Perlengkapan</h3>
+                  <p className="text-[11px] text-[#D1FAE5] mt-0.5">Kondisi aset sarpras & peminjaman aktif</p>
 
                   <div className="grid grid-cols-2 gap-2.5 mt-4">
-                    <div className="p-3 rounded-xl bg-[#03160f] border border-emerald-800/60">
-                      <p className="text-[10px] font-mono text-emerald-300">Total Unit Aset</p>
-                      <p className="text-xl font-black text-white font-mono mt-0.5">{perlengkapanStats.totalAset}</p>
+                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
+                      <p className="text-[10px] font-mono text-[#D1FAE5]">Total Unit Aset</p>
+                      <p className="text-xl font-black text-[#FFFFFF] font-mono mt-0.5">{perlengkapanStats.totalAset}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-[#03160f] border border-emerald-700/50">
-                      <p className="text-[10px] font-mono text-emerald-400">Kondisi Baik</p>
-                      <p className="text-xl font-black text-emerald-400 font-mono mt-0.5">{perlengkapanStats.kondisiBaik}</p>
+                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-[#10B981]/40">
+                      <p className="text-[10px] font-mono text-[#10B981]">Kondisi Baik</p>
+                      <p className="text-xl font-black text-[#10B981] font-mono mt-0.5">{perlengkapanStats.kondisiBaik}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-[#03160f] border border-rose-800/60">
+                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-rose-500/40">
                       <p className="text-[10px] font-mono text-rose-300">Kondisi Rusak</p>
                       <p className="text-lg font-bold text-rose-400 font-mono mt-0.5">{perlengkapanStats.kondisiRusak}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-[#03160f] border border-amber-700/50">
-                      <p className="text-[10px] font-mono text-amber-300">Sedang Dipinjam</p>
-                      <p className="text-lg font-bold text-amber-400 font-mono mt-0.5">{perlengkapanStats.sedangDipinjam}</p>
+                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-[#D4AF37]/40">
+                      <p className="text-[10px] font-mono text-[#D4AF37]">Sedang Dipinjam</p>
+                      <p className="text-lg font-bold text-[#D4AF37] font-mono mt-0.5">{perlengkapanStats.sedangDipinjam}</p>
                     </div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => onNavigate('perlengkapan')}
-                  className="mt-4 w-full py-2.5 rounded-xl bg-[#073021] hover:bg-[#0b422d] text-emerald-200 hover:text-white text-xs font-bold border border-emerald-700/50 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="mt-4 w-full py-2.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900/75 text-[#D1FAE5] hover:text-white text-xs font-bold border border-emerald-500/30 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  Buka Panel Perlengkapan <ArrowUpRight className="w-4 h-4" />
+                  Buka Panel Perlengkapan <ArrowUpRight className="w-4 h-4 text-[#10B981]" />
                 </button>
               </div>
             )}
@@ -1769,14 +1769,14 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
       </div>
 
       {/* 8. KALENDER KEGIATAN PONDOK PESANTREN (HIJRIAH & MASEHI) */}
-      <div id="kalender-akademik" className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-4 sm:p-5 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-emerald-800/70">
+      <div id="kalender-akademik" className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-4 sm:p-5 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-emerald-500/25">
           <div>
-            <h2 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#f3d266]" />
+            <h2 className="text-sm sm:text-base font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#D4AF37]" />
               Kalender Kegiatan Pondok (Masehi &amp; Hijriah)
             </h2>
-            <p className="text-xs text-emerald-200/75 mt-0.5">
+            <p className="text-xs text-[#D1FAE5] mt-0.5">
               Klik tanggal untuk melihat detail kegiatan. Agenda hari ini otomatis muncul sebagai notifikasi pengurus.
             </p>
           </div>

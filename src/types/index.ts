@@ -8,7 +8,8 @@ export type UserRole =
   | 'perlengkapan'
   | 'ketua_keamanan'
   | 'anggota_keamanan'
-  | 'petugas_gerbang';
+  | 'petugas_gerbang'
+  | 'pengurus_murotil';
 
 export interface UserAccount {
   id: string;
@@ -26,6 +27,7 @@ export interface UserAccount {
   avatar: string;
   statusAktif: boolean;
   terakhirLogin?: string;
+  murotilKelompokIds?: string[]; // Daftar ID kelompok murotil yang menjadi tanggung jawab pengurus terkait
 }
 
 export interface Santri {
@@ -364,6 +366,12 @@ export interface SystemConfig {
   fasilitasGedungList?: DataFasilitasGedung[];
   perlengkapanConfig?: PerlengkapanConfig;
   pusatInformasiList?: PusatInformasiItem[];
+  murotilTingkatanList?: MurotilTingkatan[];
+  murotilKelompokList?: MurotilKelompok[];
+  murotilAbsensiSantriList?: MurotilAbsensiSantri[];
+  murotilSetoranList?: MurotilSetoranHafalan[];
+  murotilAbsensiPjList?: MurotilAbsensiPj[];
+  murotilConfig?: MurotilConfig;
   alamatPondok?: string;
   namaPimpinan?: string;
   sekretarisNama?: string;
@@ -871,4 +879,104 @@ export interface PerlengkapanConfig {
   kategoriInventaris?: string[];
   satuanList?: string[];
 }
+
+// -------------------------------------------------------------
+// 7. MUROTILIL QUR'AN DAN TAHFIDZ (6 TINGKATAN, KELOMPOK, ABSENSI & SETORAN)
+// -------------------------------------------------------------
+export interface MurotilTingkatan {
+  id: string;
+  urutan: number; // 1 s/d 6
+  nama: string;
+  targetJuz: string;
+  juzOptions: string[];
+  deskripsi: string;
+}
+
+export interface MurotilKelompok {
+  id: string;
+  kodeKelompok: string;
+  namaKelompok: string;
+  tingkatanId: string;
+  gender: Gender | 'campuran';
+  penanggungJawabNama: string;
+  penanggungJawabUserId?: string;
+  santriIds: string[];
+  jadwalWaktu: string;
+  lokasi: string;
+  statusAktif: boolean;
+}
+
+export type StatusAbsensiMurotil = 'Hadir' | 'Izin' | 'Sakit' | 'Alpha';
+
+export interface MurotilAbsensiSantri {
+  id: string;
+  tanggal: string; // YYYY-MM-DD
+  sesi: string;
+  kelompokId: string;
+  tingkatanId: string;
+  santriId: string;
+  santriNama: string;
+  santriNis: string;
+  status: StatusAbsensiMurotil;
+  catatan?: string;
+  pencatatNama: string;
+  updatedAt: string;
+}
+
+export type JenisSetoranMurotil =
+  | 'Ziyadah (Hafalan Baru)'
+  | 'Murajaah (Mengulang)'
+  | 'Tasmi (Ujian Juz)';
+
+export type PredikatSetoranMurotil =
+  | 'Mumtaz (A)'
+  | 'Jayyid Jiddan (B+)'
+  | 'Jayyid (B)'
+  | 'Maqbul / Mengulang (C)';
+
+export interface MurotilSetoranHafalan {
+  id: string;
+  tanggal: string;
+  tingkatanId: string;
+  kelompokId: string;
+  santriId: string;
+  santriNama: string;
+  santriNis: string;
+  jenisSetoran: JenisSetoranMurotil;
+  juz: string;
+  surahAyat: string;
+  nilai: PredikatSetoranMurotil;
+  pengujiNama: string;
+  catatan?: string;
+  createdAt: string;
+}
+
+export type StatusAbsensiPjMurotil = 'Hadir' | 'Izin' | 'Sakit' | 'Badal / Tugas Luar';
+
+export interface MurotilAbsensiPj {
+  id: string;
+  tanggal: string;
+  sesi: string;
+  kelompokId: string;
+  namaKelompok: string;
+  tingkatanId: string;
+  userId?: string;
+  namaPengurus: string;
+  status: StatusAbsensiPjMurotil;
+  penggantiBadal?: string;
+  jamHadir?: string;
+  catatan?: string;
+  pencatatNama: string;
+  updatedAt: string;
+}
+
+export interface MurotilConfig {
+  namaUnit: string;
+  koordinatorNama: string;
+  koordinatorJabatan: string;
+  sesiList: string[];
+  allowPengurusLihatSemuaKelompok: boolean;
+  catatanLaporanWord: string;
+}
+
 

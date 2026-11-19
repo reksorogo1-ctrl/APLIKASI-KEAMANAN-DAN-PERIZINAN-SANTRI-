@@ -221,6 +221,12 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       anggaranList: latest.anggaranList,
       pusatInformasiList: latest.pusatInformasiList,
       notulenRapatList: latest.notulenRapatList,
+      murotilTingkatanList: latest.murotilTingkatanList,
+      murotilKelompokList: latest.murotilKelompokList,
+      murotilAbsensiSantriList: latest.murotilAbsensiSantriList,
+      murotilSetoranList: latest.murotilSetoranList,
+      murotilAbsensiPjList: latest.murotilAbsensiPjList,
+      murotilConfig: latest.murotilConfig,
     };
     storageService.updateSystemConfig(mergedWebsiteConfig);
     syncPWAIdentity(mergedWebsiteConfig);
@@ -2046,6 +2052,16 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               u.role === 'anggota_keamanan' ||
               u.role === 'petugas_gerbang',
           },
+          {
+            key: 'murotil',
+            title: 'Divisi Murotilil Qur\'an & Tahfidz',
+            subtitle: 'Pengurus halaqoh 6 tingkatan hafalan, absensi santri, setoran & penanggung jawab kelompok.',
+            defaultDivisi: 'Murotilil Qur\'an & Tahfidz',
+            nrpPrefix: 'MRT',
+            jabatanPlaceholder: 'Cth: Pengurus Murotil Kelompok 1 / Ustadzah PJ',
+            roles: [{ value: 'pengurus_murotil', label: 'Pengurus Murotilil Qur\'an & Tahfidz' }],
+            matchUser: (u) => u.role === 'pengurus_murotil',
+          },
         ];
 
         const qRbac = searchRbac.trim().toLowerCase();
@@ -2408,6 +2424,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                                         <option value="ketua_keamanan">Ketua Keamanan</option>
                                         <option value="anggota_keamanan">Anggota Keamanan</option>
                                         <option value="petugas_gerbang">Petugas Pos Gerbang</option>
+                                        <option value="pengurus_murotil">Pengurus Murotil &amp; Tahfidz</option>
                                       </select>
                                       <select
                                         value={inlineRbacEditData.genderAccess ?? u.genderAccess}
@@ -2866,14 +2883,14 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       {isSantriModalOpen && (
         <div 
           onClick={() => setIsSantriModalOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-hidden"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg max-h-[92vh] flex flex-col metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating"
+            className="cyber-modal-card w-full max-w-lg max-h-[92vh] flex flex-col bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Header */}
-            <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 py-4 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
+            <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 py-4 border-b border-emerald-500/25 bg-[#041A13]/65">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <Users className="w-4 h-4 text-emerald-400" />
                 {editingSantri ? 'Ubah Data Santri' : 'Input Santri Baru'}
@@ -3111,8 +3128,8 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       {/* Dewan Modal (Input/Edit) */}
       {isDewanModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating">
-            <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
+          <div className="cyber-modal-card w-full max-w-lg bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-500/25 bg-[#041A13]/65">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <ShieldAlert className="w-4 h-4 text-amber-400" />
                 {editingDewan ? 'Ubah Personil Dewan Keamanan' : 'Input Personil Keamanan Baru'}
@@ -3210,8 +3227,8 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       {/* RBAC User Modal */}
       {isUserModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating">
-            <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
+          <div className="cyber-modal-card w-full max-w-lg bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-500/25 bg-[#041A13]/65">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <KeyRound className="w-4 h-4 text-amber-400" />
                 {editingUser ? 'Perbarui Kredensial Personil' : 'Tambah Personil RBAC Baru'}
@@ -3306,6 +3323,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                     <option value="ketua_keamanan">Ketua Keamanan</option>
                     <option value="anggota_keamanan">Anggota Keamanan</option>
                     <option value="petugas_gerbang">Petugas Pos Gerbang</option>
+                    <option value="pengurus_murotil">Pengurus Murotil &amp; Tahfidz</option>
                   </select>
                 </div>
                 <div>
@@ -3500,8 +3518,8 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
       {/* Agenda Add/Edit Modal */}
       {isAgendaModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
+          <div className="cyber-modal-card w-full max-w-lg bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-500/25 bg-[#041A13]/65">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <Calendar className="w-4 h-4 text-[#f3d266]" />
                 {editingAgenda ? 'Edit Agenda Kegiatan Pondok' : 'Tambah Agenda Kegiatan Baru'}

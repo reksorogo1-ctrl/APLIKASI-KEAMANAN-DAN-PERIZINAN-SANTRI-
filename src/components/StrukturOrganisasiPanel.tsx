@@ -744,8 +744,8 @@ export const StrukturOrganisasiPanel: React.FC<StrukturOrganisasiPanelProps> = (
       {/* Modal Add/Edit Lengkap */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg luxury-3d-card rounded-2xl border border-[#d4af37]/50 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#d4af37]/25 bg-[#031810]">
+          <div className="cyber-modal-card w-full max-w-lg bg-[#06241B]/95 backdrop-blur-xl rounded-2xl border border-emerald-400/30 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-emerald-500/25 bg-[#041A13]/65">
               <h3 className="text-sm font-bold text-[#f4f9f5]">
                 {editingNode
                   ? 'Edit Pejabat Struktur Organisasi'

@@ -6,20 +6,22 @@
     --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     --font-serif: 'Amiri', serif;
     --font-display: 'Cinzel', serif;
-    --emerald-abyss: #02100a;
-    --emerald-deep: #041b12;
-    --emerald-surface: #06281c;
-    --emerald-elevated: #0a3828;
-    --emerald-accent: #10b981;
-    --luxury-gold: #d4af37;
+    --emerald-abyss: #041A13;
+    --emerald-deep: #041A13;
+    --emerald-surface: rgba(2, 44, 34, 0.6);
+    --emerald-modal: rgba(6, 36, 27, 0.95);
+    --emerald-elevated: #06241B;
+    --emerald-accent: #10B981;
+    --luxury-gold: #D4AF37;
     --luxury-gold-bright: #f3d266;
-    --luxury-cream: #f4f9f5;
+    --luxury-cream: #FFFFFF;
+    --text-supporting: #D1FAE5;
   }
 
   html, body {
     font-family: var(--font-sans);
-    background-color: #02100a;
-    color: #f4f9f5;
+    background-color: #041A13;
+    color: #FFFFFF;
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
@@ -27,52 +29,99 @@
   }
 }
 
-/* Luxury 3D Emerald-Gold Architectural Grid Background */
+/* Modern Islamic Cyber-Emerald Background (#041A13) with ultra-subtle 5% geometric grid */
 .bg-security-grid,
 .bg-luxury-grid {
-  background-color: #02100a;
+  background-color: #041A13;
   background-image:
-    radial-gradient(circle at 16% 12%, rgba(16, 185, 129, 0.14) 0%, transparent 42%),
-    radial-gradient(circle at 84% 85%, rgba(212, 175, 55, 0.1) 0%, transparent 45%),
-    linear-gradient(to right, rgba(212, 175, 55, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(16, 185, 129, 0.04) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    radial-gradient(circle at 18% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 82% 88%, rgba(212, 175, 55, 0.05) 0%, transparent 48%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%2310B981' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M0 32h64M32 0v64'/%3E%3Cpath d='M32 4L60 32 32 60 4 32Z'/%3E%3Ccircle cx='32' cy='32' r='6' stroke='%23D4AF37' stroke-opacity='0.05'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 100% 100%, 100% 100%, 64px 64px;
 }
 
-/* 3D Luxury Emerald-Gold Card System */
+/* Dark Glassmorphism Card System (bg-emerald-950/60 backdrop-blur-md border-emerald-500/25) */
 .metallic-glass-card,
-.luxury-3d-card {
-  background: linear-gradient(145deg, rgba(6, 40, 28, 0.93) 0%, rgba(2, 18, 12, 0.98) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(212, 175, 55, 0.26);
+.luxury-3d-card,
+.cyber-glass-card,
+main div[class*="rounded-2xl"][class*="bg-[#041d14]"]:not(.surat-print-sheet *):not(.cyber-modal-card),
+main div[class*="rounded-3xl"][class*="bg-[#041d14]"]:not(.surat-print-sheet *):not(.cyber-modal-card),
+main div[class*="rounded-2xl"][class*="bg-[#052419]"]:not(.surat-print-sheet *):not(.cyber-modal-card),
+main div[class*="rounded-3xl"][class*="bg-[#052419]"]:not(.surat-print-sheet *):not(.cyber-modal-card),
+main form[class*="rounded-2xl"][class*="bg-[#041d14]"]:not(.surat-print-sheet *):not(.cyber-modal-card),
+main form[class*="rounded-3xl"][class*="bg-[#041d14]"]:not(.surat-print-sheet *):not(.cyber-modal-card) {
+  background: rgba(2, 44, 34, 0.6) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.25);
   box-shadow:
-    0 10px 28px -6px rgba(0, 0, 0, 0.82),
-    inset 0 1px 0 rgba(243, 210, 102, 0.14),
-    inset 0 -1px 0 rgba(16, 185, 129, 0.16);
+    0 12px 30px -8px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(212, 175, 55, 0.14),
+    inset 0 -1px 0 rgba(16, 185, 129, 0.15);
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
 }
 
 .metallic-glass-card:hover,
-.luxury-3d-card:hover {
-  border-color: rgba(212, 175, 55, 0.48);
+.luxury-3d-card:hover,
+.cyber-glass-card:hover {
+  border-color: rgba(16, 185, 129, 0.42);
   box-shadow:
-    0 14px 34px -6px rgba(0, 0, 0, 0.88),
-    0 4px 18px -2px rgba(212, 175, 55, 0.16),
-    inset 0 1px 0 rgba(243, 210, 102, 0.22);
+    0 16px 36px -8px rgba(0, 0, 0, 0.78),
+    0 4px 18px -4px rgba(16, 185, 129, 0.18),
+    inset 0 1px 0 rgba(212, 175, 55, 0.24);
 }
 
 .metallic-glass-card[data-stagger-animating="true"],
 .metallic-glass-card[data-motion-card="true"],
 .luxury-3d-card[data-stagger-animating="true"],
-.luxury-3d-card[data-motion-card="true"] {
+.luxury-3d-card[data-motion-card="true"],
+.cyber-glass-card[data-stagger-animating="true"],
+.cyber-glass-card[data-motion-card="true"],
+[data-stagger-card][data-stagger-animating="true"],
+[data-stagger-animating="true"] {
   transition: box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
   will-change: transform, opacity;
 }
 
+/* Floating Glass Modal Styling & Smooth Scale Animation (0.95 -> 1) */
+@keyframes cyberModalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.cyber-modal-card {
+  background: rgba(6, 36, 27, 0.95) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(52, 211, 153, 0.3) !important;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.88),
+    0 0 30px -8px rgba(16, 185, 129, 0.22),
+    inset 0 1px 0 rgba(212, 175, 55, 0.18) !important;
+  animation: cyberModalScaleIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Global Soft Tap Feedback (scale 0.97) on all interactive buttons */
+button:not(:disabled),
+label[class*="cursor-pointer"],
+a[class*="cursor-pointer"] {
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+button:not(:disabled):not([data-no-tap]):active,
+label[class*="cursor-pointer"]:active {
+  transform: scale(0.97);
+}
+
 /* 3D Tactile Interactive Motion */
 .tactile-interactive {
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
   will-change: transform;
 }
 
@@ -81,7 +130,7 @@
 }
 
 .tactile-interactive:active {
-  transform: translateY(1px) scale(0.992);
+  transform: scale(0.97);
 }
 
 /* 3D Floating Depth */
@@ -92,8 +141,8 @@
 
 /* Luxury Gold Gradient Action Button */
 .luxury-gold-btn {
-  background: linear-gradient(135deg, #d4af37 0%, #f3d266 50%, #c59b27 100%);
-  color: #02140c;
+  background: linear-gradient(135deg, #D4AF37 0%, #f3d266 50%, #c59b27 100%);
+  color: #041A13;
   border: 1px solid rgba(255, 250, 224, 0.45);
   box-shadow:
     0 6px 18px -4px rgba(212, 175, 55, 0.4),
@@ -110,8 +159,8 @@
 
 /* Luxury Emerald Action Button */
 .luxury-emerald-btn {
-  background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
-  color: #f4f9f5;
+  background: linear-gradient(135deg, #059669 0%, #10B981 50%, #047857 100%);
+  color: #FFFFFF;
   border: 1px solid rgba(212, 175, 55, 0.4);
   box-shadow:
     0 6px 18px -4px rgba(16, 185, 129, 0.35),
@@ -127,10 +176,10 @@
 /* Luxury Active & Hover Edge Accents (Emerald-Gold Rim) */
 .rainbow-active-border {
   position: relative !important;
-  border-color: rgba(212, 175, 55, 0.75) !important;
+  border-color: rgba(212, 175, 55, 0.7) !important;
   box-shadow:
-    0 0 0 1px rgba(212, 175, 55, 0.35),
-    0 8px 24px -6px rgba(16, 185, 129, 0.28),
+    0 0 0 1px rgba(212, 175, 55, 0.3),
+    0 10px 26px -6px rgba(16, 185, 129, 0.28),
     inset 0 1px 0 rgba(243, 210, 102, 0.2) !important;
 }
 
@@ -141,8 +190,35 @@
 
 .hover-rainbow-edge:hover,
 .hover-rainbow-edge:focus-within {
-  border-color: rgba(212, 175, 55, 0.55);
+  border-color: rgba(16, 185, 129, 0.5);
   box-shadow: 0 8px 22px -6px rgba(16, 185, 129, 0.24);
+}
+
+/* High-Contrast Glassmorphism Tables & Mobile Legibility (#FFFFFF & #D1FAE5) */
+main table:not(.a4-print-table) {
+  font-variant-numeric: tabular-nums;
+}
+
+main .overflow-x-auto:has(> table):not(.surat-print-sheet *) {
+  background: rgba(2, 44, 34, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 1rem;
+}
+
+main table thead th {
+  color: #FFFFFF;
+}
+
+main table tbody td {
+  color: #D1FAE5;
+}
+
+main :is(p, span, label, div)[class*="text-emerald-200/"]:not(.surat-print-sheet *),
+main :is(p, span, label, div)[class*="text-emerald-300/"]:not(.surat-print-sheet *),
+main :is(p, span, label, div)[class*="text-emerald-100/"]:not(.surat-print-sheet *) {
+  color: #D1FAE5;
 }
 
 /* Table Row Highlight */
@@ -152,14 +228,14 @@
 }
 
 .table-row-rainbow:hover {
-  background-color: rgba(16, 185, 129, 0.12) !important;
+  background-color: rgba(16, 185, 129, 0.14) !important;
 }
 
 /* Luxury Metallic Emerald-Gold Header Gradient for Tables */
 .table-header-metallic {
-  background: linear-gradient(180deg, #073322 0%, #031a11 100%);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.32);
-  color: #f3d266;
+  background: rgba(6, 36, 27, 0.88);
+  border-bottom: 1px solid rgba(16, 185, 129, 0.28);
+  color: #D4AF37;
 }
 
 /* Radar Sweep Animation for Security Module */
@@ -171,6 +247,17 @@
 .radar-sweep-beam {
   animation: radar-sweep 4s linear infinite;
   transform-origin: center;
+}
+
+/* Thin Emerald Laser Scan Sweep (Fallback CSS keyframe + Framer Motion support) */
+@keyframes cyber-laser-sweep {
+  0% { top: 8%; opacity: 0.7; }
+  50% { top: 88%; opacity: 1; }
+  100% { top: 8%; opacity: 0.7; }
+}
+
+.cyber-laser-line {
+  animation: cyber-laser-sweep 2.1s ease-in-out infinite;
 }
 
 /* Unified Luxury Emerald-Gold Glows */
@@ -197,18 +284,18 @@
 }
 
 *::-webkit-scrollbar-track {
-  background: rgba(2, 16, 10, 0.9);
+  background: rgba(4, 26, 19, 0.9);
   border-radius: 8px;
 }
 
 *::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #0d4a33 0%, #06281c 100%);
   border-radius: 8px;
-  border: 1px solid rgba(212, 175, 55, 0.38);
+  border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #d4af37 0%, #059669 100%);
+  background: linear-gradient(180deg, #D4AF37 0%, #10B981 100%);
   border-color: rgba(243, 210, 102, 0.8);
 }
 
@@ -218,17 +305,30 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #0d4a33 rgba(2, 16, 10, 0.9);
+  scrollbar-color: #0d4a33 rgba(4, 26, 19, 0.9);
 }
 
 .track-scroll-box,
 .tactile-scroll-box {
-  background: linear-gradient(145deg, rgba(6, 38, 26, 0.94) 0%, rgba(2, 16, 10, 0.98) 100%);
-  border: 1px solid rgba(212, 175, 55, 0.26);
+  background: rgba(2, 44, 34, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(16, 185, 129, 0.25);
   border-radius: 1rem;
   box-shadow:
-    0 10px 30px -5px rgba(0, 0, 0, 0.85),
-    inset 0 1px 0 rgba(212, 175, 55, 0.12);
+    0 12px 30px -6px rgba(0, 0, 0, 0.72),
+    inset 0 1px 0 rgba(212, 175, 55, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cyber-modal-card,
+  .cyber-laser-line,
+  .radar-sweep-beam {
+    animation: none !important;
+  }
+  button:not(:disabled):active {
+    transform: none !important;
+  }
 }
 
 /* ==========================================================================

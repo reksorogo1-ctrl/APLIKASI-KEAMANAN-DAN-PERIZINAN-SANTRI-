@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'motion/react';
 import QRCode from 'qrcode';
 import { Sanksi, Santri, SuratSanksiLayoutConfig } from '../types';
 import { 
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { createWhatsAppUrl } from '../services/waService';
+import { METALLIC_EASE } from './MotionPrimitives';
 
 interface SuratSanksiModalProps {
   sanksi: Sanksi | null;
@@ -247,24 +249,29 @@ Wassalamu'alaikum Wr. Wb.
   };
 
   const modalContent = (
-    <div 
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: METALLIC_EASE }}
       onClick={onClose}
-      className="surat-print-overlay fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
+      className="surat-print-overlay fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/75 backdrop-blur-md overflow-hidden"
     >
-      <div 
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.24, ease: METALLIC_EASE }}
         onClick={(e) => e.stopPropagation()}
-        className="surat-print-modal relative w-full max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white text-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-emerald-800/80 overflow-hidden rainbow-active-border card-3d-floating"
+        className="surat-print-modal relative w-full max-w-xl sm:max-w-2xl lg:max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-[#06241B]/95 backdrop-blur-xl text-slate-900 rounded-2xl shadow-2xl border border-emerald-400/30 overflow-hidden"
       >
-        
         {/* Top Control Bar (Hidden when printed, Always Visible & Sticky at Top) */}
-        <div className="no-print shrink-0 flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a] text-slate-100 border-b border-emerald-800 gap-2 z-20">
+        <div className="no-print shrink-0 flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 bg-[#041A13]/85 text-white border-b border-emerald-500/25 gap-2 z-20">
           <div className="flex items-center gap-2 min-w-0">
-            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-[#D4AF37] shrink-0 drop-shadow-[0_0_8px_rgba(212,175,55,0.45)]" />
             <div className="min-w-0">
-              <h3 className="text-xs sm:text-sm font-black tracking-wide text-amber-300 font-sans uppercase truncate">
+              <h3 className="text-xs sm:text-sm font-black tracking-wide text-[#D4AF37] font-sans uppercase truncate">
                 Surat Sanksi Edukatif & Pembinaan
               </h3>
-              <p className="text-[9px] sm:text-[10px] text-emerald-200/75 font-mono truncate">
+              <p className="text-[9px] sm:text-[10px] text-[#D1FAE5] font-mono truncate">
                 {editedNomor} · Resmi Ponpes Al-Maliki
               </p>
             </div>
@@ -716,8 +723,8 @@ Wassalamu'alaikum Wr. Wb.
           </div>
         </div>
 
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 
   return createPortal(modalContent, document.body);

@@ -599,9 +599,9 @@ Yth. Wali dari *${sanksi.santriNama}* (${sanksi.santriNis})
 
       {/* MODAL 1-LANGKAH: CATAT PELANGGARAN & SANKSI */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-xl rounded-2xl bg-[#041d14] border border-[#d4af37]/60 shadow-2xl overflow-hidden my-6">
-            <div className="px-5 py-3.5 border-b border-emerald-800 bg-[#03160f] flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="cyber-modal-card w-full max-w-xl rounded-2xl bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 shadow-2xl overflow-hidden my-6">
+            <div className="px-5 py-3.5 border-b border-emerald-500/25 bg-[#041A13]/65 flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-[#f3d266]" />
                 Catat Pelanggaran &amp; Sanksi Edukatif
@@ -782,9 +782,9 @@ Yth. Wali dari *${sanksi.santriNama}* (${sanksi.santriNis})
 
       {/* MODAL BERI SANKSI CEPAT UNTUK PELANGGARAN YANG SUDAH TERCATAT */}
       {assignSanksiTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-lg rounded-2xl bg-[#041d14] border border-[#d4af37]/60 shadow-2xl overflow-hidden my-6">
-            <div className="px-5 py-3.5 border-b border-emerald-800 bg-[#03160f] flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="cyber-modal-card w-full max-w-lg rounded-2xl bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 shadow-2xl overflow-hidden my-6">
+            <div className="px-5 py-3.5 border-b border-emerald-500/25 bg-[#041A13]/65 flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-[#f3d266]" />
                 Tetapkan Sanksi Edukatif

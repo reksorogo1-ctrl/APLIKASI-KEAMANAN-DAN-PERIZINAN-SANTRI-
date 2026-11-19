@@ -1118,8 +1118,8 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
         const suspendUntilPreview = getTanggalPenangguhanWIB(durasiSuspensiHari);
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-            <div className="w-full max-w-lg bg-[#041d13] border-2 border-emerald-800 rounded-3xl shadow-2xl overflow-hidden my-8">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+            <div className="cyber-modal-card w-full max-w-lg bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden my-8">
               
               <div className={`p-5 flex items-center justify-between border-b ${
                 isLate ? 'bg-red-950/80 border-red-500/60 text-red-100' : 'bg-emerald-950/80 border-emerald-500/60 text-emerald-100'
@@ -1262,14 +1262,14 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
       {/* 5. MODAL FORMULIR PENGAJUAN PERIZINAN BARU                                */}
       {/* ========================================================================= */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-          <div className="w-full max-w-xl bg-neutral-900 border border-neutral-700 rounded-3xl shadow-2xl overflow-hidden my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <FileCheck2 className="w-4 h-4 text-amber-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="cyber-modal-card w-full max-w-xl bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-500/25 bg-[#041A13]/65">
+              <h3 className="text-sm font-bold text-[#FFFFFF] flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-[#D4AF37]" />
                 Formulir Pengajuan Perizinan Santri (Real-Time WIB)
               </h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="text-neutral-400 hover:text-white">
+              <button onClick={() => setIsAddModalOpen(false)} className="text-[#D1FAE5] hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1277,36 +1277,36 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
             <form onSubmit={handleCreatePermit} className="p-6 space-y-4 text-xs font-mono">
               
               {/* Petugas Pengaju Sync Banner */}
-              <div className="p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs flex items-center justify-between shadow-lg">
+              <div className="p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-[#D1FAE5] text-xs flex items-center justify-between shadow-lg">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-emerald-950 border border-emerald-500/50 flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4 text-emerald-300" />
+                    <User className="w-4 h-4 text-[#10B981]" />
                   </div>
                   <div>
-                    <p className="font-bold text-white font-sans text-xs">
-                      Petugas Pengaju: <span className="text-amber-300">{currentUser.nama}</span> ({currentUser.jabatan})
+                    <p className="font-bold text-[#FFFFFF] font-sans text-xs">
+                      Petugas Pengaju: <span className="text-[#D4AF37]">{currentUser.nama}</span> ({currentUser.jabatan})
                     </p>
-                    <p className="text-[10px] text-emerald-300 font-mono mt-0.5">
+                    <p className="text-[10px] text-[#D1FAE5] font-mono mt-0.5">
                       NRP: {currentUser.nrp || 'KAMTIB-OFF'} · Tersinkronisasi Real-Time ({wibTime.timeStr} WIB)
                     </p>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[9px] font-bold border border-emerald-500/40 flex items-center gap-1 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="px-2.5 py-1 rounded-md bg-[#10B981]/20 text-[#10B981] font-mono text-[9px] font-bold border border-[#10B981]/40 flex items-center gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse"></span>
                   ADMIN SYNC
                 </span>
               </div>
 
               {/* Santri Selector */}
               <div>
-                <label className="block text-neutral-400 font-medium mb-1">
+                <label className="block text-[#D1FAE5] font-medium mb-1">
                   Pilih Santri yang Mengajukan Perizinan
                 </label>
                 <select
                   required
                   value={selectedSantriId}
                   onChange={(e) => handleSantriSelect(e.target.value)}
-                  className="w-full px-3 py-2 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                  className="w-full px-3 py-2 bg-[#041A13]/85 border border-emerald-500/30 rounded-xl text-white focus:outline-none focus:border-[#D4AF37]"
                 >
                   <option value="">-- Cari / Pilih Santri --</option>
                   {santriList.map((s) => {
@@ -1487,13 +1487,13 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
       {/* 6. MODAL PENOLAKAN IZIN                                                    */}
       {/* ========================================================================= */}
       {rejectionModalId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-2xl p-6 space-y-4">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="cyber-modal-card w-full max-w-sm bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl p-6 space-y-4">
+            <h4 className="text-sm font-bold text-[#FFFFFF] flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-red-400" />
               Alasan Penolakan Izin
             </h4>
-            <p className="text-xs text-neutral-300">
+            <p className="text-xs text-[#D1FAE5]">
               Tuliskan alasan penolakan agar tercatat dalam riwayat persetujuan santri.
             </p>
             <textarea
@@ -1501,12 +1501,12 @@ export const PerizinanList: React.FC<PerizinanListProps> = ({
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="Contoh: Jadwal bertabrakan dengan ujian madrasah / berkas belum lengkap"
-              className="w-full px-3 py-2 text-xs bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:outline-none focus:border-red-400"
+              className="w-full px-3 py-2 text-xs bg-[#041A13]/85 border border-emerald-500/30 rounded-xl text-white focus:outline-none focus:border-red-400"
             />
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setRejectionModalId(null)}
-                className="px-3 py-1.5 text-xs text-neutral-400 hover:text-white cursor-pointer"
+                className="px-3 py-1.5 text-xs text-[#D1FAE5] hover:text-white cursor-pointer"
               >
                 Batal
               </button>

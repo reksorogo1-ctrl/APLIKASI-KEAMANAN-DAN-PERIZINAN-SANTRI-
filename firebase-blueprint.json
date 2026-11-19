@@ -13,7 +13,8 @@
         "statusAktif": { "type": "boolean" },
         "nrp": { "type": "string", "maxLength": 30 },
         "divisi": { "type": "string" },
-        "genderAccess": { "type": "string" }
+        "genderAccess": { "type": "string" },
+        "murotilKelompokIds": { "type": "array" }
       },
       "required": ["id", "nama", "username", "role", "statusAktif"]
     },
@@ -132,7 +133,13 @@
         "bgUrl": { "type": "string" },
         "fasilitasGedungList": { "type": "array" },
         "perlengkapanConfig": { "type": "object" },
-        "pusatInformasiList": { "type": "array" }
+        "pusatInformasiList": { "type": "array" },
+        "murotilTingkatanList": { "type": "array" },
+        "murotilKelompokList": { "type": "array" },
+        "murotilAbsensiSantriList": { "type": "array" },
+        "murotilSetoranList": { "type": "array" },
+        "murotilAbsensiPjList": { "type": "array" },
+        "murotilConfig": { "type": "object" }
       },
       "required": ["namaPondok"]
     },

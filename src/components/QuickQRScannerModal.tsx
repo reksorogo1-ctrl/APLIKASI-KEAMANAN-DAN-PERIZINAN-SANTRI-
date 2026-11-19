@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { motion } from 'motion/react';
 import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode';
 import {
   Camera,
@@ -21,6 +22,7 @@ import {
 import { Perizinan, UserAccount, Pelanggaran, Sanksi } from '../types';
 import { storageService } from '../services/storageService';
 import { WhatsAppTemplates, createWhatsAppUrl } from '../services/waService';
+import { LaserScanLine, METALLIC_EASE } from './MotionPrimitives';
 
 interface QuickQRScannerModalProps {
   isOpen: boolean;
@@ -587,25 +589,31 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
   if (!isOpen) return null;
 
   const modalContent = (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: METALLIC_EASE }}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-hidden"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md overflow-hidden"
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.24, ease: METALLIC_EASE }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg max-h-[94dvh] flex flex-col metallic-glass-card border border-emerald-700/80 rounded-3xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-lg max-h-[94dvh] flex flex-col bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden"
       >
         {/* Header Bar */}
-        <div className="shrink-0 flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
+        <div className="shrink-0 flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-emerald-500/25 bg-[#041A13]/70">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2 rounded-xl bg-emerald-950 border border-emerald-500/40 text-emerald-300 shrink-0">
-              <QrCode className="w-5 h-5 text-emerald-400" />
+            <div className="p-2 rounded-xl bg-emerald-950/80 border border-emerald-500/35 text-[#10B981] shrink-0">
+              <QrCode className="w-5 h-5 text-[#10B981]" />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide truncate">
                 Pemindai QR Kepulangan Santri
               </h3>
-              <p className="text-[10px] text-emerald-200/75 font-mono truncate">
+              <p className="text-[10px] text-[#D1FAE5] font-mono truncate">
                 Kamera Langsung &amp; Upload Foto QR (Android, iOS &amp; Laptop)
               </p>
             </div>
@@ -613,25 +621,27 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             {scanMode === 'camera' && !scannerResult && (
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.97 }}
                 onClick={() =>
                   setCameraFacing((prev) => (prev === 'environment' ? 'user' : 'environment'))
                 }
-                className="p-1.5 rounded-lg bg-[#072c1e] hover:bg-[#0b422d] text-emerald-200 border border-emerald-700 cursor-pointer"
+                className="p-2 rounded-xl bg-emerald-950/75 hover:bg-emerald-900/75 text-[#D1FAE5] border border-emerald-500/30 cursor-pointer"
                 title="Ganti Kamera Depan / Belakang"
               >
-                <SwitchCamera className="w-4 h-4 text-emerald-400" />
-              </button>
+                <SwitchCamera className="w-4 h-4 text-[#10B981]" />
+              </motion.button>
             )}
-            <button
+            <motion.button
               type="button"
+              whileTap={{ scale: 0.97 }}
               onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-red-600/85 hover:bg-red-500 text-white flex items-center justify-center cursor-pointer font-bold"
+              className="w-9 h-9 rounded-xl bg-red-600/85 hover:bg-red-500 text-white flex items-center justify-center cursor-pointer font-bold"
               title="Tutup"
             >
               <X className="w-4 h-4" />
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -821,28 +831,28 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
 
               {/* Cara 1: Kamera Langsung (Square Scanner Viewport) */}
               {scanMode === 'camera' && (
-                <div className="relative mx-auto w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden border-2 border-emerald-600/60 bg-[#02100a] flex items-center justify-center shadow-inner">
+                <div className="relative mx-auto w-full max-w-[340px] aspect-square rounded-2xl overflow-hidden border-2 border-[#10B981]/50 bg-[#041A13] flex items-center justify-center shadow-inner">
                   <div id={cameraViewportId} className="w-full h-full relative" />
 
                   {isStartingCamera && (
-                    <div className="absolute inset-0 bg-[#02100a]/90 flex flex-col items-center justify-center gap-2 z-10">
-                      <Loader2 className="w-7 h-7 text-emerald-400 animate-spin" />
-                      <span className="text-xs font-mono text-emerald-200">
+                    <div className="absolute inset-0 bg-[#041A13]/90 flex flex-col items-center justify-center gap-2 z-10">
+                      <Loader2 className="w-7 h-7 text-[#10B981] animate-spin" />
+                      <span className="text-xs font-mono text-[#D1FAE5]">
                         Membuka kamera belakang...
                       </span>
                     </div>
                   )}
 
-                  {isCameraRunning && !scannerResult && (
+                  {!scannerResult && !cameraError && (
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                      <div className="w-52 h-52 relative flex items-center justify-center">
-                        <div className="absolute top-0 left-0 w-7 h-7 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl" />
-                        <div className="absolute top-0 right-0 w-7 h-7 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl" />
-                        <div className="absolute bottom-0 left-0 w-7 h-7 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl" />
-                        <div className="absolute bottom-0 right-0 w-7 h-7 border-b-4 border-r-4 border-emerald-400 rounded-br-xl" />
-                        <div className="absolute inset-x-3 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse" />
-                        <div className="absolute -bottom-8 px-3 py-1 rounded-full bg-[#02100a]/90 border border-emerald-500/50 text-[10px] text-emerald-300 font-mono font-bold whitespace-nowrap flex items-center gap-1.5">
-                          <ScanLine className="w-3 h-3 text-emerald-400" />
+                      <div className="w-56 h-56 relative flex items-center justify-center">
+                        <div className="absolute top-0 left-0 w-7 h-7 border-t-4 border-l-4 border-[#10B981] rounded-tl-xl" />
+                        <div className="absolute top-0 right-0 w-7 h-7 border-t-4 border-r-4 border-[#10B981] rounded-tr-xl" />
+                        <div className="absolute bottom-0 left-0 w-7 h-7 border-b-4 border-l-4 border-[#10B981] rounded-bl-xl" />
+                        <div className="absolute bottom-0 right-0 w-7 h-7 border-b-4 border-r-4 border-[#10B981] rounded-br-xl" />
+                        <LaserScanLine />
+                        <div className="absolute -bottom-8 px-3 py-1 rounded-full bg-[#041A13]/90 border border-[#10B981]/50 text-[10px] text-[#D1FAE5] font-mono font-bold whitespace-nowrap flex items-center gap-1.5">
+                          <ScanLine className="w-3 h-3 text-[#10B981]" />
                           <span>ARAHKAN KE QR SURAT IZIN</span>
                         </div>
                       </div>
@@ -951,8 +961,8 @@ export const QuickQRScannerModal: React.FC<QuickQRScannerModalProps> = ({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 
   return createPortal(modalContent, document.body);

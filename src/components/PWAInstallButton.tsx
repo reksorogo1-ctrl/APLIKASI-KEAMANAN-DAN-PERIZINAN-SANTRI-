@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { Download, Smartphone, Monitor, Share, PlusSquare, X, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { METALLIC_EASE } from './MotionPrimitives';
 
 interface PWAInstallButtonProps {
   variant?: 'header' | 'sidebar' | 'full';
@@ -80,29 +82,42 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'h
 
       {/* MODAL GUIDE FOR INSTALLATION (ANDROID, WINDOWS, MAC, IOS) */}
       {showGuideModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
-          <div className="relative w-full max-w-lg metallic-glass-card border border-emerald-500/50 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating my-8">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2, ease: METALLIC_EASE }}
+          onClick={() => setShowGuideModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md overflow-y-auto"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.24, ease: METALLIC_EASE }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-lg bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden my-8"
+          >
             {/* Modal Header */}
-            <div className="p-5 border-b border-emerald-800 flex items-center justify-between bg-gradient-to-r from-[#02100a] via-[#041d13] to-emerald-950/70">
+            <div className="p-5 border-b border-emerald-500/25 flex items-center justify-between bg-[#041A13]/70">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shadow-sm">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-[#10B981] shadow-sm">
+                  <ShieldCheck className="w-5 h-5 text-[#10B981]" />
                 </div>
                 <div>
                   <h3 className="text-base font-black text-white font-sans uppercase tracking-tight">
                     Instalasi Aplikasi Keamanan
                   </h3>
-                  <p className="text-[11px] font-mono text-emerald-400 tracking-wider">
+                  <p className="text-[11px] font-mono text-[#D1FAE5] tracking-wider">
                     PWA STANDALONE • PONPES SALAF AL-MALIKI
                   </p>
                 </div>
               </div>
-              <button
+              <motion.button
+                whileTap={{ scale: 0.97 }}
                 onClick={() => setShowGuideModal(false)}
-                className="p-1.5 rounded-xl bg-[#072c1e]/80 hover:bg-[#0b422d] text-emerald-200/75 hover:text-white transition-colors"
+                className="p-2 rounded-xl bg-emerald-950/80 hover:bg-emerald-900/80 text-[#D1FAE5] hover:text-white border border-emerald-500/25 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </motion.button>
             </div>
 
             {/* Modal Content */}
@@ -167,19 +182,20 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'h
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-emerald-800 bg-[#02100a] flex items-center justify-between">
-              <span className="text-[11px] font-mono text-emerald-200/75">
+            <div className="p-4 border-t border-emerald-500/25 bg-[#041A13]/80 flex items-center justify-between">
+              <span className="text-[11px] font-mono text-[#D1FAE5]">
                 Aplikasi ringan &bull; Offline Ready &bull; Hemat Kuota
               </span>
-              <button
+              <motion.button
+                whileTap={{ scale: 0.97 }}
                 onClick={() => setShowGuideModal(false)}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#059669] to-[#10B981] text-white font-bold text-xs uppercase tracking-wider shadow-md transition-colors cursor-pointer"
               >
                 Mengerti & Tutup
-              </button>
+              </motion.button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
     </>
   );

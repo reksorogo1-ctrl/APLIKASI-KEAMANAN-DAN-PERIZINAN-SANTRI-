@@ -729,8 +729,8 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
           MODAL 1: INSPEKSI AUDIT & AKUNTABILITAS (Diff Viewer)
          ========================================== */}
       {selectedLogForInspection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-2xl bg-gradient-to-b from-[#041d13] via-[#02100a] to-black border border-emerald-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="cyber-modal-card relative w-full max-w-2xl bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-5 overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-400 via-amber-400 to-purple-500" />
             
             <div className="flex items-center justify-between pb-3 border-b border-emerald-800">
@@ -830,8 +830,8 @@ export const LiveSecurityMonitoring: React.FC<LiveSecurityMonitoringProps> = ({
           MODAL 2: BUAT KOREKSI / REVISI RESMI (Accountability Workflow)
          ========================================== */}
       {isRevisionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-xl bg-gradient-to-b from-[#041d13] via-[#02100a] to-black border border-purple-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="cyber-modal-card relative w-full max-w-xl bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-4">
             <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-400 via-emerald-500 to-emerald-400" />
 
             <div className="flex items-center justify-between pb-3 border-b border-emerald-800">

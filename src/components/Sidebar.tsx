@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import {
   LayoutDashboard,
   Network,
@@ -28,6 +29,10 @@ import {
   BarChart3,
   UserCircle,
   History,
+  BookOpenCheck,
+  ClipboardCheck,
+  Award,
+  UserCheck,
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -35,6 +40,7 @@ import { PWAInstallButton } from './PWAInstallButton';
 export type ActiveMenu =
   | 'dashboard'
   | 'struktur_organisasi'
+  | 'murotil_tahfidz'
   | 'ketua_pondok'
   | 'sekretaris'
   | 'bendahara'
@@ -81,6 +87,7 @@ export function canAccessMainMenu(role: UserRole, menu: ActiveMenu): boolean {
   if (role === 'ketua_pondok') {
     return menu !== 'admin_options';
   }
+  if (role === 'pengurus_murotil') return menu === 'murotil_tahfidz';
   if (role === 'sekretaris') return menu === 'sekretaris';
   if (role === 'bendahara') return menu === 'bendahara';
   if (role === 'perlengkapan') return menu === 'perlengkapan';
@@ -160,6 +167,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return 'KEAMANAN';
       case 'petugas_gerbang':
         return 'POS GERBANG';
+      case 'pengurus_murotil':
+        return 'MUROTIL & TAHFIDZ';
       default:
         return 'PENGURUS';
     }
@@ -194,6 +203,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: 'Tab Struktur Organisasi',
           subtitle: 'Bagan Jajaran Pengurus',
           icon: Network,
+        },
+        {
+          key: 'kp_murotil',
+          menu: 'murotil_tahfidz',
+          subTab: 'dashboard_murotil',
+          label: 'Tab Murotilil Qur\'an & Tahfidz',
+          subtitle: 'Absensi Kelompok, 6 Tingkatan & PJ',
+          icon: BookOpenCheck,
         },
         {
           key: 'kp_persetujuan',
@@ -579,6 +596,75 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ];
     }
 
+    if (userRole === 'pengurus_murotil') {
+      return [
+        {
+          key: 'mrt_dashboard',
+          menu: 'murotil_tahfidz',
+          subTab: 'dashboard_murotil',
+          label: 'Tab Dashboard Utama',
+          subtitle: 'Grafik Kehadiran, Setoran & Biodata',
+          icon: LayoutDashboard,
+        },
+        {
+          key: 'mrt_kotak_masuk',
+          menu: 'murotil_tahfidz',
+          subTab: 'kotak_masuk',
+          label: 'Kotak Masuk & Koordinasi',
+          subtitle: 'Informasi & Koordinasi Pengurus',
+          icon: Inbox,
+          badge: inboxBadge,
+          badgeTone: 'gold',
+        },
+        {
+          key: 'mrt_struktur',
+          menu: 'struktur_organisasi',
+          label: 'Tab Struktur Organisasi',
+          subtitle: 'Bagan & Jajaran Pengurus',
+          icon: Network,
+        },
+        {
+          key: 'mrt_absensi_santri',
+          menu: 'murotil_tahfidz',
+          subTab: 'absensi_santri',
+          label: 'Absensi Santri & Rekapan',
+          subtitle: 'Tabel Per Kelompok & Download Word',
+          icon: ClipboardCheck,
+        },
+        {
+          key: 'mrt_setoran',
+          menu: 'murotil_tahfidz',
+          subTab: 'setoran_hafalan',
+          label: 'Setoran Hafalan (6 Tingkatan)',
+          subtitle: 'Juz 30 s/d Juz 8 Per Kelompok',
+          icon: Award,
+        },
+        {
+          key: 'mrt_absensi_pj',
+          menu: 'murotil_tahfidz',
+          subTab: 'absensi_pj',
+          label: 'Absensi Ustadz/ah PJ',
+          subtitle: 'Kehadiran Penanggung Jawab',
+          icon: UserCheck,
+        },
+        {
+          key: 'mrt_option',
+          menu: 'murotil_tahfidz',
+          subTab: 'option_murotil',
+          label: 'Option Panel Murotil',
+          subtitle: 'Login Per Kelompok & 6 Tingkatan',
+          icon: Sliders,
+        },
+        {
+          key: 'mrt_biodata',
+          menu: 'biodata_profil',
+          label: 'Tab Biodata dan Profil',
+          subtitle: 'Edit Foto, Nama, Jabatan & PIN',
+          icon: UserCircle,
+        },
+      ];
+    }
+
     // Default: SUPER ADMIN (Full Access to all Divisions + Option Panel + Biodata)
     return [
       {
@@ -594,6 +680,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         label: 'Struktur Organisasi',
         subtitle: 'Bagan & Jajaran Pengurus',
         icon: Network,
+      },
+      {
+        key: 'adm_murotil',
+        menu: 'murotil_tahfidz',
+        subTab: 'dashboard_murotil',
+        label: 'Murotilil Qur\'an & Tahfidz',
+        subtitle: 'Absensi Kelompok, 6 Tingkatan & PJ',
+        icon: BookOpenCheck,
       },
       {
         key: 'adm_ketua',
@@ -671,17 +765,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      {/* Luxury 3D Emerald-Gold Sidebar Container */}
+      {/* Cyber-Emerald Glassmorphism Sidebar Container */}
       <aside
-        className={`fixed md:relative top-0 right-0 md:right-auto md:left-0 z-50 h-[100dvh] md:h-full md:min-h-full md:max-h-full w-72 sm:w-80 md:w-64 lg:w-72 bg-gradient-to-b from-[#041f15] via-[#03160f] to-[#010c08] border-l md:border-l-0 md:border-r border-[#d4af37]/30 shadow-[0_0_40px_rgba(0,0,0,0.9)] flex flex-col justify-between shrink-0 self-stretch transition-transform duration-300 ease-in-out font-sans ${
+        className={`fixed md:relative top-0 right-0 md:right-auto md:left-0 z-50 h-[100dvh] md:h-full md:min-h-full md:max-h-full w-72 sm:w-80 md:w-64 lg:w-72 bg-[#041A13]/95 md:bg-emerald-950/60 backdrop-blur-md border-l md:border-l-0 md:border-r border-emerald-500/25 shadow-[0_0_40px_rgba(0,0,0,0.85)] flex flex-col justify-between shrink-0 self-stretch transition-transform duration-300 ease-in-out font-sans ${
           isOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Subtle Gold Rim Light */}
-        <div className="hidden md:block absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-[#d4af37]/55 via-emerald-500/25 to-[#d4af37]/35 pointer-events-none" />
+        {/* Subtle Gold & Emerald Rim Light */}
+        <div className="hidden md:block absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-[#D4AF37]/50 via-[#10B981]/30 to-[#D4AF37]/35 pointer-events-none" />
 
         {/* Editable Profile Photo, Name & Jabatan Card at Top of Sidebar */}
-        <div className="p-3.5 border-b border-[#d4af37]/25 bg-[#052318]/90 space-y-2.5">
+        <div className="p-3.5 border-b border-emerald-500/25 bg-emerald-950/60 backdrop-blur-md space-y-2.5">
           <div className="flex items-center justify-between gap-2.5">
             <div
               onClick={() => {
@@ -696,22 +790,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <img
                     src={currentUser.avatar}
                     alt={currentUser.nama}
-                    className="w-11 h-11 rounded-xl border-2 border-[#d4af37]/80 object-cover shadow-md group-hover:scale-105 transition-transform"
+                    className="w-11 h-11 rounded-xl border-2 border-[#D4AF37]/80 object-cover shadow-md group-hover:scale-105 transition-transform"
                   />
                 ) : (
-                  <div className="w-11 h-11 rounded-xl border-2 border-[#d4af37]/65 bg-[#083323] flex items-center justify-center shadow-md text-[#e5c158]">
+                  <div className="w-11 h-11 rounded-xl border-2 border-[#D4AF37]/65 bg-[#041A13] flex items-center justify-center shadow-md text-[#D4AF37]">
                     <User className="w-5 h-5" />
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-[#f4f9f5] group-hover:text-[#f3d266] truncate leading-snug transition-colors">
+                <p className="text-xs font-bold text-white group-hover:text-[#D4AF37] truncate leading-snug transition-colors">
                   {currentUser?.nama || 'Pengurus Pondok'}
                 </p>
-                <p className="text-[10px] font-semibold text-[#e5c158] truncate mt-0.5">
+                <p className="text-[10px] font-semibold text-[#D4AF37] truncate mt-0.5">
                   {currentUser?.jabatan || roleDisplayLabel(userRole)}
                 </p>
-                <div className="flex items-center gap-1.5 mt-0.5 text-[9px] font-mono text-emerald-300/80">
+                <div className="flex items-center gap-1.5 mt-0.5 text-[9px] font-mono text-[#D1FAE5]">
                   <span>{roleDisplayLabel(userRole)}</span>
                   <span aria-hidden="true">·</span>
                   <span>PIN: {currentUser?.pin || '******'}</span>
@@ -719,13 +813,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
 
-            <button
+            <motion.button
+              whileTap={{ scale: 0.97 }}
               onClick={onClose}
-              className="md:hidden p-2 text-[#e5c158] hover:text-white rounded-xl hover:bg-[#0a3828] transition-colors cursor-pointer shrink-0 border border-[#d4af37]/35"
+              className="md:hidden p-2 text-[#D4AF37] hover:text-white rounded-xl hover:bg-emerald-900/60 transition-colors cursor-pointer shrink-0 border border-emerald-500/30"
               aria-label="Tutup Menu"
             >
               <X className="w-5 h-5" />
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -733,40 +828,44 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-3.5 space-y-4">
           <div>
             <div className="flex items-center justify-between px-3 mb-2">
-              <p className="text-[10px] font-semibold tracking-wider text-[#e5c158] uppercase">
+              <p className="text-[10px] font-semibold tracking-wider text-[#D4AF37] uppercase">
                 Menu {roleDisplayLabel(userRole)}
               </p>
               {isKetuaPondok && (
-                <span className="text-[10px] font-mono text-emerald-300">Pimpinan</span>
+                <span className="text-[10px] font-mono text-[#10B981]">Pimpinan</span>
               )}
             </div>
 
             <nav className="space-y-1.5 pb-4">
-              {navItems.map((item) => {
+              {navItems.map((item, idx) => {
                 const Icon = item.icon;
                 const isActive = item.subTab
                   ? activeMenu === item.menu && activeSubTab === item.subTab
                   : activeMenu === item.menu;
 
                 return (
-                  <button
+                  <motion.button
                     key={item.key}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: Math.min(idx * 0.03, 0.28) }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       onSelectMenu(item.menu, item.subTab);
                       onClose();
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer group border ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-left transition-colors cursor-pointer group border ${
                       isActive
-                        ? 'bg-gradient-to-r from-[#0b422d] via-[#072c1e] to-[#041b12] text-[#f4f9f5] border-[#d4af37]/75 shadow-[0_6px_18px_-4px_rgba(212,175,55,0.32)]'
-                        : 'text-emerald-100/80 hover:text-white hover:bg-[#072b1d]/85 border-transparent hover:border-[#d4af37]/30'
+                        ? 'bg-emerald-950/80 backdrop-blur-md text-white border-[#D4AF37]/70 shadow-[0_6px_18px_-4px_rgba(16,185,129,0.28)]'
+                        : 'text-[#D1FAE5] hover:text-white hover:bg-emerald-950/60 border-transparent hover:border-emerald-500/25'
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className={`p-2 rounded-lg shrink-0 transition-colors ${
+                        className={`p-2 rounded-xl shrink-0 transition-colors ${
                           isActive
-                            ? 'bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/50'
-                            : 'bg-[#052318] text-emerald-300 group-hover:text-[#e5c158] border border-emerald-700/35'
+                            ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/50'
+                            : 'bg-[#041A13]/80 text-[#10B981] group-hover:text-[#D4AF37] border border-emerald-500/25'
                         }`}
                       >
                         <Icon className="w-4 h-4" />
@@ -774,12 +873,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <div className="min-w-0">
                         <span
                           className={`block text-xs truncate whitespace-nowrap ${
-                            isActive ? 'font-bold text-white' : 'font-semibold'
+                            isActive ? 'font-bold text-white' : 'font-semibold text-white'
                           }`}
                         >
                           {item.label}
                         </span>
-                        <span className="block text-[10px] text-emerald-200/65 truncate">
+                        <span className="block text-[10px] text-[#D1FAE5]/85 truncate">
                           {item.subtitle}
                         </span>
                       </div>
@@ -791,57 +890,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           item.badgeTone === 'red'
                             ? 'bg-red-950/90 text-red-300 border border-red-500/50'
                             : item.badgeTone === 'gold'
-                              ? 'bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/55'
-                              : 'bg-emerald-900/80 text-emerald-200 border border-emerald-500/40'
+                              ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/55'
+                              : 'bg-emerald-900/80 text-[#D1FAE5] border border-[#10B981]/40'
                         }`}
                       >
                         {item.badge}
                       </span>
                     )}
-                  </button>
+                  </motion.button>
                 );
               })}
 
               {/* Unified Option Panel Admin inside the same Sidebar navigation list */}
               {isAdmin && (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => {
                     onSelectMenu('admin_options');
                     onClose();
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer group border ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-left transition-colors cursor-pointer group border ${
                     activeMenu === 'admin_options'
-                      ? 'bg-gradient-to-r from-[#0b422d] via-[#072c1e] to-[#041b12] text-[#f4f9f5] border-[#d4af37]/75 shadow-[0_6px_18px_-4px_rgba(212,175,55,0.32)]'
-                      : 'text-emerald-100/80 hover:text-white hover:bg-[#072b1d]/85 border-transparent hover:border-[#d4af37]/30'
+                      ? 'bg-emerald-950/80 backdrop-blur-md text-white border-[#D4AF37]/70 shadow-[0_6px_18px_-4px_rgba(16,185,129,0.28)]'
+                      : 'text-[#D1FAE5] hover:text-white hover:bg-emerald-950/60 border-transparent hover:border-emerald-500/25'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className={`p-2 rounded-lg shrink-0 transition-colors ${
+                      className={`p-2 rounded-xl shrink-0 transition-colors ${
                         activeMenu === 'admin_options'
-                          ? 'bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/50'
-                          : 'bg-[#052318] text-[#e5c158] group-hover:text-[#f3d266] border border-[#d4af37]/35'
+                          ? 'bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/50'
+                          : 'bg-[#041A13]/80 text-[#D4AF37] group-hover:text-[#f3d266] border border-[#D4AF37]/35'
                       }`}
                     >
                       <Sliders className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <span
-                        className={`block text-xs truncate whitespace-nowrap ${
-                          activeMenu === 'admin_options' ? 'font-bold text-white' : 'font-semibold text-[#f3d266]'
-                        }`}
-                      >
+                      <span className="block text-xs truncate whitespace-nowrap font-bold text-white">
                         Options Panel
                       </span>
-                      <span className="block text-[10px] text-emerald-200/65 truncate">
+                      <span className="block text-[10px] text-[#D1FAE5]/85 truncate">
                         Kelola PIN 6 Digit, Berita &amp; Sistem
                       </span>
                     </div>
                   </div>
-                  <span className="ml-2 px-2 py-0.5 text-[10px] font-mono font-bold rounded-md shrink-0 whitespace-nowrap bg-[#d4af37]/25 text-[#f3d266] border border-[#d4af37]/55">
+                  <span className="ml-2 px-2 py-0.5 text-[10px] font-mono font-bold rounded-md shrink-0 whitespace-nowrap bg-[#D4AF37]/25 text-[#D4AF37] border border-[#D4AF37]/55">
                     ADMIN
                   </span>
-                </button>
+                </motion.button>
               )}
 
               {/* Unified PWA Install Button inside the same Sidebar navigation list */}
@@ -851,36 +947,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Unified Tombol Keluar (Logout) inside the same Sidebar navigation list */}
               {onLogout && (
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => {
                     onLogout();
                     onClose();
                   }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer group bg-red-950/35 hover:bg-red-900/60 border border-red-500/35 hover:border-red-400/70"
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-left transition-colors cursor-pointer group bg-red-950/40 hover:bg-red-900/60 border border-red-500/35 hover:border-red-400/70"
                   title="Keluar dari Sistem"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 rounded-lg shrink-0 bg-red-950/80 text-red-300 group-hover:text-white border border-red-500/40">
+                    <div className="p-2 rounded-xl shrink-0 bg-red-950/80 text-red-300 group-hover:text-white border border-red-500/40">
                       <LogOut className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <span className="block text-xs font-bold text-red-200 group-hover:text-white truncate whitespace-nowrap">
                         Keluar (Logout)
                       </span>
-                      <span className="block text-[10px] text-red-300/75 truncate">
+                      <span className="block text-[10px] text-red-200/80 truncate">
                         Akhiri sesi &amp; kunci PIN layar
                       </span>
                     </div>
                   </div>
-                </button>
+                </motion.button>
               )}
             </nav>
           </div>
 
           {/* Executive Monitoring Shortcuts for Ketua Pondok */}
           {isKetuaPondok && (
-            <div className="pt-2 pb-4 border-t border-emerald-800/40">
-              <p className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-emerald-300 uppercase">
+            <div className="pt-2 pb-4 border-t border-emerald-500/25">
+              <p className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-[#10B981] uppercase">
                 Monitoring Lintas Divisi
               </p>
               <div className="grid grid-cols-2 gap-1.5">
@@ -890,20 +987,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   { menu: 'perlengkapan' as ActiveMenu, label: 'Perlengkapan' },
                   { menu: 'keamanan' as ActiveMenu, label: 'Keamanan' },
                 ].map((div) => (
-                  <button
+                  <motion.button
                     key={div.menu}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       onSelectMenu(div.menu);
                       onClose();
                     }}
-                    className={`px-2.5 py-2 rounded-xl text-[11px] font-bold border text-center cursor-pointer transition-all ${
+                    className={`px-2.5 py-2 rounded-xl text-[11px] font-bold border text-center cursor-pointer transition-colors ${
                       activeMenu === div.menu
-                        ? 'bg-[#d4af37]/25 text-[#f3d266] border-[#d4af37]'
-                        : 'bg-[#03160f] text-emerald-200 hover:text-white border-emerald-800/60'
+                        ? 'bg-[#D4AF37]/25 text-[#D4AF37] border-[#D4AF37]'
+                        : 'bg-emerald-950/60 text-[#D1FAE5] hover:text-white border-emerald-500/25'
                     }`}
                   >
                     {div.label}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>

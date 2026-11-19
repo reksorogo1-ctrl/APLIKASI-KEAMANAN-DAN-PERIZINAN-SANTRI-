@@ -43,7 +43,13 @@ import {
   INITIAL_BENDAHARA_CONFIG,
   INITIAL_FASILITAS_GEDUNG_LIST,
   INITIAL_PERLENGKAPAN_CONFIG,
-  INITIAL_PUSAT_INFORMASI_LIST
+  INITIAL_PUSAT_INFORMASI_LIST,
+  INITIAL_MUROTIL_TINGKATAN,
+  INITIAL_MUROTIL_KELOMPOK,
+  INITIAL_MUROTIL_ABSENSI_SANTRI,
+  INITIAL_MUROTIL_SETORAN,
+  INITIAL_MUROTIL_ABSENSI_PJ,
+  INITIAL_MUROTIL_CONFIG
 } from '../data/seedData';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import {
@@ -213,6 +219,9 @@ class StorageService {
           ...existing,
           pin: existing.pin || def?.pin || '123456',
           alamat: existing.alamat || def?.alamat || 'Pondok Pesantren Salaf Al-Maliki, Karawang',
+          murotilKelompokIds: Array.isArray(existing.murotilKelompokIds)
+            ? existing.murotilKelompokIds
+            : def?.murotilKelompokIds,
         };
       });
       INITIAL_USERS.forEach(defUser => {
@@ -265,6 +274,28 @@ class StorageService {
         pusatInformasiList: Array.isArray(parsedCfg.pusatInformasiList)
           ? parsedCfg.pusatInformasiList
           : INITIAL_PUSAT_INFORMASI_LIST,
+        murotilTingkatanList: Array.isArray(parsedCfg.murotilTingkatanList)
+          ? parsedCfg.murotilTingkatanList
+          : INITIAL_MUROTIL_TINGKATAN,
+        murotilKelompokList: Array.isArray(parsedCfg.murotilKelompokList)
+          ? parsedCfg.murotilKelompokList
+          : INITIAL_MUROTIL_KELOMPOK,
+        murotilAbsensiSantriList: Array.isArray(parsedCfg.murotilAbsensiSantriList)
+          ? parsedCfg.murotilAbsensiSantriList
+          : INITIAL_MUROTIL_ABSENSI_SANTRI,
+        murotilSetoranList: Array.isArray(parsedCfg.murotilSetoranList)
+          ? parsedCfg.murotilSetoranList
+          : INITIAL_MUROTIL_SETORAN,
+        murotilAbsensiPjList: Array.isArray(parsedCfg.murotilAbsensiPjList)
+          ? parsedCfg.murotilAbsensiPjList
+          : INITIAL_MUROTIL_ABSENSI_PJ,
+        murotilConfig: {
+          ...INITIAL_MUROTIL_CONFIG,
+          ...(parsedCfg.murotilConfig || {}),
+          sesiList: parsedCfg.murotilConfig?.sesiList?.length
+            ? parsedCfg.murotilConfig.sesiList
+            : INITIAL_MUROTIL_CONFIG.sesiList,
+        },
         suratSekretarisConfig: applyPengaturanSuratToConfig({
           ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,
           ...(parsedCfg.suratSekretarisConfig || {}),
@@ -657,6 +688,28 @@ class StorageService {
               pusatInformasiList: Array.isArray(cloudData.pusatInformasiList)
                 ? cloudData.pusatInformasiList
                 : INITIAL_PUSAT_INFORMASI_LIST,
+              murotilTingkatanList: Array.isArray(cloudData.murotilTingkatanList)
+                ? cloudData.murotilTingkatanList
+                : INITIAL_MUROTIL_TINGKATAN,
+              murotilKelompokList: Array.isArray(cloudData.murotilKelompokList)
+                ? cloudData.murotilKelompokList
+                : INITIAL_MUROTIL_KELOMPOK,
+              murotilAbsensiSantriList: Array.isArray(cloudData.murotilAbsensiSantriList)
+                ? cloudData.murotilAbsensiSantriList
+                : INITIAL_MUROTIL_ABSENSI_SANTRI,
+              murotilSetoranList: Array.isArray(cloudData.murotilSetoranList)
+                ? cloudData.murotilSetoranList
+                : INITIAL_MUROTIL_SETORAN,
+              murotilAbsensiPjList: Array.isArray(cloudData.murotilAbsensiPjList)
+                ? cloudData.murotilAbsensiPjList
+                : INITIAL_MUROTIL_ABSENSI_PJ,
+              murotilConfig: {
+                ...INITIAL_MUROTIL_CONFIG,
+                ...(cloudData.murotilConfig || {}),
+                sesiList: cloudData.murotilConfig?.sesiList?.length
+                  ? cloudData.murotilConfig.sesiList
+                  : INITIAL_MUROTIL_CONFIG.sesiList,
+              },
               suratSekretarisConfig: (() => {
                 const cloudSekCfg = {
                   ...INITIAL_SYSTEM_CONFIG.suratSekretarisConfig!,

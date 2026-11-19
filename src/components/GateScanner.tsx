@@ -573,8 +573,8 @@ export const GateScanner: React.FC<GateScannerProps> = ({
       {/* Action Confirmation Modal (for Check-Out or Check-In) */}
       {selectedPermitForAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-lg metallic-glass-card border border-emerald-800/80 rounded-3xl shadow-2xl overflow-hidden rainbow-active-border card-3d-floating">
-            <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-800 bg-gradient-to-r from-[#02100a] via-[#041d13] to-[#02100a]">
+          <div className="cyber-modal-card w-full max-w-lg bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-emerald-500/25 bg-[#041A13]/65">
               <h3 className="text-sm font-black text-white flex items-center gap-2 font-sans tracking-wide uppercase">
                 <DoorOpen className="w-4 h-4 text-amber-400" />
                 {activeTab === 'checkout' ? 'Konfirmasi Keluar Gerbang (Check-Out)' : 'Konfirmasi Kedatangan Masuk (Check-In)'}

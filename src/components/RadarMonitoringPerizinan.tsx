@@ -883,8 +883,8 @@ export const RadarMonitoringPerizinan: React.FC<RadarMonitoringPerizinanProps> =
 
       {/* CONFIRMATION MODAL FOR "SELESAI / SANTRI KEMBALI" */}
       {selesaiModalIzin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-lg p-6 rounded-3xl bg-[#02100a] border border-emerald-500/50 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="cyber-modal-card w-full max-w-lg p-6 rounded-2xl bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-emerald-800">
               <div className="flex items-center gap-2 text-emerald-400">
                 <CheckCircle2 className="w-5 h-5" />

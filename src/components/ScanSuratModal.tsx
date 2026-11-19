@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { motion } from 'motion/react';
 import {
   Camera,
   X,
@@ -9,6 +10,7 @@ import {
   Image as ImageIcon,
   RotateCcw,
 } from 'lucide-react';
+import { LaserScanLine, METALLIC_EASE } from './MotionPrimitives';
 
 interface ScanSuratModalProps {
   isOpen: boolean;
@@ -203,7 +205,10 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, ease: METALLIC_EASE }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -212,60 +217,73 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
           handleCompressImageFile(file);
         }
       }}
-      className="fixed inset-0 z-[120] w-screen h-[100dvh] bg-[#020e09]/95 backdrop-blur-md flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[120] w-screen h-[100dvh] bg-[#041A13]/92 backdrop-blur-md flex flex-col overflow-hidden"
     >
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-[#d4af37]/30 bg-[#031810]">
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-emerald-500/25 bg-emerald-950/60 backdrop-blur-md">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-[#d4af37]/20 border border-[#d4af37]/60 flex items-center justify-center shrink-0">
-            <Camera className="w-5 h-5 text-[#f3d266]" />
+          <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/50 flex items-center justify-center shrink-0">
+            <Camera className="w-5 h-5 text-[#D4AF37]" />
           </div>
           <div className="min-w-0">
             <h3 className="text-sm sm:text-base font-extrabold text-white truncate">
               Scanner Surat Masuk (Android, iOS &amp; Laptop)
             </h3>
-            <p className="text-[11px] sm:text-xs text-[#9ec5b0] truncate">
+            <p className="text-[11px] sm:text-xs text-[#D1FAE5] truncate">
               Ekstraksi teks Latin, Arab &amp; Pegon langsung ke formulir surat masuk
             </p>
           </div>
         </div>
 
-        <button
+        <motion.button
           type="button"
+          whileTap={{ scale: 0.97 }}
           onClick={onClose}
           disabled={isExtracting}
-          className="px-3 py-2 rounded-xl bg-red-600/90 hover:bg-red-500 text-white font-bold text-xs inline-flex items-center gap-1.5 border border-red-400/50 cursor-pointer disabled:opacity-50 shrink-0"
+          className="px-3.5 py-2 rounded-xl bg-red-600/90 hover:bg-red-500 text-white font-bold text-xs inline-flex items-center gap-1.5 border border-red-400/50 cursor-pointer disabled:opacity-50 shrink-0"
         >
           <X className="w-4 h-4" />
           <span>Tutup</span>
-        </button>
+        </motion.button>
       </div>
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-center">
-        <div className="w-full max-w-2xl space-y-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.24, ease: METALLIC_EASE }}
+          className="w-full max-w-2xl space-y-4"
+        >
           {!previewDataUrl ? (
-            <div className="rounded-3xl border-2 border-dashed border-[#d4af37]/45 bg-[#041d13] p-6 sm:p-10 text-center space-y-5 shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-[#d4af37]/15 border border-[#d4af37]/50 flex items-center justify-center mx-auto">
+            <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-emerald-400/35 bg-[#06241B]/95 backdrop-blur-xl p-6 sm:p-10 text-center space-y-5 shadow-2xl">
+              {/* Reticle corners + moving green laser line inside scanner dropzone */}
+              <div className="pointer-events-none absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-[#10B981]/70 rounded-tl-lg" />
+              <div className="pointer-events-none absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-[#10B981]/70 rounded-tr-lg" />
+              <div className="pointer-events-none absolute bottom-3 left-3 w-6 h-6 border-b-2 border-l-2 border-[#10B981]/70 rounded-bl-lg" />
+              <div className="pointer-events-none absolute bottom-3 right-3 w-6 h-6 border-b-2 border-r-2 border-[#10B981]/70 rounded-br-lg" />
+              <LaserScanLine className="opacity-55" />
+
+              <div className="relative z-10 w-16 h-16 rounded-2xl bg-[#D4AF37]/15 border border-[#D4AF37]/50 flex items-center justify-center mx-auto">
                 {isCompressing ? (
-                  <Loader2 className="w-8 h-8 text-[#f3d266] animate-spin" />
+                  <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
                 ) : (
-                  <ImageIcon className="w-8 h-8 text-[#f3d266]" />
+                  <ImageIcon className="w-8 h-8 text-[#D4AF37]" />
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div className="relative z-10 space-y-1.5">
                 <h4 className="text-base sm:text-lg font-extrabold text-white">
                   {isCompressing
                     ? 'Mengompresi Foto Surat...'
                     : 'Pilih atau Jepret Foto Surat Masuk'}
                 </h4>
-                <p className="text-xs sm:text-sm text-[#b8dcc8] max-w-md mx-auto leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#D1FAE5] max-w-md mx-auto leading-relaxed">
                   Tekan tombol di bawah untuk membuka kamera HP atau memilih gambar surat dari galeri/komputer. Gambar otomatis dikompresi agar pemindaian cepat dan akurat.
                 </p>
               </div>
 
-              <label className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-sm sm:text-base inline-flex items-center justify-center gap-3 shadow-[0_8px_28px_rgba(212,175,55,0.35)] cursor-pointer hover:brightness-105 active:scale-[0.99] transition">
+              <label className="relative z-10 w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#b58922] text-[#041A13] font-extrabold text-sm sm:text-base inline-flex items-center justify-center gap-3 shadow-[0_8px_28px_rgba(212,175,55,0.35)] cursor-pointer hover:brightness-105 transition">
                 <Camera className="w-5 h-5" />
                 <span>Ambil Foto / Pilih Gambar Surat</span>
                 <input
@@ -277,30 +295,36 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
                 />
               </label>
 
-              <p className="text-[11px] text-[#8ab49d]">
+              <p className="relative z-10 text-[11px] text-[#D1FAE5]/85">
                 Mendukung kamera iPhone Safari, Chrome Android, upload file komputer, drag &amp; drop, atau tempel gambar (Ctrl+V).
               </p>
             </div>
           ) : (
-            <div className="rounded-3xl border border-[#d4af37]/45 bg-[#041d13] p-4 sm:p-5 space-y-4 shadow-2xl">
+            <div className="rounded-2xl border border-emerald-400/30 bg-[#06241B]/95 backdrop-blur-xl p-4 sm:p-5 space-y-4 shadow-2xl">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-[#f3d266]">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#D4AF37]">
                   Pratinjau Gambar Surat
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-[#02120b] border border-emerald-700/60 text-[11px] font-mono text-emerald-300">
+                <span className="px-2.5 py-1 rounded-lg bg-[#041A13] border border-emerald-500/30 text-[11px] font-mono text-[#D1FAE5]">
                   {imageMeta}
                 </span>
               </div>
 
-              <div className="relative rounded-2xl overflow-hidden border border-[#d4af37]/30 bg-black flex items-center justify-center max-h-[55dvh]">
+              <div className="relative rounded-2xl overflow-hidden border-2 border-[#10B981]/50 bg-[#041A13] flex items-center justify-center max-h-[55dvh]">
                 <img
                   src={previewDataUrl}
                   alt="Pratinjau Foto Surat Masuk"
                   className="max-w-full max-h-[55dvh] object-contain"
                 />
+                {/* Cyber-Emerald Scanner Reticle + Moving Thin Green Laser Line */}
+                <div className="pointer-events-none absolute top-2.5 left-2.5 w-6 h-6 border-t-3 border-l-3 border-[#10B981] rounded-tl-lg z-20" />
+                <div className="pointer-events-none absolute top-2.5 right-2.5 w-6 h-6 border-t-3 border-r-3 border-[#10B981] rounded-tr-lg z-20" />
+                <div className="pointer-events-none absolute bottom-2.5 left-2.5 w-6 h-6 border-b-3 border-l-3 border-[#10B981] rounded-bl-lg z-20" />
+                <div className="pointer-events-none absolute bottom-2.5 right-2.5 w-6 h-6 border-b-3 border-r-3 border-[#10B981] rounded-br-lg z-20" />
+                <LaserScanLine />
                 {isExtracting && (
-                  <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center gap-3 p-4 text-center">
-                    <Loader2 className="w-8 h-8 text-[#f3d266] animate-spin" />
+                  <div className="absolute inset-0 bg-[#041A13]/75 backdrop-blur-xs flex flex-col items-center justify-center gap-3 p-4 text-center z-30">
+                    <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
                     <p className="text-sm font-extrabold text-white">
                       Sedang mengekstrak teks Latin &amp; Arab...
                     </p>
@@ -310,7 +334,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
                 <div className="flex items-center gap-2">
-                  <label className="flex-1 sm:flex-none px-4 py-3 rounded-xl bg-[#062a1d] hover:bg-[#083524] text-[#e5c158] border border-[#d4af37]/40 font-bold text-xs inline-flex items-center justify-center gap-2 cursor-pointer">
+                  <label className="flex-1 sm:flex-none px-4 py-3 rounded-xl bg-emerald-950/80 hover:bg-emerald-900/80 text-[#D4AF37] border border-[#D4AF37]/40 font-bold text-xs inline-flex items-center justify-center gap-2 cursor-pointer">
                     <Upload className="w-4 h-4" />
                     <span>Ganti Gambar</span>
                     <input
@@ -321,23 +345,25 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
                       className="sr-only"
                     />
                   </label>
-                  <button
+                  <motion.button
                     type="button"
+                    whileTap={{ scale: 0.97 }}
                     disabled={isExtracting}
                     onClick={handleResetPhoto}
-                    className="px-3.5 py-3 rounded-xl bg-black/40 hover:bg-black/60 text-emerald-200 border border-emerald-800/60 font-bold text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-3.5 py-3 rounded-xl bg-[#041A13]/80 hover:bg-[#041A13] text-[#D1FAE5] border border-emerald-500/30 font-bold text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     title="Hapus Pratinjau"
                   >
                     <RotateCcw className="w-4 h-4" />
                     <span>Reset</span>
-                  </button>
+                  </motion.button>
                 </div>
 
-                <button
+                <motion.button
                   type="button"
+                  whileTap={{ scale: 0.97 }}
                   disabled={!pureBase64 || isExtracting || isCompressing}
                   onClick={handleExtractText}
-                  className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#03140d] font-extrabold text-sm inline-flex items-center justify-center gap-2 shadow-[0_6px_22px_rgba(212,175,55,0.4)] cursor-pointer hover:brightness-105 disabled:opacity-50"
+                  className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#b58922] text-[#041A13] font-extrabold text-sm inline-flex items-center justify-center gap-2 shadow-[0_6px_22px_rgba(212,175,55,0.4)] cursor-pointer hover:brightness-105 disabled:opacity-50"
                 >
                   {isExtracting ? (
                     <>
@@ -350,7 +376,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
                       <span>Ekstrak Teks Surat</span>
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
             </div>
           )}
@@ -366,8 +392,8 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
               </pre>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 };

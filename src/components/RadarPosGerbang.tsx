@@ -734,9 +734,9 @@ export const RadarPosGerbang: React.FC<RadarPosGerbangProps> = ({
 
       {/* MODAL KONFIRMASI CHECK-OUT / CHECK-IN RINGKAS */}
       {selectedAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-[#041d14] border border-[#d4af37]/60 shadow-2xl overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-emerald-800 bg-[#03160f] flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="cyber-modal-card w-full max-w-md rounded-2xl bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 shadow-2xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-emerald-500/25 bg-[#041A13]/65 flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <DoorOpen className="w-4 h-4 text-[#f3d266]" />
                 {selectedAction.mode === 'checkout'

@@ -30,6 +30,7 @@ export type DivisiBucketKey =
   | 'Bendahara'
   | 'Perlengkapan'
   | 'Keamanan'
+  | 'Murotil & Tahfidz'
   | 'Admin Pusat';
 
 interface DivisiKotakMasukProps {
@@ -85,6 +86,13 @@ const DIVISI_META_LIST: DivisiMeta[] = [
     accentClass: 'text-rose-200 border-rose-500/45 bg-rose-500/10',
   },
   {
+    key: 'Murotil & Tahfidz',
+    shortLabel: 'Murotil & Tahfidz',
+    label: 'Divisi Murotilil Qur\'an & Tahfidz',
+    tujuanValue: 'pengurus_murotil',
+    accentClass: 'text-teal-200 border-teal-500/45 bg-teal-500/10',
+  },
+  {
     key: 'Admin Pusat',
     shortLabel: 'Admin Pusat',
     label: 'Admin Pusat',
@@ -126,6 +134,13 @@ function resolveSenderDivisi(msg: PesanKoordinasi): DivisiBucketKey {
   ) {
     return 'Keamanan';
   }
+  if (
+    role === 'pengurus_murotil' ||
+    jabatan.includes('murotil') ||
+    jabatan.includes('tahfidz')
+  ) {
+    return 'Murotil & Tahfidz';
+  }
   return 'Admin Pusat';
 }
 
@@ -150,6 +165,9 @@ function resolveTargetDivisi(msg: PesanKoordinasi): DivisiBucketKey | null {
     judul.includes('-> divisi keamanan')
   ) {
     return 'Keamanan';
+  }
+  if (tujuan.includes('murotil') || judul.includes('murotil') || judul.includes('tahfidz')) {
+    return 'Murotil & Tahfidz';
   }
   if (tujuan === 'admin' || judul.includes('-> admin')) return 'Admin Pusat';
   return null;
@@ -245,6 +263,7 @@ export const DivisiKotakMasuk: React.FC<DivisiKotakMasukProps> = ({
       Bendahara: [],
       Perlengkapan: [],
       Keamanan: [],
+      'Murotil & Tahfidz': [],
       'Admin Pusat': [],
     };
     for (const msg of filteredMessages) {

@@ -663,16 +663,16 @@ export const SantriPerKelas: React.FC<SantriPerKelasProps> = ({
 
       {/* Modal Add / Edit Santri */}
       {isAddEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs overflow-y-auto">
-          <div className="w-full max-w-xl bg-neutral-900 border border-neutral-700 rounded-2xl shadow-2xl overflow-hidden my-8">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800 bg-neutral-950">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-amber-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="cyber-modal-card w-full max-w-xl bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-emerald-500/25 bg-[#041A13]/65">
+              <h3 className="text-sm font-bold text-[#FFFFFF] flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-[#D4AF37]" />
                 {editingSantri ? 'Perbarui Data Santri' : 'Tambah Santri Baru'}
               </h3>
               <button
                 onClick={() => setIsAddEditOpen(false)}
-                className="text-neutral-400 hover:text-white cursor-pointer"
+                className="text-[#D1FAE5] hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -858,16 +858,16 @@ export const SantriPerKelas: React.FC<SantriPerKelasProps> = ({
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-neutral-900 border border-neutral-700 rounded-2xl p-6 space-y-4">
-            <h4 className="text-sm font-bold text-white">Konfirmasi Hapus Santri</h4>
-            <p className="text-xs text-neutral-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="cyber-modal-card w-full max-w-sm bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl shadow-2xl p-6 space-y-4">
+            <h4 className="text-sm font-bold text-[#FFFFFF]">Konfirmasi Hapus Santri</h4>
+            <p className="text-xs text-[#D1FAE5]">
               Apakah Anda yakin ingin menghapus data santri ini? Seluruh riwayat perizinan dan kedisiplinan yang terkait akan terpengaruh.
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-3 py-1.5 text-xs text-neutral-400 hover:text-white cursor-pointer"
+                className="px-3 py-1.5 text-xs text-[#D1FAE5] hover:text-white cursor-pointer"
               >
                 Batal
               </button>
@@ -884,10 +884,10 @@ export const SantriPerKelas: React.FC<SantriPerKelasProps> = ({
 
       {/* Printable Santri ID Card Modal (KTS - Kartu Tanda Santri) */}
       {cardPreviewSantri && (
-        <div className="surat-print-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
-          <div className="surat-print-modal w-full max-w-md bg-neutral-900 border border-amber-500/40 rounded-2xl overflow-hidden shadow-2xl">
-            <div className="no-print flex items-center justify-between px-5 py-3 border-b border-neutral-800 bg-neutral-950">
-              <span className="text-xs font-bold text-amber-300">
+        <div className="surat-print-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="surat-print-modal cyber-modal-card w-full max-w-md bg-[#06241B]/95 backdrop-blur-xl border border-emerald-400/30 rounded-2xl overflow-hidden shadow-2xl">
+            <div className="no-print flex items-center justify-between px-5 py-3 border-b border-emerald-500/25 bg-[#041A13]/65">
+              <span className="text-xs font-bold text-[#D4AF37]">
                 Pratinjau Kartu Tanda Santri (KTS)
               </span>
               <div className="flex items-center gap-2">
