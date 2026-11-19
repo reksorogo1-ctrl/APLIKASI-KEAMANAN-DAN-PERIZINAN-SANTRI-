@@ -48,20 +48,30 @@ import {
   INITIAL_MUROTIL_ABSENSI_PJ,
   INITIAL_MUROTIL_CONFIG
 } from '../data/seedData';
-import { db, handleFirestoreError, OperationType, resyncFirestoreNetwork, isFirestoreQuotaError } from './firebase';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  deleteDoc, 
-  onSnapshot, 
+import {
+  db,
+  handleFirestoreError,
+  OperationType,
+  resyncFirestoreNetwork,
+  isFirestoreQuotaError,
+  testFirestoreConnection,
+  extractFirebaseErrorMessage,
+  FIRESTORE_DATABASE_ID,
+  FIREBASE_PROJECT_ID,
+} from './firebase';
+import {
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
   getDocs,
   getDoc,
   getDocsFromServer,
   getDocFromServer,
   getDocsFromCache,
   getDocFromCache,
-  Unsubscribe 
+  Unsubscribe,
 } from 'firebase/firestore';
 
 const SESSION_KEYS = {
@@ -258,6 +268,8 @@ export interface CloudSyncTelemetry {
   lastSyncTime: string;
   cloudConnected: boolean;
   quotaExceeded?: boolean;
+  errorMessage?: string;
+  migrationNotification?: string | null;
   databaseId: string;
   projectId: string;
   activeListenersCount: number;
@@ -268,12 +280,18 @@ class StorageService {
   private listeners: (() => void)[] = [];
   private unsubscribers: Unsubscribe[] = [];
   private cloudConnected: boolean = false;
+  private serverConfirmed: boolean = false;
+  private cloudError: string | null = null;
+  private isNavigatorOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
   private lastSyncTime: string = 'Menghubungkan Cloud...';
   private activeSessionUser: UserAccount | null = null;
   private lastResumeSyncAt: number = 0;
   private currentGenderScope: 'all' | 'putra' | 'putri' = 'all';
   private currentTheme: 'dark' | 'light' = 'dark';
   private quotaExceeded: boolean = false;
+  private migrationDone: boolean = false;
+  private migrationInProgress: boolean = false;
+  private migrationNotification: string | null = null;
 
   // In-memory live snapshot mirror of Firestore Cloud Database
   private cache = {
@@ -299,18 +317,34 @@ class StorageService {
   };
 
   constructor() {
-    // 1. Bersihkan sisa localStorage operasional versi lama agar tidak pernah menimpa data pusat
-    this.purgeLegacyLocalStorage();
-
-    // 2. Keamanan Autentikasi: Sesi baru diawali dari Layar Login
+    // 1. Keamanan Autentikasi: Sesi baru diawali dari Layar Login
     try {
       sessionStorage.removeItem(SESSION_KEYS.CURRENT_USER);
     } catch {
       // ignore
     }
 
+    // 2. Pantau status jaringan perangkat secara real-time (PC, Laptop, Android, iOS)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        this.isNavigatorOnline = true;
+        this.resyncOnResume(true).catch(() => {});
+        void this.verifyCloudConnectionAndMigrate();
+      });
+      window.addEventListener('offline', () => {
+        this.isNavigatorOnline = false;
+        this.cloudConnected = false;
+        this.serverConfirmed = false;
+        this.lastSyncTime = 'Perangkat Offline';
+        this.notify();
+      });
+    }
+
     // 3. Hubungkan langsung 100% Real-Time Firestore Cloud Listeners (tanpa seed sample otomatis)
     this.initRealtimeCloudSync();
+
+    // 4. Verifikasi koneksi server Firestore & jalankan migrasi cerdas localStorage -> Cloud (agar data lokal lama aman)
+    void this.verifyCloudConnectionAndMigrate();
   }
 
   private purgeLegacyLocalStorage() {
@@ -326,6 +360,339 @@ class StorageService {
     } catch {
       // ignore
     }
+  }
+
+  private readLocalJsonArray<T>(key: string): T[] {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return [];
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private readLocalJsonObject<T>(key: string): Partial<T> | null {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return null;
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Partial<T>) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  public getMigrationNotification(): string | null {
+    return this.migrationNotification;
+  }
+
+  public dismissMigrationNotification(): void {
+    if (this.migrationNotification !== null) {
+      this.migrationNotification = null;
+      this.notify();
+    }
+  }
+
+  private async verifyCloudConnectionAndMigrate(): Promise<void> {
+    const conn = await testFirestoreConnection();
+    if (!conn.ok) {
+      this.cloudConnected = false;
+      this.serverConfirmed = false;
+      this.quotaExceeded = Boolean(conn.quotaExceeded);
+      this.cloudError = conn.errorMessage || 'Gagal terhubung ke server Firebase.';
+      this.lastSyncTime = conn.quotaExceeded
+        ? 'Kuota Harian Firestore Penuh'
+        : 'Gagal Koneksi Firebase';
+      this.notify();
+      return;
+    }
+
+    this.cloudConnected = true;
+    this.serverConfirmed = true;
+    this.quotaExceeded = false;
+    this.cloudError = null;
+    this.lastSyncTime = new Date().toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }) + ' WIB';
+    this.notify();
+
+    await this.migrateLocalDataToCloudIfNeeded();
+  }
+
+  /**
+   * Pengecekan cerdas saat aplikasi dibuka:
+   * Jika terdeteksi data Santri, Ustadzah, atau operasional lain di localStorage yang belum ada
+   * di server Firebase Cloud, unggah otomatis ke Firestore lalu bersihkan penyimpanan lokal duplikat.
+   */
+  public async migrateLocalDataToCloudIfNeeded(): Promise<number> {
+    if (this.migrationDone || this.migrationInProgress) return 0;
+    if (typeof window === 'undefined' || !window.localStorage) {
+      this.migrationDone = true;
+      return 0;
+    }
+    if (!this.isNavigatorOnline || this.quotaExceeded) return 0;
+
+    this.migrationInProgress = true;
+    try {
+      const localSantriDirect = this.readLocalJsonArray<Santri>('almaliki_data_santri');
+      const localSantriLegacy = this.readLocalJsonArray<Santri>('sim_kamtib_santri_v2');
+      const localUstadzDirect = this.readLocalJsonArray<DataUstadz>('almaliki_data_ustadzah');
+      const localConfigLegacy = this.readLocalJsonObject<SystemConfig>('sim_kamtib_system_config_v2');
+      const localPerizinanLegacy = this.readLocalJsonArray<Perizinan>('sim_kamtib_perizinan_v2');
+      const localSuratLegacy = this.readLocalJsonArray<ArsipSurat>('sim_maliki_surat_v1');
+      const localAgendaLegacy = this.readLocalJsonArray<AgendaPengurus>('sim_maliki_agenda_v1');
+      const localDewanLegacy = this.readLocalJsonArray<DewanKeamanan>('sim_kamtib_dewan_keamanan_v2');
+      const localPelanggaranLegacy = this.readLocalJsonArray<Pelanggaran>('sim_kamtib_pelanggaran_v2');
+      const localSanksiLegacy = this.readLocalJsonArray<Sanksi>('sim_kamtib_sanksi_v2');
+      const localKeuanganLegacy = this.readLocalJsonArray<TransaksiKeuangan>('sim_maliki_keuangan_v1');
+      const localInventarisLegacy = this.readLocalJsonArray<BarangInventaris>('sim_maliki_inventaris_v1');
+      const localPeminjamanLegacy = this.readLocalJsonArray<PeminjamanBarang>('sim_maliki_peminjaman_v1');
+
+      const localUstadzFromConfig = Array.isArray(localConfigLegacy?.ustadzList)
+        ? localConfigLegacy.ustadzList
+        : Array.isArray(localConfigLegacy?.dataUstadzList)
+          ? localConfigLegacy.dataUstadzList
+          : [];
+
+      const hasAnyOperationalLocalData =
+        localSantriDirect.length > 0 ||
+        localSantriLegacy.length > 0 ||
+        localUstadzDirect.length > 0 ||
+        localUstadzFromConfig.length > 0 ||
+        localPerizinanLegacy.length > 0 ||
+        localSuratLegacy.length > 0 ||
+        localAgendaLegacy.length > 0 ||
+        localDewanLegacy.length > 0 ||
+        localPelanggaranLegacy.length > 0 ||
+        localSanksiLegacy.length > 0 ||
+        localKeuanganLegacy.length > 0 ||
+        localInventarisLegacy.length > 0 ||
+        localPeminjamanLegacy.length > 0 ||
+        Boolean(localConfigLegacy?.murotilAbsensiSantriList?.length) ||
+        Boolean(localConfigLegacy?.murotilAbsensiPjList?.length);
+
+      if (!hasAnyOperationalLocalData) {
+        this.purgeLegacyLocalStorage();
+        this.migrationDone = true;
+        return 0;
+      }
+
+      // Ambil kondisi aktual dari server Firebase terlebih dahulu agar data tidak duplikat atau tertimpa
+      const [cloudSantriSnap, cloudConfigSnap] = await Promise.all([
+        getDocsFromServer(collection(db, CLOUD_COLLECTIONS.SANTRI)),
+        getDocFromServer(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main')),
+      ]);
+
+      const cloudConfigData = cloudConfigSnap.exists()
+        ? (cloudConfigSnap.data() as Partial<SystemConfig>)
+        : {};
+      const localSampleCleared = window.localStorage.getItem('almaliki_sample_cleared') === 'true';
+      const isSampleCleared = Boolean(cloudConfigData.sampleCleared) || localSampleCleared;
+
+      const sampleSantriIds = new Set(INITIAL_SANTRI.map(s => s.id));
+      const sampleUstadzIds = new Set((INITIAL_SYSTEM_CONFIG.ustadzList || []).map(u => u.id));
+
+      let migratedCount = 0;
+
+      // A. Migrasi Data Santri (gabungkan almaliki_data_santri + sim_kamtib_santri_v2)
+      const cloudSantriList = cloudSantriSnap.docs.map(d => ({ ...d.data(), id: d.id } as Santri));
+      const existingSantriIds = new Set(cloudSantriList.map(s => s.id));
+      const existingSantriNis = new Set(
+        cloudSantriList.map(s => (s.nis || '').trim().toLowerCase()).filter(Boolean)
+      );
+
+      const candidateSantriMap = new Map<string, Santri>();
+      for (const raw of [...localSantriDirect, ...localSantriLegacy]) {
+        if (!raw || !raw.nama) continue;
+        const normalizedId = (raw.id || `s_mig_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`).trim();
+        const normalizedNis = (raw.nis || '').trim().toLowerCase();
+        if (isSampleCleared && sampleSantriIds.has(normalizedId)) continue;
+        if (existingSantriIds.has(normalizedId)) continue;
+        if (normalizedNis && existingSantriNis.has(normalizedNis)) continue;
+        if (!candidateSantriMap.has(normalizedId)) {
+          candidateSantriMap.set(normalizedId, {
+            ...raw,
+            id: normalizedId,
+          });
+          if (normalizedNis) existingSantriNis.add(normalizedNis);
+        }
+      }
+
+      for (const santri of candidateSantriMap.values()) {
+        await setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true });
+        migratedCount++;
+      }
+
+      // B. Migrasi Data Ustadz & Ustadzah + Absensi / Jadwal dari localStorage config
+      const cloudUstadzList: DataUstadz[] = Array.isArray(cloudConfigData.ustadzList)
+        ? cloudConfigData.ustadzList
+        : Array.isArray(cloudConfigData.dataUstadzList)
+          ? cloudConfigData.dataUstadzList
+          : [];
+      const existingUstadzIds = new Set(cloudUstadzList.map(u => u.id));
+      const existingUstadzKeys = new Set(
+        cloudUstadzList.map(u => `${(u.nip || '').trim().toLowerCase()}::${(u.nama || '').trim().toLowerCase()}`)
+      );
+
+      const newUstadzToUpload: DataUstadz[] = [];
+      for (const raw of [...localUstadzDirect, ...localUstadzFromConfig]) {
+        if (!raw || !raw.nama) continue;
+        const normalizedId = (raw.id || `ust_mig_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`).trim();
+        const dedupKey = `${(raw.nip || '').trim().toLowerCase()}::${raw.nama.trim().toLowerCase()}`;
+        if (isSampleCleared && sampleUstadzIds.has(normalizedId)) continue;
+        if (existingUstadzIds.has(normalizedId) || existingUstadzKeys.has(dedupKey)) continue;
+        existingUstadzIds.add(normalizedId);
+        existingUstadzKeys.add(dedupKey);
+        newUstadzToUpload.push({ ...raw, id: normalizedId });
+      }
+
+      const configPatch: Partial<SystemConfig> = {};
+      if (newUstadzToUpload.length > 0) {
+        const mergedUstadz = [...newUstadzToUpload, ...cloudUstadzList];
+        configPatch.ustadzList = mergedUstadz;
+        configPatch.dataUstadzList = mergedUstadz;
+        migratedCount += newUstadzToUpload.length;
+      }
+
+      if (localConfigLegacy) {
+        const mergeConfigArray = <T extends { id: string }>(
+          localArr: T[] | undefined,
+          cloudArr: T[] | undefined
+        ): T[] | null => {
+          if (!Array.isArray(localArr) || localArr.length === 0) return null;
+          const existing = Array.isArray(cloudArr) ? cloudArr : [];
+          const idSet = new Set(existing.map(x => x.id));
+          const additions = localArr.filter(x => x && x.id && !idSet.has(x.id));
+          if (additions.length === 0) return null;
+          migratedCount += additions.length;
+          return [...additions, ...existing];
+        };
+
+        const mergedAbsensiSantri = mergeConfigArray(
+          localConfigLegacy.murotilAbsensiSantriList,
+          cloudConfigData.murotilAbsensiSantriList
+        );
+        if (mergedAbsensiSantri) configPatch.murotilAbsensiSantriList = mergedAbsensiSantri;
+
+        const mergedAbsensiPj = mergeConfigArray(
+          localConfigLegacy.murotilAbsensiPjList,
+          cloudConfigData.murotilAbsensiPjList
+        );
+        if (mergedAbsensiPj) configPatch.murotilAbsensiPjList = mergedAbsensiPj;
+
+        const mergedSetoran = mergeConfigArray(
+          localConfigLegacy.murotilSetoranList,
+          cloudConfigData.murotilSetoranList
+        );
+        if (mergedSetoran) configPatch.murotilSetoranList = mergedSetoran;
+
+        const mergedJadwalPerbaikan = mergeConfigArray(
+          localConfigLegacy.jadwalPerbaikanList,
+          cloudConfigData.jadwalPerbaikanList
+        );
+        if (mergedJadwalPerbaikan) configPatch.jadwalPerbaikanList = mergedJadwalPerbaikan;
+      }
+
+      if (Object.keys(configPatch).length > 0) {
+        await setDoc(
+          doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'),
+          sanitizeForFirestore({ ...configPatch, initialSeedCompleted: true }),
+          { merge: true }
+        );
+      }
+
+      // C. Migrasi koleksi lain yang mungkin tersimpan di localStorage (Perizinan, Surat, Jadwal/Agenda, dll.)
+      const migrateCollectionMissing = async <T extends { id: string }>(
+        colName: string,
+        localItems: T[]
+      ) => {
+        if (!localItems.length) return;
+        const snap = await getDocsFromServer(collection(db, colName));
+        const existingIds = new Set(snap.docs.map(d => d.id));
+        for (const item of localItems) {
+          if (item && item.id && !existingIds.has(item.id)) {
+            await setDoc(doc(db, colName, item.id), sanitizeForFirestore(item), { merge: true });
+            existingIds.add(item.id);
+            migratedCount++;
+          }
+        }
+      };
+
+      await Promise.all([
+        migrateCollectionMissing(CLOUD_COLLECTIONS.PERIZINAN, localPerizinanLegacy),
+        migrateCollectionMissing(CLOUD_COLLECTIONS.SURAT_MENYURAT, localSuratLegacy),
+        migrateCollectionMissing(CLOUD_COLLECTIONS.AGENDA_PENGURUS, localAgendaLegacy),
+        migrateCollectionMissing(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, localDewanLegacy),
+        migrateCollectionMissing(CLOUD_COLLECTIONS.PELANGGARAN, localPelanggaranLegacy),
+        migrateCollectionMissing(CLOUD_COLLECTIONS.SANKSI, localSanksiLegacy),
+        migrateCollectionMissing(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, localKeuanganLegacy),
+        migrateCollectionMissing(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, localInventarisLegacy),
+        migrateCollectionMissing(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, localPeminjamanLegacy),
+      ]);
+
+      // Bersihkan penyimpanan lokal yang duplikat hanya setelah migrasi Cloud sukses
+      this.purgeLegacyLocalStorage();
+      this.migrationDone = true;
+
+      if (migratedCount > 0) {
+        this.migrationNotification = 'Data lokal berhasil disinkronkan ke Cloud';
+        this.addLog(
+          'Migrasi Otomatis Cloud',
+          `Berhasil menyinkronkan ${migratedCount} data lokal perangkat ke Firebase Cloud.`,
+          'admin'
+        );
+        this.notify();
+      }
+      return migratedCount;
+    } catch (error) {
+      // Jangan hapus localStorage jika gagal terhubung / permission denied agar data lokal tidak pernah hilang
+      const msg = extractFirebaseErrorMessage(error);
+      if (isFirestorePermissionError(error)) {
+        this.cloudConnected = false;
+        this.serverConfirmed = false;
+        this.cloudError = msg;
+        this.notify();
+      }
+      console.warn('Auto migration deferred:', msg);
+      return 0;
+    } finally {
+      this.migrationInProgress = false;
+    }
+  }
+
+  private trackCloudWrite(promise: Promise<void>, operationType: OperationType, path: string): void {
+    promise
+      .then(() => {
+        if (this.cloudError && this.isNavigatorOnline) {
+          this.cloudError = null;
+          this.cloudConnected = true;
+          this.serverConfirmed = true;
+          this.notify();
+        }
+      })
+      .catch(err => {
+        handleFirestoreError(err, operationType, path);
+        const msg = extractFirebaseErrorMessage(err);
+        if (isFirestoreQuotaError(err)) {
+          this.quotaExceeded = true;
+          this.cloudConnected = false;
+          this.cloudError = msg;
+          this.lastSyncTime = 'Kuota Harian Firestore Penuh';
+          this.notify();
+        } else if (isFirestorePermissionError(err) || !this.isNavigatorOnline) {
+          this.cloudConnected = false;
+          this.serverConfirmed = false;
+          this.cloudError = msg;
+          this.lastSyncTime = 'Gagal Sinkronisasi Cloud';
+          this.notify();
+        }
+      });
   }
 
   public subscribe(listener: () => void): () => void {
@@ -356,30 +723,42 @@ class StorageService {
     this.unsubscribers = [];
 
     const handleSyncUpdate = (fromCache = false) => {
-      this.cloudConnected = true;
-      if (!fromCache) {
+      if (!fromCache && this.isNavigatorOnline) {
+        this.serverConfirmed = true;
+        this.cloudConnected = true;
         this.quotaExceeded = false;
+        this.cloudError = null;
+        this.lastSyncTime = new Date().toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }) + ' WIB';
+      } else if (!this.isNavigatorOnline) {
+        this.cloudConnected = false;
+        this.lastSyncTime = 'Mode Offline (Cache Lokal)';
+      } else if (this.quotaExceeded) {
+        this.cloudConnected = false;
+        this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
       }
-      this.lastSyncTime = this.quotaExceeded
-        ? 'Kuota Harian Firestore Penuh (Mode Cache Aktif)'
-        : new Date().toLocaleTimeString('id-ID', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-          }) + ' WIB';
       this.notify();
     };
 
     const handleSnapshotError = (error: unknown, path: string) => {
+      const rawMessage = extractFirebaseErrorMessage(error);
       if (isFirestoreQuotaError(error)) {
-        if (!this.quotaExceeded) {
-          this.quotaExceeded = true;
-          this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
-          this.notify();
-        }
+        this.quotaExceeded = true;
+        this.cloudConnected = false;
+        this.cloudError = rawMessage;
+        this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
+        this.notify();
         return;
       }
       handleFirestoreError(error, OperationType.GET, path);
+      this.cloudConnected = false;
+      this.serverConfirmed = false;
+      this.cloudError = rawMessage;
+      this.lastSyncTime = 'Gagal Koneksi Firebase';
+      this.notify();
     };
 
     const attachCollectionListener = <T extends { id: string }>(
@@ -623,7 +1002,7 @@ class StorageService {
   }
 
   public getCloudSyncStatus(): CloudSyncTelemetry {
-    const total = 
+    const total =
       this.cache.santri.length +
       this.cache.dewan.length +
       this.cache.perizinan.length +
@@ -641,13 +1020,28 @@ class StorageService {
       this.cache.barangInventaris.length +
       this.cache.peminjamanBarang.length;
 
+    let status: CloudSyncTelemetry['status'] = 'syncing';
+    if (!this.isNavigatorOnline) {
+      status = 'offline';
+    } else if (this.cloudError || this.quotaExceeded) {
+      status = 'error';
+    } else if (this.serverConfirmed) {
+      status = 'connected';
+    }
+
+    const errorMessage = !this.isNavigatorOnline
+      ? 'Perangkat sedang offline (tidak ada koneksi internet).'
+      : this.cloudError || undefined;
+
     return {
-      status: this.quotaExceeded ? 'offline' : (this.cloudConnected ? 'connected' : 'syncing'),
+      status,
       lastSyncTime: this.lastSyncTime,
-      cloudConnected: this.cloudConnected,
+      cloudConnected: status === 'connected',
       quotaExceeded: this.quotaExceeded,
-      databaseId: 'ai-studio-simkamtibpondokp-0ca6cfda-fbeb-4a4d-91e1-25f2c74e35be',
-      projectId: 'gold-card-583d0',
+      errorMessage,
+      migrationNotification: this.migrationNotification,
+      databaseId: FIRESTORE_DATABASE_ID,
+      projectId: FIREBASE_PROJECT_ID,
       activeListenersCount: this.unsubscribers.length,
       totalSyncedItems: total,
     };
@@ -669,6 +1063,9 @@ class StorageService {
     }
 
     await resyncFirestoreNetwork();
+    if (force) {
+      await this.verifyCloudConnectionAndMigrate();
+    }
   }
 
   /**
@@ -859,8 +1256,11 @@ class StorageService {
     this.notify();
 
     // Async sync to central Firestore database
-    setDoc(doc(db, CLOUD_COLLECTIONS.USERS, user.id), sanitizeForFirestore(user), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.USERS}/${user.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.USERS, user.id), sanitizeForFirestore(user), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.USERS}/${user.id}`
+    );
   }
 
   public deleteUser(userId: string) {
@@ -870,8 +1270,11 @@ class StorageService {
     this.notify();
 
     // Async delete from central Firestore database
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.USERS, userId))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.USERS}/${userId}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.USERS, userId)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.USERS}/${userId}`
+    );
   }
 
   // Authentication via 6-Digit PIN (iPhone Lock Screen Style)
@@ -969,23 +1372,30 @@ class StorageService {
 
   public updateSystemConfig(config: Partial<SystemConfig>) {
     const current = this.getSystemConfig();
-    const updated: SystemConfig = {
-      ...current,
+    const patchPayload: Partial<SystemConfig> = {
       ...config,
       initialSeedCompleted: true,
     };
     if (config.ustadzList !== undefined) {
-      updated.dataUstadzList = config.ustadzList;
+      patchPayload.dataUstadzList = config.ustadzList;
     } else if (config.dataUstadzList !== undefined) {
-      updated.ustadzList = config.dataUstadzList;
+      patchPayload.ustadzList = config.dataUstadzList;
     }
+
+    const updated: SystemConfig = {
+      ...current,
+      ...patchPayload,
+    };
     this.cache.systemConfig = updated;
     this.addLog('Konfigurasi Sistem', 'Admin memperbarui parameter pengaturan manual di Option Panel.', 'admin');
     this.notify();
 
-    // Sync to central Firestore database
-    setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(updated), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`));
+    // Partial merge write so concurrent updates across devices on different fields never overwrite each other
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(patchPayload), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`
+    );
   }
 
   // ==========================================
@@ -1084,8 +1494,11 @@ class StorageService {
     this.notify();
 
     // Realtime write to central Firestore database
-    setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`
+    );
   }
 
   public deleteSantri(id: string) {
@@ -1099,8 +1512,11 @@ class StorageService {
     this.notify();
 
     // Realtime delete from central Firestore database
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.SANTRI}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.SANTRI}/${id}`
+    );
   }
 
   public suspendSantri(santriId: string, suspendUntilDate: string, alasan: string) {
@@ -1118,8 +1534,11 @@ class StorageService {
       this.notify();
 
       // Write to central Firestore
-      setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
-        .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`));
+      this.trackCloudWrite(
+        setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true }),
+        OperationType.WRITE,
+        `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`
+      );
     }
   }
 
@@ -1137,8 +1556,11 @@ class StorageService {
       );
       this.notify();
 
-      setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
-        .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`));
+      this.trackCloudWrite(
+        setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true }),
+        OperationType.WRITE,
+        `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`
+      );
     }
   }
 
@@ -1161,8 +1583,11 @@ class StorageService {
     this.notify();
 
     // Central Firestore sync
-    setDoc(doc(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, pengurus.id), sanitizeForFirestore(pengurus), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.DEWAN_KEAMANAN}/${pengurus.id}`));
+    this.trackCloudWrite(
+      setDoc(doc(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, pengurus.id), sanitizeForFirestore(pengurus), { merge: true }),
+      OperationType.WRITE,
+      `${CLOUD_COLLECTIONS.DEWAN_KEAMANAN}/${pengurus.id}`
+    );
   }
 
   public deleteDewanKeamanan(id: string) {
@@ -1170,8 +1595,11 @@ class StorageService {
     this.cache.dewan = list;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.DEWAN_KEAMANAN}/${id}`));
+    this.trackCloudWrite(
+      deleteDoc(doc(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, id)),
+      OperationType.DELETE,
+      `${CLOUD_COLLECTIONS.DEWAN_KEAMANAN}/${id}`
+    );
   }
 
   // ==========================================
