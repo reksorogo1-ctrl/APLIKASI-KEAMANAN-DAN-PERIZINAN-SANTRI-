@@ -1,31 +1,32 @@
 // Web Audio API futuristic click, confirmation chime, and Indonesian Web Speech API welcome helper
-// Designed for full compatibility with iPhone Safari (iOS) and Android Chrome without external audio files.
+// Hardened with full try...catch & delayed welcome speech so mobile UI render is never blocked.
 
 const MUTE_STORAGE_KEY = 'almaliki_sound_muted';
 
 let sharedAudioCtx: AudioContext | null = null;
 let speechPrimed = false;
 let lastClickAt = 0;
+let pendingWelcomeTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  const AudioCtx =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioCtx) return null;
-  if (!sharedAudioCtx) {
-    try {
+  try {
+    if (typeof window === 'undefined') return null;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!sharedAudioCtx) {
       sharedAudioCtx = new AudioCtx();
-    } catch {
-      return null;
     }
+    return sharedAudioCtx;
+  } catch {
+    return null;
   }
-  return sharedAudioCtx;
 }
 
 export function isSoundMuted(): boolean {
-  if (typeof window === 'undefined') return false;
   try {
+    if (typeof window === 'undefined') return false;
     return localStorage.getItem(MUTE_STORAGE_KEY) === 'true';
   } catch {
     return false;
@@ -33,18 +34,14 @@ export function isSoundMuted(): boolean {
 }
 
 export function setSoundMuted(muted: boolean): void {
-  if (typeof window === 'undefined') return;
   try {
+    if (typeof window === 'undefined') return;
     localStorage.setItem(MUTE_STORAGE_KEY, muted ? 'true' : 'false');
   } catch {
     // Ignore storage error
   }
-  if (muted && 'speechSynthesis' in window) {
-    try {
-      window.speechSynthesis.cancel();
-    } catch {
-      // Ignore speech cancel error
-    }
+  if (muted) {
+    stopWelcomeSpeech();
   }
 }
 
@@ -55,59 +52,60 @@ export function toggleSoundMuted(): boolean {
 }
 
 /**
- * Unlocks Web Audio API (including iOS Safari silent buffer) and primes Web Speech API
- * inside a direct user touch/click gesture so subsequent audio & speech never get blocked.
+ * Unlocks Web Audio API and primes Web Speech API safely inside try...catch.
  */
 export function unlockAudioAndSpeech(): void {
-  const ctx = getAudioContext();
-  if (ctx) {
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
+  try {
+    const ctx = getAudioContext();
+    if (ctx) {
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      try {
+        const buffer = ctx.createBuffer(1, 1, 22050);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      } catch {
+        // Ignore silent buffer unlock error
+      }
     }
-    try {
-      // 1-sample silent buffer unlock for iOS Safari
-      const buffer = ctx.createBuffer(1, 1, 22050);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
-    } catch {
-      // Ignore unlock error
-    }
+  } catch {
+    // Ignore AudioContext unlock errors
   }
 
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window && !speechPrimed) {
-    speechPrimed = true;
-    try {
-      // Warm up voice list & unlock speech queue on iOS Safari via silent utterance
+  try {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window && !speechPrimed) {
+      speechPrimed = true;
       window.speechSynthesis.getVoices();
       const primer = new SpeechSynthesisUtterance('');
       primer.volume = 0;
       primer.lang = 'id-ID';
       window.speechSynthesis.speak(primer);
-    } catch {
-      // Ignore speech priming error
     }
+  } catch {
+    // Ignore speech priming error
   }
 }
 
 /**
- * Futuristic soft digital click (800Hz -> 1200Hz over 40ms, sine/triangle wave)
+ * Futuristic soft digital click (800Hz -> 1200Hz over 40ms, sine wave)
  */
 export function playClickSound(): void {
-  if (isSoundMuted()) return;
-  const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  if (nowMs - lastClickAt < 35) return;
-  lastClickAt = nowMs;
-
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  if (ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-  }
-
   try {
+    if (isSoundMuted()) return;
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (nowMs - lastClickAt < 35) return;
+    lastClickAt = nowMs;
+
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -134,15 +132,15 @@ export function playClickSound(): void {
  * Melodious two-tone ascending confirmation chime on valid PIN login
  */
 export function playSuccessChime(): void {
-  if (isSoundMuted()) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  if (ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-  }
-
   try {
+    if (isSoundMuted()) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     const now = ctx.currentTime;
     const notes = [
       { freq: 659.25, start: 0, duration: 0.14 }, // E5
@@ -186,15 +184,15 @@ export function playSuccessChime(): void {
  * Soft descending error tone when PIN is invalid
  */
 export function playErrorTone(): void {
-  if (isSoundMuted()) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  if (ctx.state === 'suspended') {
-    ctx.resume().catch(() => {});
-  }
-
   try {
+    if (isSoundMuted()) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -217,28 +215,23 @@ export function playErrorTone(): void {
   }
 }
 
-/**
- * Automatic Indonesian welcome greeting via Web Speech API
- */
-export function speakWelcomeMessage(
-  namaPengurus: string,
-  options?: { force?: boolean }
-): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-  if (options?.force && isSoundMuted()) {
-    setSoundMuted(false);
-  }
-  if (isSoundMuted() && !options?.force) return;
-
+function executeSpeakWelcome(namaPengurus: string): void {
   try {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (isSoundMuted()) return;
+
     const synth = window.speechSynthesis;
+    if (!synth) return;
+
     if (synth.speaking || synth.pending) {
       synth.cancel();
     }
 
     const cleanName = (namaPengurus || 'Pengurus').trim();
-    const message = `Assalamualaikum warahmatullahi wabarakatuh. Selamat datang ${cleanName}, di Sistem Informasi Pengurus Pondok Pesantren Al Maliki.`;
+    const message =
+      'Assalamualaikum warahmatullahi wabarakatuh. Selamat datang ' +
+      cleanName +
+      ', di Sistem Informasi Pengurus Pondok Pesantren Al Maliki.';
 
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'id-ID';
@@ -260,10 +253,50 @@ export function speakWelcomeMessage(
   }
 }
 
-export function stopWelcomeSpeech(): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+/**
+ * Automatic Indonesian welcome greeting via Web Speech API.
+ * Supports delayMs (e.g. 300ms) so Dashboard renders cleanly first without freezing mobile UI.
+ */
+export function speakWelcomeMessage(
+  namaPengurus: string,
+  options?: { force?: boolean; delayMs?: number }
+): void {
   try {
-    window.speechSynthesis.cancel();
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    if (options?.force && isSoundMuted()) {
+      setSoundMuted(false);
+    }
+    if (isSoundMuted() && !options?.force) return;
+
+    if (pendingWelcomeTimer !== null) {
+      clearTimeout(pendingWelcomeTimer);
+      pendingWelcomeTimer = null;
+    }
+
+    const delayMs = options?.delayMs ?? 0;
+    if (delayMs > 0) {
+      pendingWelcomeTimer = setTimeout(() => {
+        pendingWelcomeTimer = null;
+        executeSpeakWelcome(namaPengurus);
+      }, delayMs);
+    } else {
+      executeSpeakWelcome(namaPengurus);
+    }
+  } catch {
+    // Ignore speech synthesis scheduling errors
+  }
+}
+
+export function stopWelcomeSpeech(): void {
+  try {
+    if (pendingWelcomeTimer !== null) {
+      clearTimeout(pendingWelcomeTimer);
+      pendingWelcomeTimer = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
   } catch {
     // Ignore cancel error
   }

@@ -842,7 +842,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <nav className="space-y-1.5 pb-4">
-              {navItems.map((item, idx) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.subTab
                   ? activeMenu === item.menu && activeSubTab === item.subTab
@@ -851,9 +851,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 return (
                   <motion.button
                     key={item.key}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: Math.min(idx * 0.03, 0.28) }}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       onSelectMenu(item.menu, item.subTab);

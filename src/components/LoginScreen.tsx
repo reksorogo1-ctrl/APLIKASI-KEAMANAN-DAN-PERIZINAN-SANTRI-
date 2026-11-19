@@ -52,8 +52,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const res = storageService.authenticateByPin(code);
     if (res.success && res.user) {
       playSuccessChime();
-      speakWelcomeMessage(res.user.nama);
       onLoginSuccess(res.user);
+      speakWelcomeMessage(res.user.nama, { delayMs: 300 });
     } else {
       playErrorTone();
       setErrorMessage(res.message || 'PIN 6 Digit tidak dikenali.');
@@ -128,8 +128,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const res = storageService.authenticate(username, password);
     if (res.success && res.user) {
       playSuccessChime();
-      speakWelcomeMessage(res.user.nama);
       onLoginSuccess(res.user);
+      speakWelcomeMessage(res.user.nama, { delayMs: 300 });
     } else {
       playErrorTone();
       setErrorMessage(res.message || 'Kredensial tidak valid.');
@@ -178,7 +178,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   ];
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-3 sm:p-4 bg-[#041A13] overflow-x-hidden font-sans selection:bg-[#D4AF37] selection:text-[#041A13] bg-luxury-grid">
+    <div className="relative min-h-[100dvh] w-full flex items-center justify-center p-3 sm:p-4 bg-[#041A13] overflow-x-hidden overflow-y-auto font-sans selection:bg-[#D4AF37] selection:text-[#041A13] bg-luxury-grid">
       {/* Ambient Background Glow */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         {systemConfig.bgUrl && (
