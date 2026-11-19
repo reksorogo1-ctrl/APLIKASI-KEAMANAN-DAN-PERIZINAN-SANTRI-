@@ -19,7 +19,8 @@ import {
   ArsipSurat,
   TransaksiKeuangan,
   BarangInventaris,
-  PeminjamanBarang
+  PeminjamanBarang,
+  DataUstadz
 } from '../types';
 import { 
   INITIAL_SANTRI, 
@@ -64,6 +65,8 @@ import {
   deleteDoc, 
   onSnapshot, 
   getDocs,
+  getDoc,
+  getDocFromServer,
   Unsubscribe 
 } from 'firebase/firestore';
 
@@ -90,6 +93,13 @@ const STORAGE_KEYS = {
   KEUANGAN_TRANSAKSI: 'sim_maliki_keuangan_v1',
   PERLENGKAPAN_INVENTARIS: 'sim_maliki_inventaris_v1',
   PERLENGKAPAN_PEMINJAMAN: 'sim_maliki_peminjaman_v1',
+};
+
+const ALMALIKI_KEYS = {
+  SANTRI: 'almaliki_data_santri',
+  USTADZAH: 'almaliki_data_ustadzah',
+  MASTER_INITIALIZED: 'almaliki_master_initialized',
+  SAMPLE_CLEARED: 'almaliki_sample_cleared',
 };
 
 // Firestore collections naming mapping
@@ -151,6 +161,8 @@ class StorageService {
   private lastSyncTime: string = 'Inisialisasi...';
   private syncError: string | null = null;
   private cloudSawDocs: Record<string, boolean> = {};
+  private cloudIsInitialized: boolean = false;
+  private cloudBootstrapPromise: Promise<void> | null = null;
 
   // Cached in-memory state for instant UI access & offline speed
   private cache = {
@@ -183,36 +195,108 @@ class StorageService {
       // ignore
     }
 
-    // 1. Populate initial memory cache from localStorage or seed fallback
+    // 1. Populate initial memory cache from localStorage (seed ONLY when genuinely brand new)
     this.loadFromLocalStorage();
 
     // 2. Initialize Real-Time Bi-Directional Firestore Cloud Synchronization
     this.initRealtimeCloudSync();
   }
 
+  private syncSantriToLocal(list: Santri[]) {
+    try {
+      const json = JSON.stringify(list);
+      localStorage.setItem(STORAGE_KEYS.SANTRI, json);
+      localStorage.setItem(ALMALIKI_KEYS.SANTRI, json);
+      localStorage.setItem(ALMALIKI_KEYS.MASTER_INITIALIZED, 'true');
+    } catch (err) {
+      console.warn('Sync santri localStorage warning:', err);
+    }
+  }
+
+  private syncUstadzToLocal(list: DataUstadz[]) {
+    try {
+      const json = JSON.stringify(list);
+      localStorage.setItem(ALMALIKI_KEYS.USTADZAH, json);
+      localStorage.setItem(ALMALIKI_KEYS.MASTER_INITIALIZED, 'true');
+    } catch (err) {
+      console.warn('Sync ustadzah localStorage warning:', err);
+    }
+  }
+
+  private isSampleClearedState(): boolean {
+    try {
+      return (
+        localStorage.getItem(ALMALIKI_KEYS.SAMPLE_CLEARED) === 'true' ||
+        Boolean(this.cache.systemConfig?.sampleCleared)
+      );
+    } catch {
+      return Boolean(this.cache.systemConfig?.sampleCleared);
+    }
+  }
+
+  private isMasterInitializedState(): boolean {
+    try {
+      return (
+        this.cloudIsInitialized ||
+        localStorage.getItem(ALMALIKI_KEYS.MASTER_INITIALIZED) === 'true' ||
+        localStorage.getItem(ALMALIKI_KEYS.SAMPLE_CLEARED) === 'true' ||
+        Boolean(this.cache.systemConfig?.initialSeedCompleted) ||
+        Boolean(this.cache.systemConfig?.sampleCleared)
+      );
+    } catch {
+      return this.cloudIsInitialized;
+    }
+  }
+
   private loadFromLocalStorage() {
     try {
-      const s = localStorage.getItem(STORAGE_KEYS.SANTRI);
-      this.cache.santri = s ? JSON.parse(s) : INITIAL_SANTRI;
+      const rawAlmalikiSantri = localStorage.getItem(ALMALIKI_KEYS.SANTRI);
+      const rawLegacySantri = localStorage.getItem(STORAGE_KEYS.SANTRI);
+      const rawAlmalikiUstadz = localStorage.getItem(ALMALIKI_KEYS.USTADZAH);
+      const cfg = localStorage.getItem(STORAGE_KEYS.SYSTEM_CONFIG);
+      const parsedCfg = cfg ? JSON.parse(cfg) : {};
+
+      const isSampleCleared =
+        localStorage.getItem(ALMALIKI_KEYS.SAMPLE_CLEARED) === 'true' ||
+        Boolean(parsedCfg.sampleCleared);
+      const hasLocalHistory =
+        localStorage.getItem(ALMALIKI_KEYS.MASTER_INITIALIZED) === 'true' ||
+        isSampleCleared ||
+        Boolean(parsedCfg.initialSeedCompleted) ||
+        rawAlmalikiSantri !== null ||
+        rawLegacySantri !== null ||
+        rawAlmalikiUstadz !== null ||
+        cfg !== null;
+
+      if (rawAlmalikiSantri !== null) {
+        this.cache.santri = JSON.parse(rawAlmalikiSantri);
+        if (rawLegacySantri === null) {
+          localStorage.setItem(STORAGE_KEYS.SANTRI, rawAlmalikiSantri);
+        }
+      } else if (rawLegacySantri !== null) {
+        this.cache.santri = JSON.parse(rawLegacySantri);
+        localStorage.setItem(ALMALIKI_KEYS.SANTRI, rawLegacySantri);
+      } else {
+        this.cache.santri = hasLocalHistory ? [] : INITIAL_SANTRI;
+      }
 
       const d = localStorage.getItem(STORAGE_KEYS.DEWAN_KEAMANAN);
-      this.cache.dewan = d ? JSON.parse(d) : INITIAL_DEWAN_KEAMANAN;
+      this.cache.dewan = d !== null ? JSON.parse(d) : (hasLocalHistory ? [] : INITIAL_DEWAN_KEAMANAN);
 
       const p = localStorage.getItem(STORAGE_KEYS.PERIZINAN);
-      this.cache.perizinan = p ? JSON.parse(p) : INITIAL_PERIZINAN;
+      this.cache.perizinan = p !== null ? JSON.parse(p) : (hasLocalHistory ? [] : INITIAL_PERIZINAN);
 
       const tt = localStorage.getItem(STORAGE_KEYS.TATA_TERTIB);
-      this.cache.tataTertib = tt ? JSON.parse(tt) : INITIAL_TATA_TERTIB;
+      this.cache.tataTertib = tt !== null ? JSON.parse(tt) : (isSampleCleared ? [] : INITIAL_TATA_TERTIB);
 
       const pel = localStorage.getItem(STORAGE_KEYS.PELANGGARAN);
-      this.cache.pelanggaran = pel ? JSON.parse(pel) : INITIAL_PELANGGARAN;
+      this.cache.pelanggaran = pel !== null ? JSON.parse(pel) : (hasLocalHistory ? [] : INITIAL_PELANGGARAN);
 
       const snk = localStorage.getItem(STORAGE_KEYS.SANKSI);
-      this.cache.sanksi = snk ? JSON.parse(snk) : INITIAL_SANKSI;
+      this.cache.sanksi = snk !== null ? JSON.parse(snk) : (hasLocalHistory ? [] : INITIAL_SANKSI);
 
       const u = localStorage.getItem(STORAGE_KEYS.USERS);
-      const parsedUsers: UserAccount[] = u ? JSON.parse(u) : INITIAL_USERS;
-      // Ensure newly added management role defaults and default 6-digit PIN codes exist
+      const parsedUsers: UserAccount[] = u !== null ? JSON.parse(u) : INITIAL_USERS;
       const mergedUsers: UserAccount[] = parsedUsers.map(existing => {
         const def = INITIAL_USERS.find(d => d.id === existing.id || d.username === existing.username);
         return {
@@ -224,46 +308,88 @@ class StorageService {
             : def?.murotilKelompokIds,
         };
       });
-      INITIAL_USERS.forEach(defUser => {
-        if (!mergedUsers.some(mu => mu.id === defUser.id)) {
-          mergedUsers.push(defUser);
-        }
-      });
+      if (!u) {
+        INITIAL_USERS.forEach(defUser => {
+          if (!mergedUsers.some(mu => mu.id === defUser.id)) {
+            mergedUsers.push(defUser);
+          }
+        });
+      }
       this.cache.users = mergedUsers;
 
-      const cfg = localStorage.getItem(STORAGE_KEYS.SYSTEM_CONFIG);
-      const parsedCfg = cfg ? JSON.parse(cfg) : {};
-      const mergedBerita = (parsedCfg.beritaTerkini?.length ? parsedCfg.beritaTerkini : INITIAL_SYSTEM_CONFIG.beritaTerkini || []).map((b: any, idx: number) => {
+      const beritaSource: any[] = Array.isArray(parsedCfg.beritaTerkini)
+        ? parsedCfg.beritaTerkini
+        : isSampleCleared
+          ? []
+          : (INITIAL_SYSTEM_CONFIG.beritaTerkini || []);
+      const mergedBerita = beritaSource.map((b: any, idx: number) => {
         const seedItem = INITIAL_SYSTEM_CONFIG.beritaTerkini?.find(s => s.id === b.id) || INITIAL_SYSTEM_CONFIG.beritaTerkini?.[idx % (INITIAL_SYSTEM_CONFIG.beritaTerkini?.length || 1)];
         return {
           ...b,
           gambarUrl: b.gambarUrl || seedItem?.gambarUrl || 'https://images.unsplash.com/photo-1584286595398-a59f21d313f5?auto=format&fit=crop&w=900&q=80',
         };
       });
+
+      const resolvedUstadzList: DataUstadz[] =
+        rawAlmalikiUstadz !== null
+          ? JSON.parse(rawAlmalikiUstadz)
+          : Array.isArray(parsedCfg.ustadzList)
+            ? parsedCfg.ustadzList
+            : Array.isArray(parsedCfg.dataUstadzList)
+              ? parsedCfg.dataUstadzList
+              : isSampleCleared || hasLocalHistory
+                ? []
+                : (INITIAL_SYSTEM_CONFIG.ustadzList || []);
+
+      if (rawAlmalikiUstadz === null && hasLocalHistory) {
+        localStorage.setItem(ALMALIKI_KEYS.USTADZAH, JSON.stringify(resolvedUstadzList));
+      }
+
       this.cache.systemConfig = {
         ...INITIAL_SYSTEM_CONFIG,
         ...parsedCfg,
+        initialSeedCompleted: Boolean(parsedCfg.initialSeedCompleted || hasLocalHistory),
+        sampleCleared: isSampleCleared,
         beritaTerkini: mergedBerita,
-        ustadzList: parsedCfg.ustadzList?.length ? parsedCfg.ustadzList : INITIAL_SYSTEM_CONFIG.ustadzList,
-        programKerjaList: parsedCfg.programKerjaList?.length ? parsedCfg.programKerjaList : INITIAL_SYSTEM_CONFIG.programKerjaList,
-        izinPengurusList: parsedCfg.izinPengurusList?.length ? parsedCfg.izinPengurusList : INITIAL_SYSTEM_CONFIG.izinPengurusList,
-        notulenRapatList: parsedCfg.notulenRapatList?.length ? parsedCfg.notulenRapatList : INITIAL_SYSTEM_CONFIG.notulenRapatList,
-        syahriyahList: parsedCfg.syahriyahList?.length ? parsedCfg.syahriyahList : INITIAL_SYSTEM_CONFIG.syahriyahList,
-        uangSakuList: parsedCfg.uangSakuList?.length ? parsedCfg.uangSakuList : INITIAL_SYSTEM_CONFIG.uangSakuList,
-        anggaranList: parsedCfg.anggaranList?.length ? parsedCfg.anggaranList : INITIAL_SYSTEM_CONFIG.anggaranList,
+        ustadzList: resolvedUstadzList,
+        dataUstadzList: resolvedUstadzList,
+        programKerjaList: Array.isArray(parsedCfg.programKerjaList)
+          ? parsedCfg.programKerjaList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.programKerjaList,
+        izinPengurusList: Array.isArray(parsedCfg.izinPengurusList)
+          ? parsedCfg.izinPengurusList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.izinPengurusList,
+        notulenRapatList: Array.isArray(parsedCfg.notulenRapatList)
+          ? parsedCfg.notulenRapatList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.notulenRapatList,
+        syahriyahList: Array.isArray(parsedCfg.syahriyahList)
+          ? parsedCfg.syahriyahList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.syahriyahList,
+        uangSakuList: Array.isArray(parsedCfg.uangSakuList)
+          ? parsedCfg.uangSakuList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.uangSakuList,
+        anggaranList: Array.isArray(parsedCfg.anggaranList)
+          ? parsedCfg.anggaranList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.anggaranList,
         bendaharaConfig: {
           ...INITIAL_BENDAHARA_CONFIG,
           ...(parsedCfg.bendaharaConfig || {}),
-          kategoriPemasukan: parsedCfg.bendaharaConfig?.kategoriPemasukan?.length
+          kategoriPemasukan: Array.isArray(parsedCfg.bendaharaConfig?.kategoriPemasukan)
             ? parsedCfg.bendaharaConfig.kategoriPemasukan
             : INITIAL_BENDAHARA_CONFIG.kategoriPemasukan,
-          kategoriPengeluaran: parsedCfg.bendaharaConfig?.kategoriPengeluaran?.length
+          kategoriPengeluaran: Array.isArray(parsedCfg.bendaharaConfig?.kategoriPengeluaran)
             ? parsedCfg.bendaharaConfig.kategoriPengeluaran
             : INITIAL_BENDAHARA_CONFIG.kategoriPengeluaran,
         },
-        mutasiBarangList: parsedCfg.mutasiBarangList?.length ? parsedCfg.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
-        jadwalPerbaikanList: parsedCfg.jadwalPerbaikanList?.length ? parsedCfg.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
-        kamarSantriList: parsedCfg.kamarSantriList?.length ? parsedCfg.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
+        mutasiBarangList: Array.isArray(parsedCfg.mutasiBarangList)
+          ? parsedCfg.mutasiBarangList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
+        jadwalPerbaikanList: Array.isArray(parsedCfg.jadwalPerbaikanList)
+          ? parsedCfg.jadwalPerbaikanList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
+        kamarSantriList: Array.isArray(parsedCfg.kamarSantriList)
+          ? parsedCfg.kamarSantriList
+          : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.kamarSantriList,
         fasilitasGedungList: Array.isArray(parsedCfg.fasilitasGedungList)
           ? parsedCfg.fasilitasGedungList
           : INITIAL_FASILITAS_GEDUNG_LIST,
@@ -273,7 +399,7 @@ class StorageService {
         },
         pusatInformasiList: Array.isArray(parsedCfg.pusatInformasiList)
           ? parsedCfg.pusatInformasiList
-          : INITIAL_PUSAT_INFORMASI_LIST,
+          : isSampleCleared ? [] : INITIAL_PUSAT_INFORMASI_LIST,
         murotilTingkatanList: Array.isArray(parsedCfg.murotilTingkatanList)
           ? parsedCfg.murotilTingkatanList
           : INITIAL_MUROTIL_TINGKATAN,
@@ -282,17 +408,17 @@ class StorageService {
           : INITIAL_MUROTIL_KELOMPOK,
         murotilAbsensiSantriList: Array.isArray(parsedCfg.murotilAbsensiSantriList)
           ? parsedCfg.murotilAbsensiSantriList
-          : INITIAL_MUROTIL_ABSENSI_SANTRI,
+          : isSampleCleared ? [] : INITIAL_MUROTIL_ABSENSI_SANTRI,
         murotilSetoranList: Array.isArray(parsedCfg.murotilSetoranList)
           ? parsedCfg.murotilSetoranList
-          : INITIAL_MUROTIL_SETORAN,
+          : isSampleCleared ? [] : INITIAL_MUROTIL_SETORAN,
         murotilAbsensiPjList: Array.isArray(parsedCfg.murotilAbsensiPjList)
           ? parsedCfg.murotilAbsensiPjList
-          : INITIAL_MUROTIL_ABSENSI_PJ,
+          : isSampleCleared ? [] : INITIAL_MUROTIL_ABSENSI_PJ,
         murotilConfig: {
           ...INITIAL_MUROTIL_CONFIG,
           ...(parsedCfg.murotilConfig || {}),
-          sesiList: parsedCfg.murotilConfig?.sesiList?.length
+          sesiList: Array.isArray(parsedCfg.murotilConfig?.sesiList)
             ? parsedCfg.murotilConfig.sesiList
             : INITIAL_MUROTIL_CONFIG.sesiList,
         },
@@ -326,37 +452,37 @@ class StorageService {
       };
 
       const l = localStorage.getItem(STORAGE_KEYS.LOGS);
-      this.cache.logs = l ? JSON.parse(l) : INITIAL_LOGS;
+      this.cache.logs = l !== null ? JSON.parse(l) : (hasLocalHistory ? [] : INITIAL_LOGS);
 
       const n = localStorage.getItem(STORAGE_KEYS.NOTIFIKASI);
-      this.cache.notifikasi = n ? JSON.parse(n) : [];
+      this.cache.notifikasi = n !== null ? JSON.parse(n) : [];
 
       const k = localStorage.getItem(STORAGE_KEYS.KOORDINASI);
-      this.cache.koordinasi = k !== null ? JSON.parse(k) : INITIAL_KOORDINASI;
+      this.cache.koordinasi = k !== null ? JSON.parse(k) : (hasLocalHistory ? [] : INITIAL_KOORDINASI);
 
       const org = localStorage.getItem(STORAGE_KEYS.STRUKTUR_ORGANISASI);
-      this.cache.strukturOrganisasi = org ? JSON.parse(org) : INITIAL_STRUKTUR_ORGANISASI;
+      this.cache.strukturOrganisasi = org !== null ? JSON.parse(org) : (isSampleCleared ? [] : INITIAL_STRUKTUR_ORGANISASI);
 
       const agd = localStorage.getItem(STORAGE_KEYS.AGENDA_PENGURUS);
-      this.cache.agendaPengurus = agd ? JSON.parse(agd) : INITIAL_AGENDA_PENGURUS;
+      this.cache.agendaPengurus = agd !== null ? JSON.parse(agd) : (hasLocalHistory ? [] : INITIAL_AGENDA_PENGURUS);
 
       const evl = localStorage.getItem(STORAGE_KEYS.EVALUASI_KEPENGURUSAN);
-      this.cache.evaluasiKepengurusan = evl ? JSON.parse(evl) : INITIAL_EVALUASI_KEPENGURUSAN;
+      this.cache.evaluasiKepengurusan = evl !== null ? JSON.parse(evl) : (hasLocalHistory ? [] : INITIAL_EVALUASI_KEPENGURUSAN);
 
       const pgj = localStorage.getItem(STORAGE_KEYS.PENGAJUAN_DIVISI);
-      this.cache.pengajuanDivisi = pgj !== null ? JSON.parse(pgj) : INITIAL_PENGAJUAN_DIVISI;
+      this.cache.pengajuanDivisi = pgj !== null ? JSON.parse(pgj) : (hasLocalHistory ? [] : INITIAL_PENGAJUAN_DIVISI);
 
       const srt = localStorage.getItem(STORAGE_KEYS.SURAT_MENYURAT);
-      this.cache.arsipSurat = srt !== null ? JSON.parse(srt) : INITIAL_ARSIP_SURAT;
+      this.cache.arsipSurat = srt !== null ? JSON.parse(srt) : (hasLocalHistory ? [] : INITIAL_ARSIP_SURAT);
 
       const trx = localStorage.getItem(STORAGE_KEYS.KEUANGAN_TRANSAKSI);
-      this.cache.transaksiKeuangan = trx ? JSON.parse(trx) : INITIAL_TRANSAKSI_KEUANGAN;
+      this.cache.transaksiKeuangan = trx !== null ? JSON.parse(trx) : (hasLocalHistory ? [] : INITIAL_TRANSAKSI_KEUANGAN);
 
       const inv = localStorage.getItem(STORAGE_KEYS.PERLENGKAPAN_INVENTARIS);
-      this.cache.barangInventaris = inv ? JSON.parse(inv) : INITIAL_BARANG_INVENTARIS;
+      this.cache.barangInventaris = inv !== null ? JSON.parse(inv) : (hasLocalHistory ? [] : INITIAL_BARANG_INVENTARIS);
 
       const pjm = localStorage.getItem(STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN);
-      this.cache.peminjamanBarang = pjm ? JSON.parse(pjm) : INITIAL_PEMINJAMAN_BARANG;
+      this.cache.peminjamanBarang = pjm !== null ? JSON.parse(pjm) : (hasLocalHistory ? [] : INITIAL_PEMINJAMAN_BARANG);
 
       // Enforce official website logo & separate Keamanan logo while preserving custom DataURL/HTTP logos
       const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
@@ -428,12 +554,10 @@ class StorageService {
   }
 
   /**
-   * Initializes live Firestore onSnapshot listeners for all 11 application collections.
-   * Any change made on any device (Laptop, Mobile browser, HP PWA, or AI Studio)
-   * is instantly broadcasted by Firestore and received in real time by all other devices.
+   * Initializes live Firestore onSnapshot listeners for all application collections.
+   * Ensures sample data is NEVER re-seeded over user edits or intentionally cleared lists.
    */
   public initRealtimeCloudSync() {
-    // Clean up any existing listeners
     this.unsubscribers.forEach(unsub => {
       try { unsub(); } catch { /* ignore */ }
     });
@@ -446,22 +570,103 @@ class StorageService {
       this.notify();
     };
 
+    // Bootstrap check: inspect Firestore BEFORE allowing any empty-collection snapshot to auto-seed
+    this.cloudBootstrapPromise = (async () => {
+      try {
+        const mainRef = doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main');
+        let mainSnap;
+        try {
+          mainSnap = await getDocFromServer(mainRef);
+        } catch {
+          mainSnap = await getDoc(mainRef);
+        }
+
+        if (mainSnap.exists()) {
+          const data = mainSnap.data() as Partial<SystemConfig>;
+          this.cloudIsInitialized = true;
+          localStorage.setItem(ALMALIKI_KEYS.MASTER_INITIALIZED, 'true');
+          if (data.sampleCleared) {
+            localStorage.setItem(ALMALIKI_KEYS.SAMPLE_CLEARED, 'true');
+          }
+          if (!data.initialSeedCompleted) {
+            setDoc(mainRef, { initialSeedCompleted: true }, { merge: true }).catch(() => {});
+          }
+        } else {
+          const [santriSnap, usersSnap] = await Promise.all([
+            getDocs(collection(db, CLOUD_COLLECTIONS.SANTRI)),
+            getDocs(collection(db, CLOUD_COLLECTIONS.USERS)),
+          ]);
+          if (!santriSnap.empty || !usersSnap.empty) {
+            this.cloudIsInitialized = true;
+            localStorage.setItem(ALMALIKI_KEYS.MASTER_INITIALIZED, 'true');
+          } else {
+            this.cloudIsInitialized = false;
+          }
+        }
+      } catch (err) {
+        console.warn('Cloud bootstrap check warning:', err);
+      }
+    })();
+
+    const handleEmptySnapshot = async <T extends { id: string }>(
+      colName: string,
+      storageKey: string,
+      getList: () => T[],
+      setList: (items: T[]) => void
+    ) => {
+      if (this.cloudBootstrapPromise) {
+        await this.cloudBootstrapPromise;
+      }
+
+      const alreadyInitialized =
+        this.isMasterInitializedState() ||
+        this.cloudSawDocs[colName] ||
+        localStorage.getItem(storageKey) === '[]';
+
+      if (alreadyInitialized) {
+        setList([]);
+        localStorage.setItem(storageKey, '[]');
+        if (colName === CLOUD_COLLECTIONS.SANTRI) {
+          this.syncSantriToLocal([]);
+        }
+        handleSyncUpdate();
+      } else if (getList().length > 0) {
+        // Brand-new database: seed initial sample data once and mark initialized
+        await this.uploadCollectionBatch(colName, getList());
+        this.cloudIsInitialized = true;
+        localStorage.setItem(ALMALIKI_KEYS.MASTER_INITIALIZED, 'true');
+        this.cache.systemConfig = { ...this.cache.systemConfig, initialSeedCompleted: true };
+        localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(this.cache.systemConfig));
+        await setDoc(
+          doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'),
+          { initialSeedCompleted: true },
+          { merge: true }
+        ).catch(() => {});
+      }
+    };
+
     // 1. Santri Collection Realtime Listener
     try {
       const unsubSantri = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.SANTRI),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.SANTRI] = true;
+            this.cloudIsInitialized = true;
             const list: Santri[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as Santri);
             });
             this.cache.santri = list;
-            localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
+            this.syncSantriToLocal(list);
             handleSyncUpdate();
-          } else if (this.cache.santri.length > 0) {
-            // Seed cloud if empty
-            this.uploadCollectionBatch(CLOUD_COLLECTIONS.SANTRI, this.cache.santri);
+          } else {
+            await handleEmptySnapshot<Santri>(
+              CLOUD_COLLECTIONS.SANTRI,
+              STORAGE_KEYS.SANTRI,
+              () => this.cache.santri,
+              items => { this.cache.santri = items; }
+            );
           }
         },
         error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.SANTRI)
@@ -475,8 +680,9 @@ class StorageService {
     try {
       const unsubDewan = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.DEWAN_KEAMANAN] = true;
             const list: DewanKeamanan[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as DewanKeamanan);
@@ -484,8 +690,13 @@ class StorageService {
             this.cache.dewan = list;
             localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(list));
             handleSyncUpdate();
-          } else if (this.cache.dewan.length > 0) {
-            this.uploadCollectionBatch(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, this.cache.dewan);
+          } else {
+            await handleEmptySnapshot<DewanKeamanan>(
+              CLOUD_COLLECTIONS.DEWAN_KEAMANAN,
+              STORAGE_KEYS.DEWAN_KEAMANAN,
+              () => this.cache.dewan,
+              items => { this.cache.dewan = items; }
+            );
           }
         },
         error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.DEWAN_KEAMANAN)
@@ -499,18 +710,23 @@ class StorageService {
     try {
       const unsubPerizinan = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.PERIZINAN),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.PERIZINAN] = true;
             const list: Perizinan[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as Perizinan);
             });
-            // Sort by tglPengajuan desc or id
             this.cache.perizinan = list.sort((a, b) => (b.id > a.id ? 1 : -1));
             localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(this.cache.perizinan));
             handleSyncUpdate();
-          } else if (this.cache.perizinan.length > 0) {
-            this.uploadCollectionBatch(CLOUD_COLLECTIONS.PERIZINAN, this.cache.perizinan);
+          } else {
+            await handleEmptySnapshot<Perizinan>(
+              CLOUD_COLLECTIONS.PERIZINAN,
+              STORAGE_KEYS.PERIZINAN,
+              () => this.cache.perizinan,
+              items => { this.cache.perizinan = items; }
+            );
           }
         },
         error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.PERIZINAN)
@@ -524,8 +740,9 @@ class StorageService {
     try {
       const unsubPelanggaran = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.PELANGGARAN),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.PELANGGARAN] = true;
             const list: Pelanggaran[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as Pelanggaran);
@@ -533,8 +750,13 @@ class StorageService {
             this.cache.pelanggaran = list.sort((a, b) => (b.id > a.id ? 1 : -1));
             localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(this.cache.pelanggaran));
             handleSyncUpdate();
-          } else if (this.cache.pelanggaran.length > 0) {
-            this.uploadCollectionBatch(CLOUD_COLLECTIONS.PELANGGARAN, this.cache.pelanggaran);
+          } else {
+            await handleEmptySnapshot<Pelanggaran>(
+              CLOUD_COLLECTIONS.PELANGGARAN,
+              STORAGE_KEYS.PELANGGARAN,
+              () => this.cache.pelanggaran,
+              items => { this.cache.pelanggaran = items; }
+            );
           }
         },
         error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.PELANGGARAN)
@@ -548,8 +770,9 @@ class StorageService {
     try {
       const unsubSanksi = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.SANKSI),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.SANKSI] = true;
             const list: Sanksi[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as Sanksi);
@@ -557,8 +780,13 @@ class StorageService {
             this.cache.sanksi = list.sort((a, b) => (b.id > a.id ? 1 : -1));
             localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(this.cache.sanksi));
             handleSyncUpdate();
-          } else if (this.cache.sanksi.length > 0) {
-            this.uploadCollectionBatch(CLOUD_COLLECTIONS.SANKSI, this.cache.sanksi);
+          } else {
+            await handleEmptySnapshot<Sanksi>(
+              CLOUD_COLLECTIONS.SANKSI,
+              STORAGE_KEYS.SANKSI,
+              () => this.cache.sanksi,
+              items => { this.cache.sanksi = items; }
+            );
           }
         },
         error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.SANKSI)
@@ -572,8 +800,9 @@ class StorageService {
     try {
       const unsubTataTertib = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.TATA_TERTIB),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.TATA_TERTIB] = true;
             const list: TataTertib[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as TataTertib);
@@ -581,8 +810,13 @@ class StorageService {
             this.cache.tataTertib = list;
             localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(list));
             handleSyncUpdate();
-          } else if (this.cache.tataTertib.length > 0) {
-            this.uploadCollectionBatch(CLOUD_COLLECTIONS.TATA_TERTIB, this.cache.tataTertib);
+          } else {
+            await handleEmptySnapshot<TataTertib>(
+              CLOUD_COLLECTIONS.TATA_TERTIB,
+              STORAGE_KEYS.TATA_TERTIB,
+              () => this.cache.tataTertib,
+              items => { this.cache.tataTertib = items; }
+            );
           }
         },
         error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.TATA_TERTIB)
@@ -596,8 +830,9 @@ class StorageService {
     try {
       const unsubUsers = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.USERS),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.USERS] = true;
             const list: UserAccount[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as UserAccount);
@@ -620,21 +855,42 @@ class StorageService {
     try {
       const unsubConfig = onSnapshot(
         doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'),
-        docSnap => {
+        async docSnap => {
           if (docSnap.exists()) {
             const cloudData = docSnap.data() as Partial<SystemConfig>;
-            const mergedCloudBerita = (cloudData.beritaTerkini?.length ? cloudData.beritaTerkini : INITIAL_SYSTEM_CONFIG.beritaTerkini || []).map((b: any, idx: number) => {
+            this.cloudIsInitialized = true;
+            localStorage.setItem(ALMALIKI_KEYS.MASTER_INITIALIZED, 'true');
+            const isSampleCleared = Boolean(cloudData.sampleCleared) || this.isSampleClearedState();
+            if (isSampleCleared) {
+              localStorage.setItem(ALMALIKI_KEYS.SAMPLE_CLEARED, 'true');
+            }
+
+            const beritaRaw = Array.isArray(cloudData.beritaTerkini)
+              ? cloudData.beritaTerkini
+              : (isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.beritaTerkini || []);
+            const mergedCloudBerita = beritaRaw.map((b: any, idx: number) => {
               const seedItem = INITIAL_SYSTEM_CONFIG.beritaTerkini?.find(s => s.id === b.id) || INITIAL_SYSTEM_CONFIG.beritaTerkini?.[idx % (INITIAL_SYSTEM_CONFIG.beritaTerkini?.length || 1)];
               return {
                 ...b,
                 gambarUrl: b.gambarUrl || seedItem?.gambarUrl || 'https://images.unsplash.com/photo-1584286595398-a59f21d313f5?auto=format&fit=crop&w=900&q=80',
               };
             });
+
+            const resolvedCloudUstadz: DataUstadz[] = Array.isArray(cloudData.ustadzList)
+              ? cloudData.ustadzList
+              : Array.isArray(cloudData.dataUstadzList)
+                ? cloudData.dataUstadzList
+                : isSampleCleared
+                  ? []
+                  : (this.cache.systemConfig.ustadzList || []);
+
             const OFFICIAL_LOGO = 'https://cdn.phototourl.com/member/2026-11-14-03361e24-6ae4-4db0-bdad-b98af1797f52.png';
             const OFFICIAL_KEAMANAN_LOGO = 'https://cdn.phototourl.com/member/2026-11-11-7ffd46ad-6406-4c9c-8043-01c37a880156.png';
             const cfg: SystemConfig = {
               ...INITIAL_SYSTEM_CONFIG,
               ...cloudData,
+              initialSeedCompleted: true,
+              sampleCleared: isSampleCleared,
               logoUrl:
                 cloudData.logoUrl &&
                 !cloudData.logoUrl.includes('2026-11-11-7ffd46ad') &&
@@ -658,26 +914,45 @@ class StorageService {
                   ? cloudData.appIconUrl
                   : OFFICIAL_LOGO,
               beritaTerkini: mergedCloudBerita,
-              ustadzList: cloudData.ustadzList?.length ? cloudData.ustadzList : INITIAL_SYSTEM_CONFIG.ustadzList,
-              programKerjaList: cloudData.programKerjaList?.length ? cloudData.programKerjaList : INITIAL_SYSTEM_CONFIG.programKerjaList,
-              izinPengurusList: cloudData.izinPengurusList?.length ? cloudData.izinPengurusList : INITIAL_SYSTEM_CONFIG.izinPengurusList,
-              notulenRapatList: cloudData.notulenRapatList?.length ? cloudData.notulenRapatList : INITIAL_SYSTEM_CONFIG.notulenRapatList,
-              syahriyahList: cloudData.syahriyahList?.length ? cloudData.syahriyahList : INITIAL_SYSTEM_CONFIG.syahriyahList,
-              uangSakuList: cloudData.uangSakuList?.length ? cloudData.uangSakuList : INITIAL_SYSTEM_CONFIG.uangSakuList,
-              anggaranList: cloudData.anggaranList?.length ? cloudData.anggaranList : INITIAL_SYSTEM_CONFIG.anggaranList,
+              ustadzList: resolvedCloudUstadz,
+              dataUstadzList: resolvedCloudUstadz,
+              programKerjaList: Array.isArray(cloudData.programKerjaList)
+                ? cloudData.programKerjaList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.programKerjaList,
+              izinPengurusList: Array.isArray(cloudData.izinPengurusList)
+                ? cloudData.izinPengurusList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.izinPengurusList,
+              notulenRapatList: Array.isArray(cloudData.notulenRapatList)
+                ? cloudData.notulenRapatList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.notulenRapatList,
+              syahriyahList: Array.isArray(cloudData.syahriyahList)
+                ? cloudData.syahriyahList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.syahriyahList,
+              uangSakuList: Array.isArray(cloudData.uangSakuList)
+                ? cloudData.uangSakuList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.uangSakuList,
+              anggaranList: Array.isArray(cloudData.anggaranList)
+                ? cloudData.anggaranList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.anggaranList,
               bendaharaConfig: {
                 ...INITIAL_BENDAHARA_CONFIG,
                 ...(cloudData.bendaharaConfig || {}),
-                kategoriPemasukan: cloudData.bendaharaConfig?.kategoriPemasukan?.length
+                kategoriPemasukan: Array.isArray(cloudData.bendaharaConfig?.kategoriPemasukan)
                   ? cloudData.bendaharaConfig.kategoriPemasukan
                   : INITIAL_BENDAHARA_CONFIG.kategoriPemasukan,
-                kategoriPengeluaran: cloudData.bendaharaConfig?.kategoriPengeluaran?.length
+                kategoriPengeluaran: Array.isArray(cloudData.bendaharaConfig?.kategoriPengeluaran)
                   ? cloudData.bendaharaConfig.kategoriPengeluaran
                   : INITIAL_BENDAHARA_CONFIG.kategoriPengeluaran,
               },
-              mutasiBarangList: cloudData.mutasiBarangList?.length ? cloudData.mutasiBarangList : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
-              jadwalPerbaikanList: cloudData.jadwalPerbaikanList?.length ? cloudData.jadwalPerbaikanList : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
-              kamarSantriList: cloudData.kamarSantriList?.length ? cloudData.kamarSantriList : INITIAL_SYSTEM_CONFIG.kamarSantriList,
+              mutasiBarangList: Array.isArray(cloudData.mutasiBarangList)
+                ? cloudData.mutasiBarangList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.mutasiBarangList,
+              jadwalPerbaikanList: Array.isArray(cloudData.jadwalPerbaikanList)
+                ? cloudData.jadwalPerbaikanList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList,
+              kamarSantriList: Array.isArray(cloudData.kamarSantriList)
+                ? cloudData.kamarSantriList
+                : isSampleCleared ? [] : INITIAL_SYSTEM_CONFIG.kamarSantriList,
               fasilitasGedungList: Array.isArray(cloudData.fasilitasGedungList)
                 ? cloudData.fasilitasGedungList
                 : INITIAL_FASILITAS_GEDUNG_LIST,
@@ -687,7 +962,7 @@ class StorageService {
               },
               pusatInformasiList: Array.isArray(cloudData.pusatInformasiList)
                 ? cloudData.pusatInformasiList
-                : INITIAL_PUSAT_INFORMASI_LIST,
+                : isSampleCleared ? [] : INITIAL_PUSAT_INFORMASI_LIST,
               murotilTingkatanList: Array.isArray(cloudData.murotilTingkatanList)
                 ? cloudData.murotilTingkatanList
                 : INITIAL_MUROTIL_TINGKATAN,
@@ -696,17 +971,17 @@ class StorageService {
                 : INITIAL_MUROTIL_KELOMPOK,
               murotilAbsensiSantriList: Array.isArray(cloudData.murotilAbsensiSantriList)
                 ? cloudData.murotilAbsensiSantriList
-                : INITIAL_MUROTIL_ABSENSI_SANTRI,
+                : isSampleCleared ? [] : INITIAL_MUROTIL_ABSENSI_SANTRI,
               murotilSetoranList: Array.isArray(cloudData.murotilSetoranList)
                 ? cloudData.murotilSetoranList
-                : INITIAL_MUROTIL_SETORAN,
+                : isSampleCleared ? [] : INITIAL_MUROTIL_SETORAN,
               murotilAbsensiPjList: Array.isArray(cloudData.murotilAbsensiPjList)
                 ? cloudData.murotilAbsensiPjList
-                : INITIAL_MUROTIL_ABSENSI_PJ,
+                : isSampleCleared ? [] : INITIAL_MUROTIL_ABSENSI_PJ,
               murotilConfig: {
                 ...INITIAL_MUROTIL_CONFIG,
                 ...(cloudData.murotilConfig || {}),
-                sesiList: cloudData.murotilConfig?.sesiList?.length
+                sesiList: Array.isArray(cloudData.murotilConfig?.sesiList)
                   ? cloudData.murotilConfig.sesiList
                   : INITIAL_MUROTIL_CONFIG.sesiList,
               },
@@ -758,10 +1033,21 @@ class StorageService {
             };
             this.cache.systemConfig = cfg;
             localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(cfg));
+            this.syncUstadzToLocal(cfg.ustadzList || []);
             handleSyncUpdate();
           } else {
-            // Upload default config to cloud
-            setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(INITIAL_SYSTEM_CONFIG), { merge: true })
+            if (this.cloudBootstrapPromise) {
+              await this.cloudBootstrapPromise;
+            }
+            const seedPayload: SystemConfig = {
+              ...this.cache.systemConfig,
+              initialSeedCompleted: true,
+              sampleCleared: this.isSampleClearedState(),
+            };
+            this.cache.systemConfig = seedPayload;
+            localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(seedPayload));
+            this.syncUstadzToLocal(seedPayload.ustadzList || []);
+            setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(seedPayload), { merge: true })
               .catch(err => console.warn('Config seed error:', err));
           }
         },
@@ -776,8 +1062,9 @@ class StorageService {
     try {
       const unsubLogs = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.LOGS),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
+            this.cloudSawDocs[CLOUD_COLLECTIONS.LOGS] = true;
             const list: LogAktivitas[] = [];
             snapshot.forEach(docSnap => {
               list.push({ ...docSnap.data(), id: docSnap.id } as LogAktivitas);
@@ -785,8 +1072,13 @@ class StorageService {
             this.cache.logs = list.sort((a, b) => ((b.timestamp || 0) > (a.timestamp || 0) ? 1 : -1)).slice(0, 300);
             localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(this.cache.logs));
             handleSyncUpdate();
-          } else if (this.cache.logs.length > 0) {
-            this.uploadCollectionBatch(CLOUD_COLLECTIONS.LOGS, this.cache.logs);
+          } else {
+            await handleEmptySnapshot<LogAktivitas>(
+              CLOUD_COLLECTIONS.LOGS,
+              STORAGE_KEYS.LOGS,
+              () => this.cache.logs,
+              items => { this.cache.logs = items; }
+            );
           }
         },
         error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.LOGS)
@@ -822,7 +1114,7 @@ class StorageService {
     try {
       const unsubKoordinasi = onSnapshot(
         collection(db, CLOUD_COLLECTIONS.KOORDINASI),
-        snapshot => {
+        async snapshot => {
           if (!snapshot.empty) {
             this.cloudSawDocs[CLOUD_COLLECTIONS.KOORDINASI] = true;
             const list: PesanKoordinasi[] = [];
@@ -832,15 +1124,13 @@ class StorageService {
             this.cache.koordinasi = list.sort((a, b) => (b.id > a.id ? 1 : -1));
             localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(this.cache.koordinasi));
             handleSyncUpdate();
-          } else if (
-            this.cloudSawDocs[CLOUD_COLLECTIONS.KOORDINASI] ||
-            localStorage.getItem(STORAGE_KEYS.KOORDINASI) === '[]'
-          ) {
-            this.cache.koordinasi = [];
-            localStorage.setItem(STORAGE_KEYS.KOORDINASI, '[]');
-            handleSyncUpdate();
-          } else if (this.cache.koordinasi.length > 0) {
-            this.uploadCollectionBatch(CLOUD_COLLECTIONS.KOORDINASI, this.cache.koordinasi);
+          } else {
+            await handleEmptySnapshot<PesanKoordinasi>(
+              CLOUD_COLLECTIONS.KOORDINASI,
+              STORAGE_KEYS.KOORDINASI,
+              () => this.cache.koordinasi,
+              items => { this.cache.koordinasi = items; }
+            );
           }
         },
         error => handleFirestoreError(error, OperationType.GET, CLOUD_COLLECTIONS.KOORDINASI)
@@ -861,7 +1151,7 @@ class StorageService {
       try {
         const unsub = onSnapshot(
           collection(db, colName),
-          snapshot => {
+          async snapshot => {
             if (!snapshot.empty) {
               this.cloudSawDocs[colName] = true;
               const list: T[] = [];
@@ -872,15 +1162,8 @@ class StorageService {
               setList(sorted);
               localStorage.setItem(storageKey, JSON.stringify(sorted));
               handleSyncUpdate();
-            } else if (
-              this.cloudSawDocs[colName] ||
-              localStorage.getItem(storageKey) === '[]'
-            ) {
-              setList([]);
-              localStorage.setItem(storageKey, '[]');
-              handleSyncUpdate();
-            } else if (getList().length > 0) {
-              this.uploadCollectionBatch(colName, getList());
+            } else {
+              await handleEmptySnapshot<T>(colName, storageKey, getList, setList);
             }
           },
           error => handleFirestoreError(error, OperationType.GET, colName)
@@ -963,6 +1246,21 @@ class StorageService {
     }
   }
 
+  private async replaceCollectionInCloud<T extends { id: string }>(collectionName: string, items: T[]) {
+    try {
+      const existingSnap = await getDocs(collection(db, collectionName));
+      const newIds = new Set(items.map(i => i.id));
+      for (const existingDoc of existingSnap.docs) {
+        if (!newIds.has(existingDoc.id)) {
+          await deleteDoc(doc(db, collectionName, existingDoc.id));
+        }
+      }
+      await this.uploadCollectionBatch(collectionName, items);
+    } catch (err) {
+      console.warn(`Replace collection ${collectionName} warning:`, err);
+    }
+  }
+
   public getCloudSyncStatus(): CloudSyncTelemetry {
     const total = 
       this.cache.santri.length +
@@ -1001,18 +1299,50 @@ class StorageService {
       const pullCol = async <T extends { id: string }>(
         colName: string,
         storageKey: string,
-        assign: (list: T[]) => void
+        assign: (list: T[]) => void,
+        afterSync?: (list: T[]) => void
       ) => {
         const snap = await getDocs(collection(db, colName));
         if (!snap.empty) {
+          this.cloudSawDocs[colName] = true;
           const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as T));
           assign(list);
           localStorage.setItem(storageKey, JSON.stringify(list));
+          if (afterSync) afterSync(list);
+        } else if (this.isMasterInitializedState()) {
+          assign([]);
+          localStorage.setItem(storageKey, '[]');
+          if (afterSync) afterSync([]);
+        }
+      };
+
+      const pullMainConfig = async () => {
+        const snap = await getDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'));
+        if (snap.exists()) {
+          const cloudData = snap.data() as Partial<SystemConfig>;
+          const mergedCfg: SystemConfig = {
+            ...this.cache.systemConfig,
+            ...cloudData,
+            ustadzList: Array.isArray(cloudData.ustadzList)
+              ? cloudData.ustadzList
+              : Array.isArray(cloudData.dataUstadzList)
+                ? cloudData.dataUstadzList
+                : (this.cache.systemConfig.ustadzList || []),
+          };
+          this.cache.systemConfig = mergedCfg;
+          localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(mergedCfg));
+          this.syncUstadzToLocal(mergedCfg.ustadzList || []);
         }
       };
 
       await Promise.all([
-        pullCol<Santri>(CLOUD_COLLECTIONS.SANTRI, STORAGE_KEYS.SANTRI, l => { this.cache.santri = l; }),
+        pullMainConfig(),
+        pullCol<Santri>(
+          CLOUD_COLLECTIONS.SANTRI,
+          STORAGE_KEYS.SANTRI,
+          l => { this.cache.santri = l; },
+          l => { this.syncSantriToLocal(l); }
+        ),
         pullCol<Perizinan>(CLOUD_COLLECTIONS.PERIZINAN, STORAGE_KEYS.PERIZINAN, l => { this.cache.perizinan = l; }),
         pullCol<Pelanggaran>(CLOUD_COLLECTIONS.PELANGGARAN, STORAGE_KEYS.PELANGGARAN, l => { this.cache.pelanggaran = l; }),
         pullCol<Sanksi>(CLOUD_COLLECTIONS.SANKSI, STORAGE_KEYS.SANKSI, l => { this.cache.sanksi = l; }),
@@ -1183,15 +1513,55 @@ class StorageService {
 
   public updateSystemConfig(config: Partial<SystemConfig>) {
     const current = this.getSystemConfig();
-    const updated = { ...current, ...config };
+    const updated: SystemConfig = {
+      ...current,
+      ...config,
+      initialSeedCompleted: true,
+    };
+    if (config.ustadzList !== undefined) {
+      updated.dataUstadzList = config.ustadzList;
+    } else if (config.dataUstadzList !== undefined) {
+      updated.ustadzList = config.dataUstadzList;
+    }
     this.cache.systemConfig = updated;
     localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(updated));
+    if (config.ustadzList !== undefined || config.dataUstadzList !== undefined) {
+      this.syncUstadzToLocal(updated.ustadzList || []);
+    }
     this.addLog('Konfigurasi Sistem', 'Admin memperbarui parameter pengaturan manual di Option Panel.', 'admin');
     this.notify();
 
     // Sync to central Firestore database
     setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(updated), { merge: true })
       .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`));
+  }
+
+  // ==========================================
+  // Master Data Ustadz & Ustadzah
+  // ==========================================
+  public getUstadzList(): DataUstadz[] {
+    const cfg = this.getSystemConfig();
+    return Array.isArray(cfg.ustadzList)
+      ? cfg.ustadzList
+      : Array.isArray(cfg.dataUstadzList)
+        ? cfg.dataUstadzList
+        : [];
+  }
+
+  public saveUstadz(ustadz: DataUstadz) {
+    const list = [...this.getUstadzList()];
+    const idx = list.findIndex(u => u.id === ustadz.id);
+    if (idx >= 0) {
+      list[idx] = ustadz;
+    } else {
+      list.unshift(ustadz);
+    }
+    this.updateSystemConfig({ ustadzList: list });
+  }
+
+  public deleteUstadz(id: string) {
+    const updated = this.getUstadzList().filter(u => u.id !== id);
+    this.updateSystemConfig({ ustadzList: updated });
   }
 
   // Gender Scope
@@ -1229,7 +1599,7 @@ class StorageService {
   // Master Data Santri
   // ==========================================
   public getSantriList(): Santri[] {
-    return this.cache.santri.length > 0 ? this.cache.santri : INITIAL_SANTRI;
+    return this.cache.santri;
   }
 
   public saveSantri(santri: Santri) {
@@ -1243,7 +1613,7 @@ class StorageService {
       this.addLog('Tambah Santri', `Menambahkan santri: ${santri.nama} (${santri.nis})`, 'santri');
     }
     this.cache.santri = list;
-    localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
+    this.syncSantriToLocal(list);
     this.notify();
 
     // Realtime write to central Firestore database
@@ -1256,7 +1626,7 @@ class StorageService {
     const target = list.find(s => s.id === id);
     const updated = list.filter(s => s.id !== id);
     this.cache.santri = updated;
-    localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(updated));
+    this.syncSantriToLocal(updated);
     if (target) {
       this.addLog('Hapus Santri', `Menghapus data santri: ${target.nama} (${target.nis})`, 'santri');
     }
@@ -1274,7 +1644,7 @@ class StorageService {
       santri.suspendIzinHingga = suspendUntilDate;
       santri.alasanSuspensi = alasan;
       this.cache.santri = list;
-      localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
+      this.syncSantriToLocal(list);
       this.addLog(
         'Penangguhan Izin Santri',
         `Santri ${santri.nama} (${santri.nis}) ditangguhkan izin keluarnya hingga ${suspendUntilDate}. Alasan: ${alasan}`,
@@ -1295,7 +1665,7 @@ class StorageService {
       delete santri.suspendIzinHingga;
       delete santri.alasanSuspensi;
       this.cache.santri = list;
-      localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(list));
+      this.syncSantriToLocal(list);
       this.addLog(
         'Pemulihan Izin Santri',
         `Penangguhan izin keluar santri ${santri.nama} (${santri.nis}) telah dipulihkan.`,
@@ -1312,7 +1682,7 @@ class StorageService {
   // Dewan Keamanan & Piket
   // ==========================================
   public getDewanKeamananList(): DewanKeamanan[] {
-    return this.cache.dewan.length > 0 ? this.cache.dewan : INITIAL_DEWAN_KEAMANAN;
+    return this.cache.dewan;
   }
 
   public saveDewanKeamanan(pengurus: DewanKeamanan) {
@@ -1346,7 +1716,7 @@ class StorageService {
   // Perizinan Santri
   // ==========================================
   public getPerizinanList(): Perizinan[] {
-    return this.cache.perizinan.length > 0 ? this.cache.perizinan : INITIAL_PERIZINAN;
+    return this.cache.perizinan;
   }
 
   public savePerizinan(izin: Perizinan, note?: string) {
@@ -1518,7 +1888,7 @@ class StorageService {
   // Tata Tertib
   // ==========================================
   public getTataTertibList(): TataTertib[] {
-    return this.cache.tataTertib.length > 0 ? this.cache.tataTertib : INITIAL_TATA_TERTIB;
+    return this.cache.tataTertib;
   }
 
   public saveTataTertib(tt: TataTertib) {
@@ -1551,7 +1921,7 @@ class StorageService {
   // Pelanggaran & Takzir
   // ==========================================
   public getPelanggaranList(): Pelanggaran[] {
-    return this.cache.pelanggaran.length > 0 ? this.cache.pelanggaran : INITIAL_PELANGGARAN;
+    return this.cache.pelanggaran;
   }
 
   public savePelanggaran(pel: Pelanggaran, note?: string) {
@@ -1643,9 +2013,9 @@ class StorageService {
     if (santri) {
       santri.poinPelanggaran = Math.max(0, (santri.poinPelanggaran || 0) + poinDelta);
       this.cache.santri = santriList;
-      localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(santriList));
+      this.syncSantriToLocal(santriList);
       setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true })
-        .catch(() => {});
+        .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`));
     }
   }
 
@@ -1653,7 +2023,7 @@ class StorageService {
   // Sanksi & Takzir Edukatif
   // ==========================================
   public getSanksiList(): Sanksi[] {
-    return this.cache.sanksi.length > 0 ? this.cache.sanksi : INITIAL_SANKSI;
+    return this.cache.sanksi;
   }
 
   public saveSanksi(sanksi: Sanksi, note?: string) {
@@ -1767,7 +2137,7 @@ class StorageService {
   }
 
   public getLogs(): LogAktivitas[] {
-    return this.cache.logs.length > 0 ? this.cache.logs : INITIAL_LOGS;
+    return this.cache.logs;
   }
 
   public addAuditLog(entry: Partial<LogAktivitas>): LogAktivitas {
@@ -2097,7 +2467,7 @@ class StorageService {
   // 1. Struktur Organisasi Pondok
   // ==========================================
   public getStrukturOrganisasi(): StrukturOrganisasiNode[] {
-    return this.cache.strukturOrganisasi.length > 0 ? this.cache.strukturOrganisasi : INITIAL_STRUKTUR_ORGANISASI;
+    return this.cache.strukturOrganisasi;
   }
 
   public saveStrukturNode(node: StrukturOrganisasiNode) {
@@ -2129,7 +2499,7 @@ class StorageService {
   // 2. Ketua Pondok (Agenda, Evaluasi, Pengajuan Divisi)
   // ==========================================
   public getAgendaPengurus(): AgendaPengurus[] {
-    return this.cache.agendaPengurus.length > 0 ? this.cache.agendaPengurus : INITIAL_AGENDA_PENGURUS;
+    return this.cache.agendaPengurus;
   }
 
   public checkAndDetectTodayAgendas(): number {
@@ -2209,7 +2579,7 @@ class StorageService {
   }
 
   public getEvaluasiKepengurusan(): EvaluasiKepengurusan[] {
-    return this.cache.evaluasiKepengurusan.length > 0 ? this.cache.evaluasiKepengurusan : INITIAL_EVALUASI_KEPENGURUSAN;
+    return this.cache.evaluasiKepengurusan;
   }
 
   public saveEvaluasiKepengurusan(evaluasi: EvaluasiKepengurusan) {
@@ -2307,7 +2677,7 @@ class StorageService {
   // 4. Bendahara (Keuangan Kas Pondok)
   // ==========================================
   public getTransaksiKeuangan(): TransaksiKeuangan[] {
-    return this.cache.transaksiKeuangan.length > 0 ? this.cache.transaksiKeuangan : INITIAL_TRANSAKSI_KEUANGAN;
+    return this.cache.transaksiKeuangan;
   }
 
   public saveTransaksiKeuangan(trx: TransaksiKeuangan) {
@@ -2338,7 +2708,7 @@ class StorageService {
   // 5. Perlengkapan (Inventaris & Peminjaman)
   // ==========================================
   public getBarangInventaris(): BarangInventaris[] {
-    return this.cache.barangInventaris.length > 0 ? this.cache.barangInventaris : INITIAL_BARANG_INVENTARIS;
+    return this.cache.barangInventaris;
   }
 
   public saveBarangInventaris(barang: BarangInventaris) {
@@ -2366,7 +2736,7 @@ class StorageService {
   }
 
   public getPeminjamanBarang(): PeminjamanBarang[] {
-    return this.cache.peminjamanBarang.length > 0 ? this.cache.peminjamanBarang : INITIAL_PEMINJAMAN_BARANG;
+    return this.cache.peminjamanBarang;
   }
 
   public savePeminjamanBarang(pjm: PeminjamanBarang) {
@@ -2394,22 +2764,151 @@ class StorageService {
   }
 
   // ==========================================
-  // Backup & Restore
+  // Pembersihan Data Sample (Pertahankan Data Asli Pengurus)
+  // ==========================================
+  public async clearAllSampleData(): Promise<{
+    removedSantri: number;
+    removedUstadz: number;
+    removedLainnya: number;
+  }> {
+    const sampleSantriIds = new Set(INITIAL_SANTRI.map(s => s.id));
+    const sampleUstadzIds = new Set((INITIAL_SYSTEM_CONFIG.ustadzList || []).map(u => u.id));
+
+    const prevSantri = this.getSantriList();
+    const keptSantri = prevSantri.filter(s => !sampleSantriIds.has(s.id));
+    const removedSantriList = prevSantri.filter(s => sampleSantriIds.has(s.id));
+    this.cache.santri = keptSantri;
+    this.syncSantriToLocal(keptSantri);
+
+    const prevUstadz = this.getUstadzList();
+    const keptUstadz = prevUstadz.filter(u => !sampleUstadzIds.has(u.id));
+    const removedUstadzCount = prevUstadz.length - keptUstadz.length;
+    this.syncUstadzToLocal(keptUstadz);
+
+    let removedLainnya = 0;
+    const filterSampleCol = async <T extends { id: string }>(
+      current: T[],
+      sampleItems: T[],
+      colName: string,
+      storageKey: string,
+      assign: (items: T[]) => void
+    ) => {
+      const sampleIds = new Set(sampleItems.map(i => i.id));
+      const kept = current.filter(i => !sampleIds.has(i.id));
+      const removed = current.filter(i => sampleIds.has(i.id));
+      removedLainnya += removed.length;
+      assign(kept);
+      localStorage.setItem(storageKey, JSON.stringify(kept));
+      for (const item of removed) {
+        try {
+          await deleteDoc(doc(db, colName, item.id));
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    for (const s of removedSantriList) {
+      try {
+        await deleteDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, s.id));
+      } catch {
+        // ignore
+      }
+    }
+
+    await Promise.all([
+      filterSampleCol(this.cache.dewan, INITIAL_DEWAN_KEAMANAN, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, STORAGE_KEYS.DEWAN_KEAMANAN, l => { this.cache.dewan = l; }),
+      filterSampleCol(this.cache.perizinan, INITIAL_PERIZINAN, CLOUD_COLLECTIONS.PERIZINAN, STORAGE_KEYS.PERIZINAN, l => { this.cache.perizinan = l; }),
+      filterSampleCol(this.cache.pelanggaran, INITIAL_PELANGGARAN, CLOUD_COLLECTIONS.PELANGGARAN, STORAGE_KEYS.PELANGGARAN, l => { this.cache.pelanggaran = l; }),
+      filterSampleCol(this.cache.sanksi, INITIAL_SANKSI, CLOUD_COLLECTIONS.SANKSI, STORAGE_KEYS.SANKSI, l => { this.cache.sanksi = l; }),
+      filterSampleCol(this.cache.logs, INITIAL_LOGS, CLOUD_COLLECTIONS.LOGS, STORAGE_KEYS.LOGS, l => { this.cache.logs = l; }),
+      filterSampleCol(this.cache.koordinasi, INITIAL_KOORDINASI, CLOUD_COLLECTIONS.KOORDINASI, STORAGE_KEYS.KOORDINASI, l => { this.cache.koordinasi = l; }),
+      filterSampleCol(this.cache.agendaPengurus, INITIAL_AGENDA_PENGURUS, CLOUD_COLLECTIONS.AGENDA_PENGURUS, STORAGE_KEYS.AGENDA_PENGURUS, l => { this.cache.agendaPengurus = l; }),
+      filterSampleCol(this.cache.evaluasiKepengurusan, INITIAL_EVALUASI_KEPENGURUSAN, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, STORAGE_KEYS.EVALUASI_KEPENGURUSAN, l => { this.cache.evaluasiKepengurusan = l; }),
+      filterSampleCol(this.cache.pengajuanDivisi, INITIAL_PENGAJUAN_DIVISI, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, STORAGE_KEYS.PENGAJUAN_DIVISI, l => { this.cache.pengajuanDivisi = l; }),
+      filterSampleCol(this.cache.arsipSurat, INITIAL_ARSIP_SURAT, CLOUD_COLLECTIONS.SURAT_MENYURAT, STORAGE_KEYS.SURAT_MENYURAT, l => { this.cache.arsipSurat = l; }),
+      filterSampleCol(this.cache.transaksiKeuangan, INITIAL_TRANSAKSI_KEUANGAN, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, STORAGE_KEYS.KEUANGAN_TRANSAKSI, l => { this.cache.transaksiKeuangan = l; }),
+      filterSampleCol(this.cache.barangInventaris, INITIAL_BARANG_INVENTARIS, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, STORAGE_KEYS.PERLENGKAPAN_INVENTARIS, l => { this.cache.barangInventaris = l; }),
+      filterSampleCol(this.cache.peminjamanBarang, INITIAL_PEMINJAMAN_BARANG, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN, l => { this.cache.peminjamanBarang = l; }),
+    ]);
+
+    const stripBySample = <T extends { id: string }>(arr: T[] | undefined, seedArr: T[] | undefined): T[] => {
+      if (!Array.isArray(arr)) return [];
+      const ids = new Set((seedArr || []).map(x => x.id));
+      return arr.filter(x => !ids.has(x.id));
+    };
+
+    const currentCfg = this.getSystemConfig();
+    const updatedCfg: SystemConfig = {
+      ...currentCfg,
+      initialSeedCompleted: true,
+      sampleCleared: true,
+      ustadzList: keptUstadz,
+      dataUstadzList: keptUstadz,
+      beritaTerkini: stripBySample(currentCfg.beritaTerkini, INITIAL_SYSTEM_CONFIG.beritaTerkini),
+      programKerjaList: stripBySample(currentCfg.programKerjaList, INITIAL_SYSTEM_CONFIG.programKerjaList),
+      izinPengurusList: stripBySample(currentCfg.izinPengurusList, INITIAL_SYSTEM_CONFIG.izinPengurusList),
+      notulenRapatList: stripBySample(currentCfg.notulenRapatList, INITIAL_SYSTEM_CONFIG.notulenRapatList),
+      syahriyahList: stripBySample(currentCfg.syahriyahList, INITIAL_SYSTEM_CONFIG.syahriyahList),
+      uangSakuList: stripBySample(currentCfg.uangSakuList, INITIAL_SYSTEM_CONFIG.uangSakuList),
+      anggaranList: stripBySample(currentCfg.anggaranList, INITIAL_SYSTEM_CONFIG.anggaranList),
+      mutasiBarangList: stripBySample(currentCfg.mutasiBarangList, INITIAL_SYSTEM_CONFIG.mutasiBarangList),
+      jadwalPerbaikanList: stripBySample(currentCfg.jadwalPerbaikanList, INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList),
+      kamarSantriList: stripBySample(currentCfg.kamarSantriList, INITIAL_SYSTEM_CONFIG.kamarSantriList),
+      pusatInformasiList: stripBySample(currentCfg.pusatInformasiList, INITIAL_PUSAT_INFORMASI_LIST),
+      murotilAbsensiSantriList: stripBySample(currentCfg.murotilAbsensiSantriList, INITIAL_MUROTIL_ABSENSI_SANTRI),
+      murotilSetoranList: stripBySample(currentCfg.murotilSetoranList, INITIAL_MUROTIL_SETORAN),
+      murotilAbsensiPjList: stripBySample(currentCfg.murotilAbsensiPjList, INITIAL_MUROTIL_ABSENSI_PJ),
+    };
+
+    this.cloudIsInitialized = true;
+    localStorage.setItem(ALMALIKI_KEYS.SAMPLE_CLEARED, 'true');
+    localStorage.setItem(ALMALIKI_KEYS.MASTER_INITIALIZED, 'true');
+    this.cache.systemConfig = updatedCfg;
+    localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(updatedCfg));
+
+    await setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(updatedCfg), { merge: true })
+      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`));
+
+    this.addLog(
+      'Hapus Data Sample',
+      `Membersihkan ${removedSantriList.length} data santri sample, ${removedUstadzCount} data ustadz/ustadzah sample, dan ${removedLainnya} entri contoh lainnya.`,
+      'admin'
+    );
+    this.notify();
+
+    return {
+      removedSantri: removedSantriList.length,
+      removedUstadz: removedUstadzCount,
+      removedLainnya,
+    };
+  }
+
+  // ==========================================
+  // Backup & Restore (JSON & Excel/CSV)
   // ==========================================
   public exportFullBackup(): string {
+    const cfg = this.getSystemConfig();
+    const ustadz = this.getUstadzList();
+    const santri = this.getSantriList();
     const backup = {
+      version: '2.0',
       timestamp: new Date().toISOString(),
       databaseId: 'ai-studio-simkamtibpondokp-0ca6cfda-fbeb-4a4d-91e1-25f2c74e35be',
       projectId: 'gold-card-583d0',
-      config: this.getSystemConfig(),
+      config: cfg,
+      ustadzList: ustadz,
+      almaliki_data_santri: santri,
+      almaliki_data_ustadzah: ustadz,
       users: this.getUsers(),
-      santri: this.getSantriList(),
+      santri,
       dewanKeamanan: this.getDewanKeamananList(),
       perizinan: this.getPerizinanList(),
       tataTertib: this.getTataTertibList(),
       pelanggaran: this.getPelanggaranList(),
       sanksi: this.getSanksiList(),
       logs: this.getLogs(),
+      koordinasi: this.getKoordinasiList(),
       strukturOrganisasi: this.getStrukturOrganisasi(),
       agendaPengurus: this.getAgendaPengurus(),
       evaluasiKepengurusan: this.getEvaluasiKepengurusan(),
@@ -2422,89 +2921,167 @@ class StorageService {
     return JSON.stringify(backup, null, 2);
   }
 
+  public exportSantriUstadzCsv(): string {
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows: string[] = [];
+    rows.push(['KATEGORI', 'ID', 'NIS_ATAU_NIP', 'NAMA_LENGKAP', 'GENDER', 'KELAS_ATAU_JABATAN', 'KAMAR_ATAU_BIDANG', 'NO_WA', 'STATUS', 'ALAMAT_ATAU_JADWAL'].map(esc).join(';'));
+
+    for (const s of this.getSantriList()) {
+      rows.push([
+        'SANTRI',
+        s.id,
+        s.nis,
+        s.nama,
+        s.gender,
+        s.kelas,
+        `${s.asrama} / ${s.kamar}`,
+        s.noWaWali,
+        s.status,
+        s.alamat,
+      ].map(esc).join(';'));
+    }
+
+    for (const u of this.getUstadzList()) {
+      rows.push([
+        u.gender === 'ustadzah' ? 'USTADZAH' : 'USTADZ',
+        u.id,
+        u.nip,
+        u.nama,
+        u.gender,
+        `${u.jabatan} (${u.divisi})`,
+        u.bidangKitab,
+        u.noWa,
+        `${u.statusMukim || 'Mukim'} · ${u.statusAktif ? 'Aktif' : 'Nonaktif'}`,
+        u.jadwalPiket,
+      ].map(esc).join(';'));
+    }
+
+    return '\uFEFF' + rows.join('\r\n');
+  }
+
   public async importFullBackup(jsonString: string): Promise<boolean> {
     try {
       const parsed = JSON.parse(jsonString);
-      if (parsed.santri) {
-        this.cache.santri = parsed.santri;
-        localStorage.setItem(STORAGE_KEYS.SANTRI, JSON.stringify(parsed.santri));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.SANTRI, parsed.santri);
+      if (!parsed || typeof parsed !== 'object') return false;
+
+      const importedSantri: Santri[] | null = Array.isArray(parsed.santri)
+        ? parsed.santri
+        : Array.isArray(parsed.almaliki_data_santri)
+          ? parsed.almaliki_data_santri
+          : null;
+
+      if (importedSantri !== null) {
+        this.cache.santri = importedSantri;
+        this.syncSantriToLocal(importedSantri);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SANTRI, importedSantri);
       }
-      if (parsed.dewanKeamanan) {
+
+      if (Array.isArray(parsed.dewanKeamanan)) {
         this.cache.dewan = parsed.dewanKeamanan;
         localStorage.setItem(STORAGE_KEYS.DEWAN_KEAMANAN, JSON.stringify(parsed.dewanKeamanan));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, parsed.dewanKeamanan);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, parsed.dewanKeamanan);
       }
-      if (parsed.perizinan) {
+      if (Array.isArray(parsed.perizinan)) {
         this.cache.perizinan = parsed.perizinan;
         localStorage.setItem(STORAGE_KEYS.PERIZINAN, JSON.stringify(parsed.perizinan));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PERIZINAN, parsed.perizinan);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERIZINAN, parsed.perizinan);
       }
-      if (parsed.tataTertib) {
+      if (Array.isArray(parsed.tataTertib)) {
         this.cache.tataTertib = parsed.tataTertib;
         localStorage.setItem(STORAGE_KEYS.TATA_TERTIB, JSON.stringify(parsed.tataTertib));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.TATA_TERTIB, parsed.tataTertib);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.TATA_TERTIB, parsed.tataTertib);
       }
-      if (parsed.pelanggaran) {
+      if (Array.isArray(parsed.pelanggaran)) {
         this.cache.pelanggaran = parsed.pelanggaran;
         localStorage.setItem(STORAGE_KEYS.PELANGGARAN, JSON.stringify(parsed.pelanggaran));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PELANGGARAN, parsed.pelanggaran);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PELANGGARAN, parsed.pelanggaran);
       }
-      if (parsed.sanksi) {
+      if (Array.isArray(parsed.sanksi)) {
         this.cache.sanksi = parsed.sanksi;
         localStorage.setItem(STORAGE_KEYS.SANKSI, JSON.stringify(parsed.sanksi));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.SANKSI, parsed.sanksi);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SANKSI, parsed.sanksi);
       }
-      if (parsed.users) {
+      if (Array.isArray(parsed.users)) {
         this.cache.users = parsed.users;
         localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(parsed.users));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.USERS, parsed.users);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.USERS, parsed.users);
       }
-      if (parsed.strukturOrganisasi) {
+      if (Array.isArray(parsed.koordinasi)) {
+        this.cache.koordinasi = parsed.koordinasi;
+        localStorage.setItem(STORAGE_KEYS.KOORDINASI, JSON.stringify(parsed.koordinasi));
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.KOORDINASI, parsed.koordinasi);
+      }
+      if (Array.isArray(parsed.strukturOrganisasi)) {
         this.cache.strukturOrganisasi = parsed.strukturOrganisasi;
         localStorage.setItem(STORAGE_KEYS.STRUKTUR_ORGANISASI, JSON.stringify(parsed.strukturOrganisasi));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, parsed.strukturOrganisasi);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, parsed.strukturOrganisasi);
       }
-      if (parsed.agendaPengurus) {
+      if (Array.isArray(parsed.agendaPengurus)) {
         this.cache.agendaPengurus = parsed.agendaPengurus;
         localStorage.setItem(STORAGE_KEYS.AGENDA_PENGURUS, JSON.stringify(parsed.agendaPengurus));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.AGENDA_PENGURUS, parsed.agendaPengurus);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.AGENDA_PENGURUS, parsed.agendaPengurus);
       }
-      if (parsed.evaluasiKepengurusan) {
+      if (Array.isArray(parsed.evaluasiKepengurusan)) {
         this.cache.evaluasiKepengurusan = parsed.evaluasiKepengurusan;
         localStorage.setItem(STORAGE_KEYS.EVALUASI_KEPENGURUSAN, JSON.stringify(parsed.evaluasiKepengurusan));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, parsed.evaluasiKepengurusan);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, parsed.evaluasiKepengurusan);
       }
-      if (parsed.pengajuanDivisi) {
+      if (Array.isArray(parsed.pengajuanDivisi)) {
         this.cache.pengajuanDivisi = parsed.pengajuanDivisi;
         localStorage.setItem(STORAGE_KEYS.PENGAJUAN_DIVISI, JSON.stringify(parsed.pengajuanDivisi));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, parsed.pengajuanDivisi);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, parsed.pengajuanDivisi);
       }
-      if (parsed.arsipSurat) {
+      if (Array.isArray(parsed.arsipSurat)) {
         this.cache.arsipSurat = parsed.arsipSurat;
         localStorage.setItem(STORAGE_KEYS.SURAT_MENYURAT, JSON.stringify(parsed.arsipSurat));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.SURAT_MENYURAT, parsed.arsipSurat);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SURAT_MENYURAT, parsed.arsipSurat);
       }
-      if (parsed.transaksiKeuangan) {
+      if (Array.isArray(parsed.transaksiKeuangan)) {
         this.cache.transaksiKeuangan = parsed.transaksiKeuangan;
         localStorage.setItem(STORAGE_KEYS.KEUANGAN_TRANSAKSI, JSON.stringify(parsed.transaksiKeuangan));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, parsed.transaksiKeuangan);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, parsed.transaksiKeuangan);
       }
-      if (parsed.barangInventaris) {
+      if (Array.isArray(parsed.barangInventaris)) {
         this.cache.barangInventaris = parsed.barangInventaris;
         localStorage.setItem(STORAGE_KEYS.PERLENGKAPAN_INVENTARIS, JSON.stringify(parsed.barangInventaris));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, parsed.barangInventaris);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, parsed.barangInventaris);
       }
-      if (parsed.peminjamanBarang) {
+      if (Array.isArray(parsed.peminjamanBarang)) {
         this.cache.peminjamanBarang = parsed.peminjamanBarang;
         localStorage.setItem(STORAGE_KEYS.PERLENGKAPAN_PEMINJAMAN, JSON.stringify(parsed.peminjamanBarang));
-        await this.uploadCollectionBatch(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, parsed.peminjamanBarang);
+        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, parsed.peminjamanBarang);
       }
-      if (parsed.config) {
-        this.cache.systemConfig = parsed.config;
-        localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(parsed.config));
-        await setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(parsed.config), { merge: true });
+
+      const importedUstadz: DataUstadz[] | null = Array.isArray(parsed.ustadzList)
+        ? parsed.ustadzList
+        : Array.isArray(parsed.almaliki_data_ustadzah)
+          ? parsed.almaliki_data_ustadzah
+          : Array.isArray(parsed.ustadzah)
+            ? parsed.ustadzah
+            : Array.isArray(parsed.config?.ustadzList)
+              ? parsed.config.ustadzList
+              : null;
+
+      if (parsed.config || importedUstadz !== null) {
+        const nextConfig: SystemConfig = {
+          ...this.cache.systemConfig,
+          ...(parsed.config || {}),
+          initialSeedCompleted: true,
+        };
+        if (importedUstadz !== null) {
+          nextConfig.ustadzList = importedUstadz;
+          nextConfig.dataUstadzList = importedUstadz;
+          this.syncUstadzToLocal(importedUstadz);
+        } else {
+          this.syncUstadzToLocal(nextConfig.ustadzList || []);
+        }
+        this.cache.systemConfig = nextConfig;
+        localStorage.setItem(STORAGE_KEYS.SYSTEM_CONFIG, JSON.stringify(nextConfig));
+        await setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(nextConfig), { merge: true });
       }
+
+      this.cloudIsInitialized = true;
+      localStorage.setItem(ALMALIKI_KEYS.MASTER_INITIALIZED, 'true');
       this.addLog('Restore Database', 'Berhasil memulihkan seluruh arsip database pusat', 'admin');
       this.notify();
       return true;

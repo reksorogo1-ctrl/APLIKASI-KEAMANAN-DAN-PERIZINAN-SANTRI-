@@ -397,6 +397,8 @@ export interface SystemConfig {
     putri: number;
     total: number;
   }[];
+  initialSeedCompleted?: boolean;
+  sampleCleared?: boolean;
 }
 
 // -------------------------------------------------------------

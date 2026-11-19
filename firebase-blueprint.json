@@ -139,7 +139,10 @@
         "murotilAbsensiSantriList": { "type": "array" },
         "murotilSetoranList": { "type": "array" },
         "murotilAbsensiPjList": { "type": "array" },
-        "murotilConfig": { "type": "object" }
+        "murotilConfig": { "type": "object" },
+        "ustadzList": { "type": "array" },
+        "initialSeedCompleted": { "type": "boolean" },
+        "sampleCleared": { "type": "boolean" }
       },
       "required": ["namaPondok"]
     },

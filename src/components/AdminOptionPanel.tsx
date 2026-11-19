@@ -2818,26 +2818,52 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 Cadangkan Seluruh Basis Data Pusat
               </h3>
               <p className="text-xs text-emerald-200/75 leading-relaxed font-mono">
-                Mengekspor seluruh tabel data santri, personil RBAC, arsip perizinan, tata tertib, kasus pelanggaran, dan riwayat audit log ke file JSON tunggal.
+                Mengekspor seluruh data santri, data ustadz &amp; ustadzah, personil RBAC, arsip perizinan, dan pengaturan ke file JSON atau Excel/CSV.
               </p>
-              <button
-                onClick={() => {
-                  const json = storageService.exportFullBackup();
-                  const blob = new Blob([json], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `backup_pusat_sim_kamtib_${new Date().toISOString().split('T')[0]}.json`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                }}
-                className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl border border-amber-300/60"
-              >
-                <Download className="w-4 h-4 text-slate-950" />
-                <span>Unduh Master Backup JSON</span>
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const json = storageService.exportFullBackup();
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `backup_pusat_sim_kamtib_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    setSaveSuccessMsg('Cadangan database lengkap (JSON) berhasil diunduh.');
+                    setTimeout(() => setSaveSuccessMsg(''), 4000);
+                  }}
+                  className="tactile-interactive flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl border border-amber-300/60"
+                >
+                  <Download className="w-4 h-4 text-slate-950" />
+                  <span>Cadangkan Data (Export JSON)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csv = storageService.exportSantriUstadzCsv();
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `data_santri_ustadzah_almaliki_${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    setSaveSuccessMsg('Rekap Data Santri & Ustadzah (Excel/CSV) berhasil diunduh.');
+                    setTimeout(() => setSaveSuccessMsg(''), 4000);
+                  }}
+                  className="tactile-interactive py-3 px-4 rounded-2xl bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-500/40 text-emerald-200 font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                >
+                  <FileText className="w-4 h-4 text-emerald-400" />
+                  <span>Excel (CSV)</span>
+                </button>
+              </div>
             </div>
 
             <div className="metallic-glass-card rounded-3xl p-6 border border-emerald-800/80 shadow-2xl space-y-4 hover-rainbow-edge card-3d-floating">
@@ -2846,11 +2872,11 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 Pulihkan Basis Data dari Master JSON
               </h3>
               <p className="text-xs text-emerald-200/75 leading-relaxed font-mono">
-                Memulihkan konfigurasi sistem, akun pengguna RBAC, dan rekam jejak santri dari arsip JSON cadangan terenkripsi ke database pusat.
+                Memulihkan konfigurasi sistem, data santri, data ustadzah, dan akun RBAC dari arsip JSON cadangan ke Firestore &amp; localStorage.
               </p>
               <label className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-800/80 text-white font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl hover-rainbow-edge">
                 <Upload className="w-4 h-4 text-emerald-400" />
-                <span>Pilih Berkas JSON Cadangan</span>
+                <span>Pulihkan Data (Import JSON)</span>
                 <input
                   type="file"
                   accept=".json"
@@ -2862,11 +2888,12 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                       const content = evt.target?.result as string;
                       const ok = await storageService.importFullBackup(content);
                       if (ok) {
-                        alert('Alhamdulillah, seluruh data berhasil disinkronkan kembali ke database pusat.');
+                        setSaveSuccessMsg('Alhamdulillah, seluruh data berhasil dipulihkan dan disinkronkan ke database pusat.');
                         onConfigUpdated();
                       } else {
-                        alert('File JSON tidak valid.');
+                        setSaveSuccessMsg('Gagal memulihkan database: Format file JSON tidak valid.');
                       }
+                      setTimeout(() => setSaveSuccessMsg(''), 5000);
                     };
                     reader.readAsText(file);
                     e.target.value = '';
@@ -2875,6 +2902,34 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 />
               </label>
             </div>
+          </div>
+
+          <div className="metallic-glass-card rounded-3xl p-5 border border-rose-500/30 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h4 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                Pembersihan Data Contoh (Sample)
+              </h4>
+              <p className="text-[11px] text-emerald-200/75 font-mono mt-0.5">
+                Hapus data sample bawaan dalam sekali klik tanpa menghapus data Santri &amp; Ustadzah asli yang sudah diinput pengurus.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setSaveSuccessMsg('Membersihkan data sample...');
+                const res = await storageService.clearAllSampleData();
+                onConfigUpdated();
+                setSaveSuccessMsg(
+                  `Selesai: ${res.removedSantri} santri sample & ${res.removedUstadz} ustadzah sample dihapus. Data asli tetap tersimpan permanen.`
+                );
+                setTimeout(() => setSaveSuccessMsg(''), 5000);
+              }}
+              className="tactile-interactive shrink-0 py-2.5 px-4 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/50 text-rose-200 font-bold font-mono text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              <span>Hapus Semua Data Sample</span>
+            </button>
           </div>
         </div>
       )}

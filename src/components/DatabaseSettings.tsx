@@ -13,7 +13,9 @@ import {
   Laptop,
   Code2,
   Check,
-  Activity
+  Activity,
+  Trash2,
+  FileSpreadsheet
 } from 'lucide-react';
 import { storageService, CloudSyncTelemetry } from '../services/storageService';
 import { Santri, Perizinan, Pelanggaran, Sanksi, DewanKeamanan, LogAktivitas } from '../types';
@@ -38,6 +40,8 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [syncTelemetry, setSyncTelemetry] = useState<CloudSyncTelemetry>(storageService.getCloudSyncStatus());
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isClearingSample, setIsClearingSample] = useState<boolean>(false);
+  const [confirmClearSample, setConfirmClearSample] = useState<boolean>(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -60,6 +64,20 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
     setStatusMessage('Cadangan data lengkap berhasil diunduh ke file JSON.');
   };
 
+  const handleDownloadExcelCsv = () => {
+    const csvStr = storageService.exportSantriUstadzCsv();
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `data_santri_ustadzah_almaliki_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setStatusMessage('Data Santri & Ustadzah berhasil diunduh ke file Excel/CSV.');
+  };
+
   const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -69,10 +87,10 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
       const content = evt.target?.result as string;
       const success = await storageService.importFullBackup(content);
       if (success) {
-        setStatusMessage('Alhamdulillah, pemulihan database dari file JSON berhasil diterapkan dan disinkronkan ke database pusat.');
+        setStatusMessage('Alhamdulillah, pemulihan database dari file JSON berhasil diterapkan dan disinkronkan ke database pusat & penyimpanan lokal.');
         setSyncTelemetry(storageService.getCloudSyncStatus());
       } else {
-        alert('Gagal memulihkan database: Format file tidak valid.');
+        setStatusMessage('Gagal memulihkan database: Format file JSON tidak valid.');
       }
     };
     reader.readAsText(file);
@@ -92,11 +110,26 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
     }
   };
 
-  const handleResetToDefault = async () => {
-    if (confirm('PERINGATAN: Apakah Anda yakin ingin menyinkronkan ulang seluruh data dengan Database Pusat Pesantren Al-Maliki?')) {
-      await storageService.forcePullFromCloud();
-      setStatusMessage('Database lokal telah disinkronkan kembali dari database pusat pesantren.');
+  const handleClearSampleData = async () => {
+    setIsClearingSample(true);
+    try {
+      const res = await storageService.clearAllSampleData();
+      setConfirmClearSample(false);
+      setSyncTelemetry(storageService.getCloudSyncStatus());
+      setStatusMessage(
+        `Data sample berhasil dibersihkan (${res.removedSantri} santri sample, ${res.removedUstadz} ustadz/ustadzah sample, ${res.removedLainnya} entri contoh lainnya). Data asli pengurus tetap aman.`
+      );
+    } catch {
+      setStatusMessage('Terjadi kendala saat membersihkan data sample.');
+    } finally {
+      setIsClearingSample(false);
     }
+  };
+
+  const handleResetToDefault = async () => {
+    await storageService.forcePullFromCloud();
+    setSyncTelemetry(storageService.getCloudSyncStatus());
+    setStatusMessage('Database lokal telah disinkronkan kembali dari database pusat pesantren.');
   };
 
   return (
@@ -296,13 +329,22 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
             Cadangan ini dapat disimpan di komputer sekretariat pondok atau flashdisk sebagai arsip keamanan berkala. Data terenkripsi rapi dan dapat dipulihkan sewaktu-waktu.
           </p>
 
-          <button
-            onClick={handleDownloadBackup}
-            className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-bold font-mono text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xl border border-amber-300/60"
-          >
-            <Download className="w-4 h-4 text-slate-950" />
-            <span>Unduh File Cadangan JSON</span>
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <button
+              onClick={handleDownloadBackup}
+              className="tactile-interactive flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-bold font-mono text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xl border border-amber-300/60"
+            >
+              <Download className="w-4 h-4 text-slate-950" />
+              <span>Cadangkan Data (Export JSON)</span>
+            </button>
+            <button
+              onClick={handleDownloadExcelCsv}
+              className="tactile-interactive py-3 px-4 rounded-2xl bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-500/40 text-emerald-200 font-bold font-mono text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>Export Excel (CSV)</span>
+            </button>
+          </div>
         </div>
 
         {/* Panel 2: Restore from File */}
@@ -312,45 +354,78 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
               <Upload className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide">Pulihkan Data dari File Cadangan</h3>
+              <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide">Pulihkan Data (Import JSON)</h3>
               <p className="text-xs text-emerald-200/75 font-mono">Unggah file .json hasil cadangan sebelumnya</p>
             </div>
           </div>
 
           <p className="text-xs text-emerald-100/90 leading-relaxed font-sans">
-            Fitur ini akan memperbarui dan menyelaraskan seluruh tabel database dengan berkas arsip yang Anda pilih, sekaligus memperbarui database pusat Firestore.
+            Fitur ini akan memperbarui dan menyelaraskan seluruh tabel database dengan berkas arsip yang Anda pilih, sekaligus memperbarui database pusat Firestore &amp; cadangan lokal.
           </p>
 
           <label className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-800/80 text-white font-bold font-mono text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xl hover-rainbow-edge">
             <Upload className="w-4 h-4 text-emerald-400" />
-            <span>Pilih File Cadangan JSON</span>
+            <span>Pulihkan Data (Import JSON)</span>
             <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
           </label>
         </div>
 
-        {/* Panel 3: Reset to Factory Initial Data */}
+        {/* Panel 3: Clear Sample Data & Cloud Resync */}
         <div className="metallic-glass-card rounded-3xl p-6 border border-emerald-800/80 space-y-4 shadow-2xl md:col-span-2 hover-rainbow-edge card-3d-floating">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/30 glow-red">
               <RotateCcw className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide">Reset ke Data Awal Pesantren Al-Maliki</h3>
-              <p className="text-xs text-emerald-200/75 font-mono">Kembalikan basis data ke data master awal sistem</p>
+              <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide">Pemeliharaan Data Sample &amp; Sinkronisasi Pusat</h3>
+              <p className="text-xs text-emerald-200/75 font-mono">Bersihkan data contoh bawaan tanpa menghapus data santri &amp; ustadzah yang sudah diinput pengurus</p>
             </div>
           </div>
 
           <p className="text-xs text-emerald-200/75 font-mono">
-            Gunakan opsi ini jika Anda ingin mengembalikan sampel data santri, jadwal dewan keamanan, dan daftar perizinan ke konfigurasi bawaan pertama kali.
+            Data yang sudah Anda tambahkan atau ubah tersimpan permanen di Firestore &amp; cadangan lokal dan tidak akan tertimpa data sample saat refresh maupun deploy ulang.
           </p>
 
-          <button
-            onClick={handleResetToDefault}
-            className="tactile-interactive py-3 px-5 rounded-2xl bg-rose-950/60 hover:bg-rose-900 border border-rose-700/60 text-rose-200 font-bold font-mono text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg hover-rainbow-edge"
-          >
-            <RotateCcw className="w-4 h-4 text-rose-400" />
-            <span>Reset Database ke Setelan Awal</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {!confirmClearSample ? (
+              <button
+                type="button"
+                onClick={() => setConfirmClearSample(true)}
+                className="tactile-interactive py-2.5 px-4 rounded-xl bg-rose-950/70 hover:bg-rose-900 border border-rose-500/50 text-rose-200 font-bold font-mono text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                <span>Hapus Semua Data Sample</span>
+              </button>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-rose-950/60 border border-rose-500/50">
+                <span className="text-[11px] font-mono text-rose-200 px-1">Yakin hapus seluruh data contoh?</span>
+                <button
+                  type="button"
+                  disabled={isClearingSample}
+                  onClick={handleClearSampleData}
+                  className="tactile-interactive py-1.5 px-3 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold font-mono text-[11px] cursor-pointer disabled:opacity-60"
+                >
+                  {isClearingSample ? 'Menghapus...' : 'Ya, Bersihkan Sample'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearSample(false)}
+                  className="py-1.5 px-3 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 font-mono text-[11px] cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleResetToDefault}
+              className="tactile-interactive py-2.5 px-4 rounded-xl bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-700/60 text-emerald-200 font-bold font-mono text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Tarik Ulang dari Database Pusat</span>
+            </button>
+          </div>
         </div>
 
       </div>

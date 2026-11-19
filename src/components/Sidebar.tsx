@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { UserRole, UserAccount } from '../types';
 import { PWAInstallButton } from './PWAInstallButton';
+import { playClickSound, unlockAudioAndSpeech } from '../utils/soundEffects';
 
 export type ActiveMenu =
   | 'dashboard'
@@ -815,8 +816,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={onClose}
-              className="md:hidden p-2 text-[#D4AF37] hover:text-white rounded-xl hover:bg-emerald-900/60 transition-colors cursor-pointer shrink-0 border border-emerald-500/30"
+              onClick={() => {
+                unlockAudioAndSpeech();
+                playClickSound();
+                onClose();
+              }}
+              className="md:hidden p-2 text-[#D4AF37] hover:text-white rounded-xl hover:bg-emerald-900/60 transition-colors cursor-pointer shrink-0 border border-emerald-500/30 touch-manipulation"
               aria-label="Tutup Menu"
             >
               <X className="w-5 h-5" />
@@ -837,7 +842,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <nav className="space-y-1.5 pb-4">
-              {navItems.map((item, idx) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = item.subTab
                   ? activeMenu === item.menu && activeSubTab === item.subTab
@@ -846,9 +851,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 return (
                   <motion.button
                     key={item.key}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: Math.min(idx * 0.03, 0.28) }}
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
                       onSelectMenu(item.menu, item.subTab);
