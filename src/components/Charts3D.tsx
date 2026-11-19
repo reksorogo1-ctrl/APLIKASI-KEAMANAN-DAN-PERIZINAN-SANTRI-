@@ -995,10 +995,12 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
     yTop: number,
     w: number,
     h: number,
-    sIdx: number,
+    fillFrontId: string,
+    fillTopId: string,
     color: string,
     isActive: boolean,
-    delayMs: number
+    delayMs: number,
+    keyId: string
   ) => {
     if (h <= 0.5) return null;
     const dx = Math.min(isoDx, w * 0.42);
@@ -1010,7 +1012,7 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
 
     return (
       <g
-        key={`${x}-${yTop}-${sIdx}`}
+        key={keyId}
         className="bar-3d-grow"
         style={{ animationDelay: `${delayMs}ms` }}
       >
@@ -1025,7 +1027,7 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
           y={yTop}
           width={w}
           height={h}
-          fill={`url(#b3d-front-${uid}-${sIdx})`}
+          fill={`url(#${fillFrontId})`}
           stroke={isActive ? '#ffffff' : 'rgba(255,255,255,0.22)'}
           strokeWidth={isActive ? 1.2 : 0.6}
         />
@@ -1039,7 +1041,7 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
         {/* Bright Lit Top Parallelogram Cap */}
         <polygon
           points={topPoints}
-          fill={`url(#b3d-top-${uid}-${sIdx})`}
+          fill={`url(#${fillTopId})`}
           stroke="rgba(255,255,255,0.38)"
           strokeWidth={0.7}
         />
@@ -1078,6 +1080,23 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
                 </linearGradient>
               </React.Fragment>
             ))}
+            {series.length === 1 &&
+              data.map((row, colIdx) => {
+                if (typeof row.color !== 'string') return null;
+                return (
+                  <React.Fragment key={`rc-${colIdx}`}>
+                    <linearGradient id={`b3d-front-${uid}-row-${colIdx}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor={shadeHex(row.color, 1.18)} />
+                      <stop offset="55%" stopColor={row.color} />
+                      <stop offset="100%" stopColor={shadeHex(row.color, 0.68)} />
+                    </linearGradient>
+                    <linearGradient id={`b3d-top-${uid}-row-${colIdx}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor={shadeHex(row.color, 1.48)} />
+                      <stop offset="100%" stopColor={shadeHex(row.color, 1.15)} />
+                    </linearGradient>
+                  </React.Fragment>
+                );
+              })}
           </defs>
 
           {/* 3D Floor Plane */}
@@ -1129,6 +1148,8 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
             const truncated =
               data.length > 6 && labelText.length > 8
                 ? `${labelText.slice(0, 7)}..`
+                : labelText.length > 14
+                ? `${labelText.slice(0, 12)}..`
                 : labelText;
 
             if (stacked) {
@@ -1160,10 +1181,12 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
                       yTop,
                       pillarW,
                       segH,
-                      sIdx,
+                      `b3d-front-${uid}-${sIdx}`,
+                      `b3d-top-${uid}-${sIdx}`,
                       s.color,
                       isHovered,
-                      colIdx * 45 + sIdx * 20
+                      colIdx * 45 + sIdx * 20,
+                      `${colIdx}-${sIdx}`
                     );
                   })}
                   <text
@@ -1185,7 +1208,7 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
             const groupPad = Math.max(6, slotW * 0.16);
             const gap = series.length > 1 ? 4 : 0;
             const usableW = Math.max(12, slotW - groupPad * 2 - gap * (series.length - 1));
-            const pillarW = Math.min(28, Math.max(8, usableW / series.length));
+            const pillarW = Math.min(34, Math.max(8, usableW / series.length));
             const totalBarsW = pillarW * series.length + gap * (series.length - 1);
             const startX = colX + (slotW - totalBarsW) / 2 - isoDx * 0.3;
 
@@ -1208,15 +1231,43 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
                   const barH = (val / maxY) * innerH;
                   const yTop = margin.top + innerH - barH;
                   const bx = startX + sIdx * (pillarW + gap);
-                  return renderIsoPillar(
-                    bx,
-                    yTop,
-                    pillarW,
-                    barH,
-                    sIdx,
-                    s.color,
-                    isHovered,
-                    colIdx * 45 + sIdx * 30
+                  const hasCustomRowColor = series.length === 1 && typeof row.color === 'string';
+                  const barColor = hasCustomRowColor ? row.color : s.color;
+                  const fillFrontId = hasCustomRowColor
+                    ? `b3d-front-${uid}-row-${colIdx}`
+                    : `b3d-front-${uid}-${sIdx}`;
+                  const fillTopId = hasCustomRowColor
+                    ? `b3d-top-${uid}-row-${colIdx}`
+                    : `b3d-top-${uid}-${sIdx}`;
+
+                  return (
+                    <React.Fragment key={sIdx}>
+                      {renderIsoPillar(
+                        bx,
+                        yTop,
+                        pillarW,
+                        barH,
+                        fillFrontId,
+                        fillTopId,
+                        barColor,
+                        isHovered,
+                        colIdx * 45 + sIdx * 30,
+                        `${colIdx}-${sIdx}`
+                      )}
+                      {series.length === 1 && data.length <= 6 && (
+                        <text
+                          x={bx + pillarW / 2 + isoDx * 0.3}
+                          y={Math.max(12, yTop - isoDy - 6)}
+                          textAnchor="middle"
+                          fill={isHovered ? '#f3d266' : shadeHex(barColor, 1.3)}
+                          fontSize="11"
+                          fontFamily="ui-monospace, monospace"
+                          fontWeight="800"
+                        >
+                          {val}
+                        </text>
+                      )}
+                    </React.Fragment>
                   );
                 })}
                 <text
@@ -1249,12 +1300,13 @@ export const BarChart3D: React.FC<BarChart3DProps> = ({
             </p>
             {series.map((s) => {
               const val = Number(hoveredRow[s.key] ?? 0);
+              const dotColor = series.length === 1 && typeof hoveredRow.color === 'string' ? hoveredRow.color : s.color;
               return (
                 <div key={s.key} className="flex items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5 text-emerald-100/90 truncate">
                     <span
                       className="w-2 h-2 rounded-sm shrink-0"
-                      style={{ backgroundColor: s.color }}
+                      style={{ backgroundColor: dotColor }}
                     />
                     <span className="truncate">{s.label}</span>
                   </span>

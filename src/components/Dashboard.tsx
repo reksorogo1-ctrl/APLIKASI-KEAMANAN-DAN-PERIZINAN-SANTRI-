@@ -22,8 +22,9 @@ import { Santri, Perizinan, Pelanggaran, Sanksi, UserAccount } from '../types';
 import { KeamananSubTab } from './Sidebar';
 import { WhatsAppTemplates, createWhatsAppUrl } from '../services/waService';
 import { RadarMonitoringPerizinan } from './RadarMonitoringPerizinan';
-import { AdvancedDataVisualization, AnimatedCounter } from './AdvancedDataVisualization';
+import { AdvancedDataVisualization } from './AdvancedDataVisualization';
 import { DashboardRekapitulasiTables } from './DashboardRekapitulasiTables';
+import { Extruded3DValue } from './Charts3D';
 import { storageService } from '../services/storageService';
 import { getWIBDateTime } from '../utils/timeUtils';
 import {
@@ -307,21 +308,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
           whileHover={{ y: -3, transition: { duration: 0.18 } }}
           whileTap={{ scale: 0.99 }}
           onClick={() => handleCardClick('kpi-diluar', () => onNavigate('monitoring'))}
-          className={`p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
+          className={`p-5 rounded-2xl kpi-glass-3d cursor-pointer group ${
             activeCardId === 'kpi-diluar' ? 'rainbow-active-border' : ''
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold text-emerald-200/75 uppercase tracking-wider">Sedang di Luar</span>
+            <span className="text-xs font-mono font-semibold text-emerald-200/80 uppercase tracking-wider">Sedang di Luar</span>
             <div className="p-2.5 rounded-xl bg-amber-400/10 text-amber-300 border border-amber-400/30 group-hover:bg-amber-400/20 group-hover:scale-110 transition-all glow-gold">
               <DoorOpen className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black font-mono tabular-nums text-white drop-shadow-sm">
-              <AnimatedCounter value={sedangDiLuar.length} />
+          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <Extruded3DValue value={sedangDiLuar.length} tone="silver" className="text-3xl" />
+              <span className="text-xs text-emerald-200/75 font-mono">santri aktif</span>
+            </div>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums badge-3d-up text-emerald-100">
+              ▲ {santriList.length > 0 ? ((sedangDiLuar.length / santriList.length) * 100).toFixed(1) : '0.0'}%
             </span>
-            <span className="text-xs text-emerald-200/75 font-mono">santri aktif</span>
           </div>
           <div className="mt-3 pt-3 border-t border-emerald-800/80 flex items-center justify-between text-[11px] text-amber-300 font-bold font-mono">
             <span>LIVE MONITORING</span>
@@ -336,21 +340,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
           whileHover={{ y: -3, transition: { duration: 0.18 } }}
           whileTap={{ scale: 0.99 }}
           onClick={() => handleCardClick('kpi-terlambat', () => onNavigate('monitoring'))}
-          className={`p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
+          className={`p-5 rounded-2xl kpi-glass-3d cursor-pointer group ${
             activeCardId === 'kpi-terlambat' ? 'rainbow-active-border' : ''
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold text-emerald-200/75 uppercase tracking-wider">Santri Terlambat</span>
+            <span className="text-xs font-mono font-semibold text-emerald-200/80 uppercase tracking-wider">Santri Terlambat</span>
             <div className="p-2.5 rounded-xl bg-red-600/15 text-red-400 border border-red-500/30 group-hover:bg-red-600/25 group-hover:scale-110 transition-all glow-red">
               <Clock className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black font-mono tabular-nums text-red-400 drop-shadow-sm">
-              <AnimatedCounter value={terlambatList.length} />
+          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <Extruded3DValue value={terlambatList.length} tone="rose" className="text-3xl" />
+              <span className="text-xs text-emerald-200/75 font-mono">lewat jadwal</span>
+            </div>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                terlambatList.length > 0 ? 'badge-3d-down text-rose-100' : 'badge-3d-up text-emerald-100'
+              }`}
+            >
+              {terlambatList.length > 0 ? '▼' : '▲'}{' '}
+              {perizinanList.length > 0
+                ? `${terlambatList.length > 0 ? '-' : '+'}${((terlambatList.length / perizinanList.length) * 100).toFixed(1)}%`
+                : '0.0%'}
             </span>
-            <span className="text-xs text-emerald-200/75 font-mono">lewat jadwal</span>
           </div>
           <div className="mt-3 pt-3 border-t border-emerald-800/80 flex items-center justify-between text-[11px] text-red-400 font-bold font-mono">
             <span>DISPATCH PROTOKOL</span>
@@ -365,21 +379,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
           whileHover={{ y: -3, transition: { duration: 0.18 } }}
           whileTap={{ scale: 0.99 }}
           onClick={() => handleCardClick('kpi-verif', () => onNavigate('perizinan'))}
-          className={`p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
+          className={`p-5 rounded-2xl kpi-glass-3d cursor-pointer group ${
             activeCardId === 'kpi-verif' ? 'rainbow-active-border' : ''
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold text-emerald-200/75 uppercase tracking-wider">Verifikasi Izin</span>
+            <span className="text-xs font-mono font-semibold text-emerald-200/80 uppercase tracking-wider">Verifikasi Izin</span>
             <div className="p-2.5 rounded-xl bg-emerald-600/15 text-emerald-300 border border-emerald-500/30 group-hover:bg-emerald-600/25 group-hover:scale-110 transition-all glow-gold">
               <FileCheck className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black font-mono tabular-nums text-white drop-shadow-sm">
-              <AnimatedCounter value={menungguPersetujuan.length} />
+          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <Extruded3DValue value={menungguPersetujuan.length} tone="emerald" className="text-3xl" />
+              <span className="text-xs text-emerald-200/75 font-mono">menunggu audit</span>
+            </div>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums badge-3d-up text-emerald-100">
+              ▲ {perizinanList.length > 0 ? ((menungguPersetujuan.length / perizinanList.length) * 100).toFixed(1) : '0.0'}%
             </span>
-            <span className="text-xs text-emerald-200/75 font-mono">menunggu audit</span>
           </div>
           <div className="mt-3 pt-3 border-t border-emerald-800/80 flex items-center justify-between text-[11px] text-emerald-300 font-bold font-mono">
             <span>AUDIT BERKAS</span>
@@ -394,21 +411,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
           whileHover={{ y: -3, transition: { duration: 0.18 } }}
           whileTap={{ scale: 0.99 }}
           onClick={() => handleCardClick('kpi-sanksi', () => onNavigate('sanksi'))}
-          className={`p-5 rounded-2xl metallic-glass-card cursor-pointer group shadow-xl hover-rainbow-edge ${
+          className={`p-5 rounded-2xl kpi-glass-3d cursor-pointer group ${
             activeCardId === 'kpi-sanksi' ? 'rainbow-active-border' : ''
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-semibold text-emerald-200/75 uppercase tracking-wider">Takzir Edukatif</span>
+            <span className="text-xs font-mono font-semibold text-emerald-200/80 uppercase tracking-wider">Takzir Edukatif</span>
             <div className="p-2.5 rounded-xl bg-purple-600/15 text-purple-300 border border-purple-500/30 group-hover:bg-purple-600/25 group-hover:scale-110 transition-all">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black font-mono tabular-nums text-amber-300 drop-shadow-sm">
-              <AnimatedCounter value={sanksiAktif.length} />
+          <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <Extruded3DValue value={sanksiAktif.length} tone="gold" className="text-3xl" />
+              <span className="text-xs text-emerald-200/75 font-mono">santri dibina</span>
+            </div>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums badge-3d-up text-emerald-100">
+              ▲ {sanksiList.length > 0 ? (((sanksiList.length - sanksiAktif.length) / sanksiList.length) * 100).toFixed(1) : '100.0'}%
             </span>
-            <span className="text-xs text-emerald-200/75 font-mono">santri dibina</span>
           </div>
           <div className="mt-3 pt-3 border-t border-emerald-800/80 flex items-center justify-between text-[11px] text-emerald-100/90 font-bold font-mono">
             <span>HAFALAN & KHIDMAH</span>

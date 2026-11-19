@@ -906,16 +906,16 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                 </div>
               </div>
 
-              {/* Grafik Statistik Kedisiplinan & Indikator Keberhasilan Keamanan */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
-                <div className="lg:col-span-7 kpi-glass-3d p-4 rounded-2xl">
-                  <p className="text-xs font-bold text-[#f3d266] uppercase mb-2">
+              {/* Grafik 3D Statistik Kedisiplinan & Indikator Keberhasilan Keamanan */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <div className="kpi-glass-3d p-5 rounded-2xl space-y-3">
+                  <p className="text-xs font-bold text-[#f3d266] uppercase">
                     Grafik 3D Tren Kedisiplinan &amp; Evaluasi Keamanan ({periodeLaporan})
                   </p>
                   <LineChart3D
                     data={kedisiplinanComparison.list}
                     xKey="bulan"
-                    height={210}
+                    height={220}
                     yDomain={[70, 100]}
                     yUnit="%"
                     tooltipUnit="%"
@@ -927,39 +927,62 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                   />
                 </div>
 
-                <div className="lg:col-span-5 bg-[#03160f] p-4 rounded-2xl border border-emerald-800/60 flex flex-col justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-[#f3d266] uppercase flex items-center gap-1.5">
-                      <Award className="w-4 h-4 text-[#f3d266]" />
-                      Indikator Keberhasilan Keamanan ({kinerjaKeamananScore}%)
-                    </p>
-                    <p className="text-[11px] text-emerald-200/80 mt-1">
-                      Evaluasi capaian ketertiban perizinan, kepatuhan jam kembali WIB, dan penurunan pelanggaran santri.
-                    </p>
+                <div className="kpi-glass-3d p-5 rounded-2xl flex flex-col justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="shrink-0">
+                      <PieChart3D
+                        data={[
+                          { name: 'Kinerja Keamanan', value: kinerjaKeamananScore, color: '#10b981' },
+                          { name: 'Ruang Optimasi', value: Math.max(1, 100 - kinerjaKeamananScore), color: '#093827' },
+                        ]}
+                        size={140}
+                        innerRadiusRatio={0.52}
+                        depth={13}
+                        centerValue={kinerjaKeamananScore}
+                        centerSuffix="%"
+                        centerLabel={kinerjaKeamananMetric.ratingLabel.toUpperCase()}
+                        centerTone={kinerjaKeamananScore >= 90 ? 'gold' : 'emerald'}
+                        unit="%"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-[#f3d266] uppercase flex items-center gap-1.5">
+                        <Award className="w-4 h-4 text-[#f3d266]" />
+                        Indikator Keberhasilan Keamanan ({kinerjaKeamananScore}%)
+                      </p>
+                      <p className="text-[11px] text-emerald-200/80 mt-1">
+                        Evaluasi capaian ketertiban perizinan, kepatuhan jam kembali WIB, dan penurunan pelanggaran santri.
+                      </p>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2.5 my-3 text-xs">
-                    <div className="p-2.5 rounded-xl bg-[#041d14] border border-emerald-800/60">
-                      <span className="text-[10px] font-mono text-emerald-300">Kepatuhan Izin</span>
-                      <p className="text-base font-extrabold text-white">
-                        {Math.round(
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-2xl bg-[#03160f]/90 border border-emerald-800/70">
+                      <span className="text-[10px] font-mono text-emerald-300 block uppercase">Kepatuhan Izin</span>
+                      <Extruded3DValue
+                        value={Math.round(
                           (scopedPerizinanList.filter((p) => p.status !== 'Terlambat').length /
                             Math.max(1, scopedPerizinanList.length)) *
                             100
                         )}
-                        %
-                      </p>
+                        suffix="%"
+                        tone="emerald"
+                        className="text-xl mt-0.5"
+                      />
                     </div>
-                    <div className="p-2.5 rounded-xl bg-[#041d14] border border-emerald-800/60">
-                      <span className="text-[10px] font-mono text-emerald-300">Pembinaan Takzir</span>
-                      <p className="text-base font-extrabold text-[#f3d266]">
-                        {scopedSanksiList.filter((s) => s.status === 'Selesai').length}/
-                        {scopedSanksiList.length} Tuntas
-                      </p>
+                    <div className="p-3 rounded-2xl bg-[#03160f]/90 border border-emerald-800/70">
+                      <span className="text-[10px] font-mono text-emerald-300 block uppercase">Takzir Tuntas</span>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <Extruded3DValue
+                          value={scopedSanksiList.filter((s) => s.status === 'Selesai').length}
+                          tone="gold"
+                          className="text-xl"
+                        />
+                        <span className="text-xs font-mono text-[#f3d266] font-bold">
+                          / {scopedSanksiList.length}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <p className="text-[11px] font-mono text-emerald-300">
-                    Status Evaluasi: TERKENDALI &amp; KONDUSIF
-                  </p>
                 </div>
               </div>
 

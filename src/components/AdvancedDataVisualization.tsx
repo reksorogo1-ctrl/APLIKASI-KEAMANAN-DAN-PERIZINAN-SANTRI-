@@ -1,25 +1,22 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import * as d3 from 'd3';
-import { 
-  BarChart3, 
-  TrendingUp, 
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  TrendingUp,
   TrendingDown,
-  ShieldCheck, 
-  Calendar, 
-  AlertTriangle, 
-  Activity, 
-  PieChart, 
-  ArrowUpRight, 
-  Layers, 
-  CheckCircle2, 
-  AlertOctagon, 
-  Clock, 
+  ShieldCheck,
+  Calendar,
+  AlertTriangle,
+  Activity,
+  Clock,
   DoorOpen,
-  Filter,
-  GraduationCap,
-  Sparkles
 } from 'lucide-react';
 import { Perizinan, Pelanggaran, Santri, Sanksi, UserAccount } from '../types';
+import {
+  BarChart3D,
+  Extruded3DValue,
+  KpiStatCard3D,
+  LineChart3D,
+  PieChart3D,
+} from './Charts3D';
 
 interface AdvancedDataVisualizationProps {
   santriList: Santri[];
@@ -65,30 +62,35 @@ export const AnimatedCounter: React.FC<{
     requestAnimationFrame(step);
   }, [value, duration]);
 
-  const formatted = decimals > 0 
-    ? displayValue.toFixed(decimals) 
-    : Math.round(displayValue).toLocaleString('id-ID');
+  const formatted =
+    decimals > 0
+      ? displayValue.toFixed(decimals)
+      : Math.round(displayValue).toLocaleString('id-ID');
 
-  return <span>{prefix}{formatted}{suffix}</span>;
+  return (
+    <span>
+      {prefix}
+      {formatted}
+      {suffix}
+    </span>
+  );
 };
 
 // ==========================================
-// 1. PANEL GRAFIK PERIZINAN SANTRI
+// 1. PANEL GRAFIK 3D PERIZINAN SANTRI
 // ==========================================
 export const GrafikPerizinanSantri: React.FC<{
   perizinanList: Perizinan[];
   selectedKelas: string;
   periodFilter: 'today' | '7d' | '30d' | 'all';
 }> = ({ perizinanList, selectedKelas, periodFilter }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<'status' | 'kelas' | 'tren'>('status');
 
-  // Filter based on selectedKelas and period
   const filteredData = useMemo(() => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    return perizinanList.filter(p => {
+    return perizinanList.filter((p) => {
       if (selectedKelas !== 'all' && p.santriKelas !== selectedKelas) return false;
 
       if (periodFilter === 'today') {
@@ -107,644 +109,413 @@ export const GrafikPerizinanSantri: React.FC<{
     });
   }, [perizinanList, selectedKelas, periodFilter]);
 
-  // Exact metrics
-  const izinAktifCount = filteredData.filter(p => (p.status === 'Sedang Keluar' || p.status === 'Disetujui') && !p.actualKembali).length;
-  const izinSelesaiCount = filteredData.filter(p => p.status === 'Sudah Kembali' || Boolean(p.actualKembali)).length;
-  const izinTerlambatCount = filteredData.filter(p => p.status === 'Terlambat' || (p.menitKeterlambatan && p.menitKeterlambatan > 0)).length;
+  const izinAktifCount = filteredData.filter(
+    (p) => (p.status === 'Sedang Keluar' || p.status === 'Disetujui') && !p.actualKembali
+  ).length;
+  const izinSelesaiCount = filteredData.filter(
+    (p) => p.status === 'Sudah Kembali' || Boolean(p.actualKembali)
+  ).length;
+  const izinTerlambatCount = filteredData.filter(
+    (p) => p.status === 'Terlambat' || (p.menitKeterlambatan && p.menitKeterlambatan > 0)
+  ).length;
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-    d3.select(container).selectAll('*').remove();
+  const statusBarData = useMemo(
+    () => [
+      { label: 'Izin Aktif', jumlah: izinAktifCount, color: '#10b981' },
+      { label: 'Izin Selesai', jumlah: izinSelesaiCount, color: '#d4af37' },
+      { label: 'Terlambat', jumlah: izinTerlambatCount, color: '#f43f5e' },
+    ],
+    [izinAktifCount, izinSelesaiCount, izinTerlambatCount]
+  );
 
-    const width = container.clientWidth || 450;
-    const height = 240;
-    const margin = { top: 20, right: 25, bottom: 35, left: 35 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
-
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .attr('class', 'overflow-visible');
-
-    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-    if (viewMode === 'status') {
-      // Bar Chart: Aktif vs Selesai vs Terlambat
-      const statusBars = [
-        { label: 'Izin Aktif', count: izinAktifCount, color: '#10b981' },
-        { label: 'Izin Selesai', count: izinSelesaiCount, color: '#10b981' },
-        { label: 'Izin Terlambat', count: izinTerlambatCount, color: '#ef4444' },
-      ];
-
-      const maxVal = Math.max(3, d3.max(statusBars, d => d.count) || 3);
-      const xScale = d3.scaleBand()
-        .domain(statusBars.map(d => d.label))
-        .range([0, innerWidth])
-        .padding(0.35);
-
-      const yScale = d3.scaleLinear()
-        .domain([0, maxVal + 1])
-        .range([innerHeight, 0])
-        .nice();
-
-      // Horizontal grid
-      g.append('g')
-        .attr('stroke', '#06281c')
-        .attr('stroke-dasharray', '3,3')
-        .attr('stroke-opacity', 0.5)
-        .call(d3.axisLeft(yScale).tickSize(-innerWidth).tickFormat(() => ''));
-
-      statusBars.forEach(d => {
-        const x = xScale(d.label) || 0;
-        const barW = xScale.bandwidth();
-        const barH = innerHeight - yScale(d.count);
-        const y = yScale(d.count);
-
-        g.append('rect')
-          .attr('x', x)
-          .attr('y', y)
-          .attr('width', barW)
-          .attr('height', Math.max(2, barH))
-          .attr('rx', 6)
-          .attr('fill', d.color)
-          .attr('opacity', 0.9);
-
-        g.append('text')
-          .attr('x', x + barW / 2)
-          .attr('y', y - 6)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '13px')
-          .attr('font-family', 'monospace')
-          .attr('font-weight', 'bold')
-          .attr('fill', d.color)
-          .text(`${d.count}`);
-
-        g.append('text')
-          .attr('x', x + barW / 2)
-          .attr('y', innerHeight + 18)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#94a3b8')
-          .text(d.label.toUpperCase());
-      });
-
-    } else if (viewMode === 'kelas') {
-      // Comparison by Class
-      const classMap: { [cls: string]: number } = {};
-      filteredData.forEach(p => {
-        const cls = p.santriKelas || 'Lainnya';
-        classMap[cls] = (classMap[cls] || 0) + 1;
-      });
-
-      const classData = Object.entries(classMap)
-        .map(([kelas, count]) => ({ kelas, count }))
-        .sort((a, b) => b.count - a.count);
-
-      if (classData.length === 0) {
-        classData.push({ kelas: 'Tidak Ada Data', count: 0 });
-      }
-
-      const xScale = d3.scaleBand()
-        .domain(classData.map(d => d.kelas))
-        .range([0, innerWidth])
-        .padding(0.3);
-
-      const maxVal = Math.max(2, d3.max(classData, d => d.count) || 2);
-      const yScale = d3.scaleLinear()
-        .domain([0, maxVal + 1])
-        .range([innerHeight, 0])
-        .nice();
-
-      classData.forEach(d => {
-        const x = xScale(d.kelas) || 0;
-        const barW = xScale.bandwidth();
-        const barH = innerHeight - yScale(d.count);
-        const y = yScale(d.count);
-
-        g.append('rect')
-          .attr('x', x)
-          .attr('y', y)
-          .attr('width', barW)
-          .attr('height', Math.max(2, barH))
-          .attr('rx', 5)
-          .attr('fill', '#10b981')
-          .attr('opacity', 0.85);
-
-        g.append('text')
-          .attr('x', x + barW / 2)
-          .attr('y', y - 4)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '11px')
-          .attr('font-family', 'monospace')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#10b981')
-          .text(`${d.count}`);
-
-        g.append('text')
-          .attr('x', x + barW / 2)
-          .attr('y', innerHeight + 16)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '9px')
-          .attr('font-family', 'monospace')
-          .attr('fill', '#94a3b8')
-          .text(d.kelas);
-      });
-
-    } else {
-      // Trend Line over past 7 days
-      const days = 7;
-      const timeline: { label: string; count: number }[] = [];
-      const now = new Date();
-
-      for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(now.getTime() - i * 86400000);
-        const iso = d.toISOString().split('T')[0];
-        const dayLabel = d.toLocaleDateString('id-ID', { weekday: 'short' });
-        const count = filteredData.filter(p => (p.tglKeluar === iso || p.tglPengajuan?.startsWith(iso))).length;
-        timeline.push({ label: dayLabel, count });
-      }
-
-      const xScale = d3.scalePoint()
-        .domain(timeline.map(d => d.label))
-        .range([0, innerWidth])
-        .padding(0.2);
-
-      const maxVal = Math.max(3, d3.max(timeline, d => d.count) || 3);
-      const yScale = d3.scaleLinear()
-        .domain([0, maxVal + 1])
-        .range([innerHeight, 0])
-        .nice();
-
-      const line = d3.line<{ label: string; count: number }>()
-        .x(d => xScale(d.label) || 0)
-        .y(d => yScale(d.count))
-        .curve(d3.curveMonotoneX);
-
-      g.append('path')
-        .datum(timeline)
-        .attr('fill', 'none')
-        .attr('stroke', '#10b981')
-        .attr('stroke-width', 2.5)
-        .attr('d', line);
-
-      timeline.forEach(d => {
-        const cx = xScale(d.label) || 0;
-        const cy = yScale(d.count);
-
-        g.append('circle')
-          .attr('cx', cx)
-          .attr('cy', cy)
-          .attr('r', 4)
-          .attr('fill', '#090d16')
-          .attr('stroke', '#10b981')
-          .attr('stroke-width', 2);
-
-        g.append('text')
-          .attr('x', cx)
-          .attr('y', cy - 8)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('font-family', 'monospace')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#10b981')
-          .text(`${d.count}`);
-
-        g.append('text')
-          .attr('x', cx)
-          .attr('y', innerHeight + 16)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('font-family', 'monospace')
-          .attr('fill', '#94a3b8')
-          .text(d.label);
-      });
+  const classBarData = useMemo(() => {
+    const classMap: Record<string, number> = {};
+    filteredData.forEach((p) => {
+      const cls = p.santriKelas || 'Lainnya';
+      classMap[cls] = (classMap[cls] || 0) + 1;
+    });
+    const list = Object.entries(classMap)
+      .map(([kelas, jumlah], idx) => ({
+        kelas,
+        jumlah,
+        color: idx % 2 === 0 ? '#10b981' : '#34d399',
+      }))
+      .sort((a, b) => b.jumlah - a.jumlah)
+      .slice(0, 6);
+    if (list.length === 0) {
+      list.push({ kelas: 'Nol Data', jumlah: 0, color: '#10b981' });
     }
+    return list;
+  }, [filteredData]);
 
-  }, [filteredData, viewMode, izinAktifCount, izinSelesaiCount, izinTerlambatCount]);
+  const trendLineData = useMemo(() => {
+    const days = 7;
+    const timeline: { hari: string; jumlah: number }[] = [];
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86400000);
+      const iso = d.toISOString().split('T')[0];
+      const dayLabel = d.toLocaleDateString('id-ID', { weekday: 'short' });
+      const count = filteredData.filter(
+        (p) => p.tglKeluar === iso || p.tglPengajuan?.startsWith(iso)
+      ).length;
+      timeline.push({ hari: dayLabel, jumlah: count });
+    }
+    return timeline;
+  }, [filteredData]);
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
-      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-400 via-emerald-400 to-transparent opacity-80" />
-      
+    <div className="kpi-glass-3d rounded-3xl p-5 sm:p-6 space-y-4 relative overflow-hidden flex flex-col justify-between">
       {/* Header Panel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
+          <div className="p-2 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 shadow-inner">
             <DoorOpen className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold text-emerald-300 uppercase tracking-wider">MODUL A</span>
+              <span className="text-[10px] font-mono font-bold text-emerald-300 uppercase tracking-wider">
+                3D ANALYTICS A
+              </span>
               <span className="text-[10px] font-mono text-emerald-200/75">· REAL-TIME DATABASE</span>
             </div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase font-sans tracking-tight">
-              Grafik Perizinan Santri
+              Grafik 3D Perizinan Santri
             </h3>
           </div>
         </div>
 
         {/* View mode toggle */}
-        <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
+        <div className="flex items-center bg-[#02100a]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono shrink-0">
           <button
             onClick={() => setViewMode('status')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'status' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              viewMode === 'status'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
             Status
           </button>
           <button
             onClick={() => setViewMode('kelas')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kelas' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              viewMode === 'kelas'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
             Per Kelas
           </button>
           <button
             onClick={() => setViewMode('tren')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'tren' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              viewMode === 'tren'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
-            Tren
+            Tren 3D
           </button>
         </div>
       </div>
 
-      {/* KPI Chips */}
-      <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
-        <div className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
-          <span className="text-[10px] text-emerald-200/75 block">Izin Aktif:</span>
-          <span className="font-bold text-emerald-300 text-sm">{izinAktifCount}</span>
+      {/* 3D KPI Chips */}
+      <div className="grid grid-cols-3 gap-2.5 text-center font-mono">
+        <div className="p-2.5 rounded-2xl bg-[#03160f]/90 border border-emerald-500/30 shadow-inner">
+          <span className="text-[10px] text-emerald-200/75 block uppercase">Izin Aktif</span>
+          <Extruded3DValue value={izinAktifCount} tone="emerald" className="text-lg sm:text-xl mt-0.5" />
         </div>
-        <div className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
-          <span className="text-[10px] text-emerald-200/75 block">Izin Selesai:</span>
-          <span className="font-bold text-emerald-400 text-sm">{izinSelesaiCount}</span>
+        <div className="p-2.5 rounded-2xl bg-[#03160f]/90 border border-[#d4af37]/35 shadow-inner">
+          <span className="text-[10px] text-emerald-200/75 block uppercase">Izin Selesai</span>
+          <Extruded3DValue value={izinSelesaiCount} tone="gold" className="text-lg sm:text-xl mt-0.5" />
         </div>
-        <div className="p-2 rounded-xl bg-red-950/40 border border-red-500/30">
-          <span className="text-[10px] text-emerald-200/75 block">Terlambat:</span>
-          <span className="font-bold text-red-400 text-sm">{izinTerlambatCount}</span>
+        <div className="p-2.5 rounded-2xl bg-[#03160f]/90 border border-rose-500/35 shadow-inner">
+          <span className="text-[10px] text-emerald-200/75 block uppercase">Terlambat</span>
+          <Extruded3DValue value={izinTerlambatCount} tone="rose" className="text-lg sm:text-xl mt-0.5" />
         </div>
       </div>
 
-      {/* D3 Render Area */}
-      <div 
-        ref={containerRef} 
-        className="w-full min-h-[240px] bg-[#02100a]/60 rounded-2xl border border-emerald-800/80 p-2 flex items-center justify-center overflow-x-auto" 
-      />
+      {/* 3D Chart Stage */}
+      <div className="w-full bg-[#02100a]/85 bg-security-grid rounded-2xl border border-emerald-700/45 p-3 shadow-inner">
+        {viewMode === 'status' && (
+          <BarChart3D
+            data={statusBarData}
+            xKey="label"
+            height={224}
+            unit=" izin"
+            series={[{ key: 'jumlah', label: 'Jumlah Perizinan', color: '#10b981' }]}
+          />
+        )}
+        {viewMode === 'kelas' && (
+          <BarChart3D
+            data={classBarData}
+            xKey="kelas"
+            height={224}
+            unit=" izin"
+            series={[{ key: 'jumlah', label: 'Izin per Kelas', color: '#10b981' }]}
+          />
+        )}
+        {viewMode === 'tren' && (
+          <LineChart3D
+            data={trendLineData}
+            xKey="hari"
+            height={224}
+            tooltipUnit=" izin"
+            subtitle="Tren Perizinan 7 Hari Terakhir"
+            series={[
+              {
+                key: 'jumlah',
+                label: 'Volume Izin Harian',
+                color: '#10b981',
+                accentColor: '#f3d266',
+              },
+            ]}
+          />
+        )}
+      </div>
 
       {/* Footer Summary */}
       <div className="pt-2 border-t border-emerald-800/80 flex items-center justify-between text-[11px] font-mono text-emerald-200/75">
-        <span>Total Terdata: <strong className="text-white">{filteredData.length} Izin</strong></span>
-        <span className="text-emerald-300 font-bold">TERHUBUNG KE RADAR & GERBANG</span>
+        <span>
+          Total Terdata: <strong className="text-white tabular-nums">{filteredData.length} Izin</strong>
+        </span>
+        <span className="text-emerald-300 font-bold">TERHUBUNG KE RADAR &amp; GERBANG</span>
       </div>
     </div>
   );
 };
 
 // ==========================================
-// 2. PANEL GRAFIK PELANGGARAN SANTRI
+// 2. PANEL GRAFIK 3D PELANGGARAN SANTRI
 // ==========================================
 export const GrafikPelanggaranSantri: React.FC<{
   pelanggaranList: Pelanggaran[];
   selectedKelas: string;
   selectedKategori: string;
   periodFilter: 'today' | '7d' | '30d' | 'all';
-}> = ({ pelanggaranList, selectedKelas, selectedKategori, periodFilter }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+}> = ({ pelanggaranList, selectedKategori, periodFilter }) => {
   const [viewMode, setViewMode] = useState<'periode' | 'kategori' | 'kelas'>('periode');
 
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const nowMs = Date.now();
+  const todayStr = new Date(nowMs).toISOString().split('T')[0];
 
-  // Specific counts for Pelanggaran Hari Ini, Mingguan, Bulanan
   const countToday = useMemo(() => {
-    return pelanggaranList.filter(p => p.tanggal === todayStr).length;
+    return pelanggaranList.filter((p) => p.tanggal === todayStr).length;
   }, [pelanggaranList, todayStr]);
 
   const countWeekly = useMemo(() => {
-    const cutoff = new Date(now.getTime() - 7 * 86400000);
-    return pelanggaranList.filter(p => {
-      const d = new Date(p.tanggal);
-      return !isNaN(d.getTime()) && d >= cutoff;
+    const cutoff = nowMs - 7 * 86400000;
+    return pelanggaranList.filter((p) => {
+      const t = new Date(p.tanggal).getTime();
+      return !isNaN(t) && t >= cutoff;
     }).length;
-  }, [pelanggaranList, now]);
+  }, [pelanggaranList, nowMs]);
 
   const countMonthly = useMemo(() => {
-    const cutoff = new Date(now.getTime() - 30 * 86400000);
-    return pelanggaranList.filter(p => {
-      const d = new Date(p.tanggal);
-      return !isNaN(d.getTime()) && d >= cutoff;
+    const cutoff = nowMs - 30 * 86400000;
+    return pelanggaranList.filter((p) => {
+      const t = new Date(p.tanggal).getTime();
+      return !isNaN(t) && t >= cutoff;
     }).length;
-  }, [pelanggaranList, now]);
+  }, [pelanggaranList, nowMs]);
 
-  // Previous 7-day period for trend calculation
   const countPrevWeekly = useMemo(() => {
-    const startPrev = new Date(now.getTime() - 14 * 86400000);
-    const endPrev = new Date(now.getTime() - 7 * 86400000);
-    return pelanggaranList.filter(p => {
-      const d = new Date(p.tanggal);
-      return !isNaN(d.getTime()) && d >= startPrev && d < endPrev;
+    const startPrev = nowMs - 14 * 86400000;
+    const endPrev = nowMs - 7 * 86400000;
+    return pelanggaranList.filter((p) => {
+      const t = new Date(p.tanggal).getTime();
+      return !isNaN(t) && t >= startPrev && t < endPrev;
     }).length;
-  }, [pelanggaranList, now]);
+  }, [pelanggaranList, nowMs]);
 
   const trendWeeklyDiff = countWeekly - countPrevWeekly;
   const isTrendUp = trendWeeklyDiff > 0;
 
-  // Filtered dataset for charts
   const filteredData = useMemo(() => {
-    return pelanggaranList.filter(p => {
+    return pelanggaranList.filter((p) => {
       if (selectedKategori !== 'all' && p.kategori !== selectedKategori) return false;
 
       if (periodFilter === 'today') {
         return p.tanggal === todayStr;
       } else if (periodFilter === '7d') {
-        const cutoff = new Date(now.getTime() - 7 * 86400000);
-        const d = new Date(p.tanggal);
-        return !isNaN(d.getTime()) && d >= cutoff;
+        const cutoff = nowMs - 7 * 86400000;
+        const t = new Date(p.tanggal).getTime();
+        return !isNaN(t) && t >= cutoff;
       } else if (periodFilter === '30d') {
-        const cutoff = new Date(now.getTime() - 30 * 86400000);
-        const d = new Date(p.tanggal);
-        return !isNaN(d.getTime()) && d >= cutoff;
+        const cutoff = nowMs - 30 * 86400000;
+        const t = new Date(p.tanggal).getTime();
+        return !isNaN(t) && t >= cutoff;
       }
       return true;
     });
-  }, [pelanggaranList, selectedKategori, periodFilter, todayStr, now]);
+  }, [pelanggaranList, selectedKategori, periodFilter, todayStr, nowMs]);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-    d3.select(container).selectAll('*').remove();
+  const periodBarData = useMemo(
+    () => [
+      { label: 'Hari Ini', jumlah: countToday, color: '#f59e0b' },
+      { label: '7 Hari', jumlah: countWeekly, color: '#fb923c' },
+      { label: '30 Hari', jumlah: countMonthly, color: '#f43f5e' },
+    ],
+    [countToday, countWeekly, countMonthly]
+  );
 
-    const width = container.clientWidth || 450;
-    const height = 240;
-    const margin = { top: 20, right: 25, bottom: 35, left: 35 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+  const kategoriBarData = useMemo(
+    () => [
+      {
+        label: 'Ringan',
+        jumlah: filteredData.filter((p) => p.kategori === 'Ringan').length,
+        color: '#10b981',
+      },
+      {
+        label: 'Sedang',
+        jumlah: filteredData.filter((p) => p.kategori === 'Sedang').length,
+        color: '#f59e0b',
+      },
+      {
+        label: 'Berat',
+        jumlah: filteredData.filter((p) => p.kategori === 'Berat').length,
+        color: '#f43f5e',
+      },
+    ],
+    [filteredData]
+  );
 
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .attr('class', 'overflow-visible');
-
-    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-    if (viewMode === 'periode') {
-      // Comparison: Hari Ini vs Mingguan vs Bulanan
-      const periodBars = [
-        { label: 'Hari Ini', count: countToday, color: '#f59e0b' },
-        { label: 'Mingguan (7H)', count: countWeekly, color: '#f97316' },
-        { label: 'Bulanan (30H)', count: countMonthly, color: '#ef4444' },
-      ];
-
-      const maxVal = Math.max(3, d3.max(periodBars, d => d.count) || 3);
-      const xScale = d3.scaleBand()
-        .domain(periodBars.map(d => d.label))
-        .range([0, innerWidth])
-        .padding(0.35);
-
-      const yScale = d3.scaleLinear()
-        .domain([0, maxVal + 1])
-        .range([innerHeight, 0])
-        .nice();
-
-      periodBars.forEach(d => {
-        const x = xScale(d.label) || 0;
-        const barW = xScale.bandwidth();
-        const barH = innerHeight - yScale(d.count);
-        const y = yScale(d.count);
-
-        g.append('rect')
-          .attr('x', x)
-          .attr('y', y)
-          .attr('width', barW)
-          .attr('height', Math.max(2, barH))
-          .attr('rx', 6)
-          .attr('fill', d.color)
-          .attr('opacity', 0.9);
-
-        g.append('text')
-          .attr('x', x + barW / 2)
-          .attr('y', y - 6)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '13px')
-          .attr('font-family', 'monospace')
-          .attr('font-weight', 'bold')
-          .attr('fill', d.color)
-          .text(`${d.count}`);
-
-        g.append('text')
-          .attr('x', x + barW / 2)
-          .attr('y', innerHeight + 18)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#94a3b8')
-          .text(d.label);
-      });
-
-    } else if (viewMode === 'kategori') {
-      // Tingkat Pelanggaran: Ringan vs Sedang vs Berat
-      const katLevels = [
-        { label: 'Ringan', count: filteredData.filter(p => p.kategori === 'Ringan').length, color: '#10b981' },
-        { label: 'Sedang', count: filteredData.filter(p => p.kategori === 'Sedang').length, color: '#f59e0b' },
-        { label: 'Berat', count: filteredData.filter(p => p.kategori === 'Berat').length, color: '#ef4444' }
-      ];
-
-      const maxVal = Math.max(3, d3.max(katLevels, d => d.count) || 3);
-      const xScale = d3.scaleBand()
-        .domain(katLevels.map(d => d.label))
-        .range([0, innerWidth])
-        .padding(0.35);
-
-      const yScale = d3.scaleLinear()
-        .domain([0, maxVal + 1])
-        .range([innerHeight, 0])
-        .nice();
-
-      katLevels.forEach(d => {
-        const x = xScale(d.label) || 0;
-        const barW = xScale.bandwidth();
-        const barH = innerHeight - yScale(d.count);
-        const y = yScale(d.count);
-
-        g.append('rect')
-          .attr('x', x)
-          .attr('y', y)
-          .attr('width', barW)
-          .attr('height', Math.max(2, barH))
-          .attr('rx', 6)
-          .attr('fill', d.color)
-          .attr('opacity', 0.9);
-
-        g.append('text')
-          .attr('x', x + barW / 2)
-          .attr('y', y - 6)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '13px')
-          .attr('font-family', 'monospace')
-          .attr('font-weight', 'bold')
-          .attr('fill', d.color)
-          .text(`${d.count}`);
-
-        g.append('text')
-          .attr('x', x + barW / 2)
-          .attr('y', innerHeight + 18)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#94a3b8')
-          .text(d.label.toUpperCase());
-      });
-
-    } else {
-      // Jenis Pelanggaran Horizontal Top Bars
-      const jenisMap: { [j: string]: number } = {};
-      filteredData.forEach(p => {
-        const key = p.jenisPelanggaran || 'Lain-lain';
-        jenisMap[key] = (jenisMap[key] || 0) + 1;
-      });
-
-      const jenisData = Object.entries(jenisMap)
-        .map(([jenis, count]) => ({ jenis, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      if (jenisData.length === 0) {
-        jenisData.push({ jenis: 'Nol Pelanggaran', count: 0 });
-      }
-
-      const yScale = d3.scaleBand()
-        .domain(jenisData.map(d => d.jenis))
-        .range([0, innerHeight])
-        .padding(0.28);
-
-      const maxVal = Math.max(2, d3.max(jenisData, d => d.count) || 2);
-      const xScale = d3.scaleLinear()
-        .domain([0, maxVal + 1])
-        .range([0, innerWidth]);
-
-      jenisData.forEach(d => {
-        const y = yScale(d.jenis) || 0;
-        const barW = xScale(d.count);
-        const barH = yScale.bandwidth();
-
-        g.append('rect')
-          .attr('x', 0)
-          .attr('y', y)
-          .attr('width', innerWidth)
-          .attr('height', barH)
-          .attr('rx', 6)
-          .attr('fill', '#090d16')
-          .attr('stroke', '#06281c');
-
-        g.append('rect')
-          .attr('x', 0)
-          .attr('y', y)
-          .attr('width', Math.max(3, barW))
-          .attr('height', barH)
-          .attr('rx', 6)
-          .attr('fill', '#ef4444')
-          .attr('opacity', 0.85);
-
-        g.append('text')
-          .attr('x', 8)
-          .attr('y', y + barH / 2 + 4)
-          .attr('font-size', '11px')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#ffffff')
-          .text(d.jenis.length > 20 ? d.jenis.substring(0, 20) + '...' : d.jenis);
-
-        g.append('text')
-          .attr('x', innerWidth - 8)
-          .attr('y', y + barH / 2 + 4)
-          .attr('text-anchor', 'end')
-          .attr('font-size', '11px')
-          .attr('font-family', 'monospace')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#ef4444')
-          .text(`${d.count} Kasus`);
-      });
+  const topKasusBarData = useMemo(() => {
+    const jenisMap: Record<string, number> = {};
+    filteredData.forEach((p) => {
+      const key = p.jenisPelanggaran || 'Lain-lain';
+      jenisMap[key] = (jenisMap[key] || 0) + 1;
+    });
+    const list = Object.entries(jenisMap)
+      .map(([jenis, jumlah]) => ({ jenis, jumlah, color: '#f43f5e' }))
+      .sort((a, b) => b.jumlah - a.jumlah)
+      .slice(0, 5);
+    if (list.length === 0) {
+      list.push({ jenis: 'Nol Kasus', jumlah: 0, color: '#10b981' });
     }
-
-  }, [filteredData, viewMode, countToday, countWeekly, countMonthly]);
+    return list;
+  }, [filteredData]);
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
-      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-red-500 via-amber-500 to-transparent opacity-80" />
-      
+    <div className="kpi-glass-3d rounded-3xl p-5 sm:p-6 space-y-4 relative overflow-hidden flex flex-col justify-between">
       {/* Header Panel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-red-950/80 border border-red-500/40 text-red-400">
+          <div className="p-2 rounded-xl bg-red-950/80 border border-red-500/40 text-red-400 shadow-inner">
             <AlertTriangle className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold text-red-400 uppercase tracking-wider">MODUL B</span>
-              <span className="text-[10px] font-mono text-emerald-200/75">· INSIDEN & TATA TERTIB</span>
+              <span className="text-[10px] font-mono font-bold text-rose-400 uppercase tracking-wider">
+                3D ANALYTICS B
+              </span>
+              <span className="text-[10px] font-mono text-emerald-200/75">· INSIDEN &amp; TATA TERTIB</span>
             </div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase font-sans tracking-tight">
-              Grafik Pelanggaran Santri
+              Grafik 3D Pelanggaran Santri
             </h3>
           </div>
         </div>
 
         {/* View Mode Toggle */}
-        <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
+        <div className="flex items-center bg-[#02100a]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono shrink-0">
           <button
             onClick={() => setViewMode('periode')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'periode' ? 'bg-red-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              viewMode === 'periode'
+                ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
             Periode
           </button>
           <button
             onClick={() => setViewMode('kategori')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kategori' ? 'bg-red-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              viewMode === 'kategori'
+                ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
             Tingkat
           </button>
           <button
             onClick={() => setViewMode('kelas')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'kelas' ? 'bg-red-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              viewMode === 'kelas'
+                ? 'bg-gradient-to-r from-rose-600 to-rose-500 text-white font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
             Kasus Top
           </button>
         </div>
       </div>
 
-      {/* KPI Chips & Trend Indicator */}
-      <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
-        <div className="p-2 rounded-xl bg-amber-950/30 border border-amber-500/30">
-          <span className="text-[9px] text-emerald-200/75 block">Hari Ini:</span>
-          <span className="font-bold text-amber-300 text-sm">{countToday}</span>
+      {/* 3D KPI Chips & Trend Indicator */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
+        <div className="p-2 rounded-2xl bg-[#03160f]/90 border border-amber-500/30 shadow-inner">
+          <span className="text-[9px] text-emerald-200/75 block uppercase">Hari Ini</span>
+          <Extruded3DValue value={countToday} tone="gold" className="text-lg mt-0.5" />
         </div>
-        <div className="p-2 rounded-xl bg-orange-950/30 border border-orange-500/30">
-          <span className="text-[9px] text-emerald-200/75 block">7 Hari:</span>
-          <span className="font-bold text-orange-400 text-sm">{countWeekly}</span>
+        <div className="p-2 rounded-2xl bg-[#03160f]/90 border border-orange-500/30 shadow-inner">
+          <span className="text-[9px] text-emerald-200/75 block uppercase">7 Hari</span>
+          <Extruded3DValue value={countWeekly} tone="gold" className="text-lg mt-0.5" />
         </div>
-        <div className="p-2 rounded-xl bg-red-950/30 border border-red-500/30">
-          <span className="text-[9px] text-emerald-200/75 block">30 Hari:</span>
-          <span className="font-bold text-red-400 text-sm">{countMonthly}</span>
+        <div className="p-2 rounded-2xl bg-[#03160f]/90 border border-rose-500/35 shadow-inner">
+          <span className="text-[9px] text-emerald-200/75 block uppercase">30 Hari</span>
+          <Extruded3DValue value={countMonthly} tone="rose" className="text-lg mt-0.5" />
         </div>
-        <div className="p-2 rounded-xl bg-[#041d13]/90 border border-emerald-800/80 flex flex-col items-center justify-center">
-          <span className="text-[9px] text-emerald-200/75">Tren 7H:</span>
-          <span className={`text-[11px] font-bold flex items-center gap-0.5 ${isTrendUp ? 'text-red-400' : 'text-emerald-400'}`}>
+        <div className="p-2 rounded-2xl bg-[#03160f]/90 border border-emerald-800/80 flex flex-col items-center justify-center shadow-inner">
+          <span className="text-[9px] text-emerald-200/75 uppercase mb-1">Tren 7H</span>
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-extrabold tabular-nums ${
+              isTrendUp ? 'badge-3d-down text-rose-100' : 'badge-3d-up text-emerald-100'
+            }`}
+          >
             {isTrendUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             {trendWeeklyDiff >= 0 ? `+${trendWeeklyDiff}` : trendWeeklyDiff}
           </span>
         </div>
       </div>
 
-      {/* D3 Render Area */}
-      <div 
-        ref={containerRef} 
-        className="w-full min-h-[240px] bg-[#02100a]/60 rounded-2xl border border-emerald-800/80 p-2 flex items-center justify-center overflow-x-auto" 
-      />
+      {/* 3D Chart Stage */}
+      <div className="w-full bg-[#02100a]/85 bg-security-grid rounded-2xl border border-emerald-700/45 p-3 shadow-inner">
+        {viewMode === 'periode' && (
+          <BarChart3D
+            data={periodBarData}
+            xKey="label"
+            height={224}
+            unit=" kasus"
+            series={[{ key: 'jumlah', label: 'Insiden Pelanggaran', color: '#f59e0b' }]}
+          />
+        )}
+        {viewMode === 'kategori' && (
+          <BarChart3D
+            data={kategoriBarData}
+            xKey="label"
+            height={224}
+            unit=" kasus"
+            series={[{ key: 'jumlah', label: 'Kategori Qanun', color: '#f43f5e' }]}
+          />
+        )}
+        {viewMode === 'kelas' && (
+          <BarChart3D
+            data={topKasusBarData}
+            xKey="jenis"
+            height={224}
+            unit=" kasus"
+            series={[{ key: 'jumlah', label: 'Kasus Terbanyak', color: '#f43f5e' }]}
+          />
+        )}
+      </div>
 
       {/* Footer Summary */}
       <div className="pt-2 border-t border-emerald-800/80 flex items-center justify-between text-[11px] font-mono text-emerald-200/75">
-        <span>Total Kasus: <strong className="text-red-400">{filteredData.length} Kasus</strong></span>
+        <span>
+          Total Kasus: <strong className="text-rose-400 tabular-nums">{filteredData.length} Kasus</strong>
+        </span>
         <span className="text-amber-300 font-bold">TERKORELASI KEDISIPLINAN REAL-TIME</span>
       </div>
     </div>
@@ -752,232 +523,178 @@ export const GrafikPelanggaranSantri: React.FC<{
 };
 
 // ==========================================
-// 3. PANEL GRAFIK SANKSI EDUKATIF SANTRI
+// 3. PANEL GRAFIK 3D SANKSI EDUKATIF SANTRI
 // ==========================================
 export const GrafikSanksiSantri: React.FC<{
   sanksiList: Sanksi[];
   pelanggaranList: Pelanggaran[];
-}> = ({ sanksiList, pelanggaranList }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+}> = ({ sanksiList }) => {
   const [viewMode, setViewMode] = useState<'status' | 'jenis'>('status');
 
-  const sanksiAktif = sanksiList.filter(s => s.status === 'Sedang Berjalan' || s.status === 'Belum Dikerjakan');
-  const sanksiSelesai = sanksiList.filter(s => s.status === 'Selesai');
+  const sanksiAktif = sanksiList.filter(
+    (s) => s.status === 'Sedang Berjalan' || s.status === 'Belum Dikerjakan'
+  );
+  const sanksiSelesai = sanksiList.filter((s) => s.status === 'Selesai');
   const totalSanksi = sanksiList.length;
+  const tuntasPercent = totalSanksi > 0 ? Math.round((sanksiSelesai.length / totalSanksi) * 100) : 100;
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-    d3.select(container).selectAll('*').remove();
-
-    const width = container.clientWidth || 450;
-    const height = 240;
-
-    if (viewMode === 'status') {
-      // Donut Chart: Aktif vs Selesai
-      const radius = Math.min(width, height) / 2 - 15;
-      const svg = d3.select(container)
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height)
-        .attr('class', 'overflow-visible');
-
-      const g = svg.append('g').attr('transform', `translate(${width / 2},${height / 2})`);
-
-      const pieData = [
-        { label: 'Sanksi Selesai', count: sanksiSelesai.length, color: '#10b981' },
-        { label: 'Sedang Menjalani', count: sanksiAktif.length, color: '#f59e0b' }
-      ];
-
-      const pie = d3.pie<{ label: string; count: number; color: string }>()
-        .value(d => Math.max(d.count, totalSanksi === 0 ? 0.001 : 0))
-        .sort(null)
-        .padAngle(0.04);
-
-      const arc = d3.arc<d3.PieArcDatum<{ label: string; count: number; color: string }>>()
-        .innerRadius(radius * 0.65)
-        .outerRadius(radius * 0.95)
-        .cornerRadius(6);
-
-      const arcs = g.selectAll('.arc')
-        .data(pie(pieData))
-        .enter()
-        .append('g')
-        .attr('class', 'arc');
-
-      arcs.append('path')
-        .attr('d', arc as any)
-        .attr('fill', d => d.data.color)
-        .attr('stroke', '#090d16')
-        .attr('stroke-width', 2);
-
-      const tuntasPercent = totalSanksi > 0 ? (sanksiSelesai.length / totalSanksi) * 100 : 100;
-
-      g.append('text')
-        .attr('text-anchor', 'middle')
-        .attr('dy', '-0.15em')
-        .attr('font-size', '24px')
-        .attr('font-weight', '900')
-        .attr('font-family', 'monospace')
-        .attr('fill', '#10b981')
-        .text(`${tuntasPercent.toFixed(0)}%`);
-
-      g.append('text')
-        .attr('text-anchor', 'middle')
-        .attr('dy', '1.4em')
-        .attr('font-size', '10px')
-        .attr('font-family', 'monospace')
-        .attr('font-weight', 'bold')
-        .attr('fill', '#94a3b8')
-        .text('TAKZIR TUNTAS');
-
-    } else {
-      // Horizontal Bar Chart of Forms of Punishment (Bentuk Sanksi)
-      const margin = { top: 15, right: 25, bottom: 25, left: 20 };
-      const innerWidth = width - margin.left - margin.right;
-      const innerHeight = height - margin.top - margin.bottom;
-
-      const svg = d3.select(container)
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height)
-        .attr('class', 'overflow-visible');
-
-      const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-      const bentukMap: { [b: string]: number } = {};
-      sanksiList.forEach(s => {
-        const b = s.bentukSanksi || 'Lain-lain';
-        bentukMap[b] = (bentukMap[b] || 0) + 1;
-      });
-
-      const bentukData = Object.entries(bentukMap)
-        .map(([bentuk, count]) => ({ bentuk, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      if (bentukData.length === 0) {
-        bentukData.push({ bentuk: 'Belum Ada Sanksi', count: 0 });
-      }
-
-      const yScale = d3.scaleBand()
-        .domain(bentukData.map(d => d.bentuk))
-        .range([0, innerHeight])
-        .padding(0.25);
-
-      const maxVal = Math.max(2, d3.max(bentukData, d => d.count) || 2);
-      const xScale = d3.scaleLinear()
-        .domain([0, maxVal + 1])
-        .range([0, innerWidth]);
-
-      bentukData.forEach(d => {
-        const y = yScale(d.bentuk) || 0;
-        const barW = xScale(d.count);
-        const barH = yScale.bandwidth();
-
-        g.append('rect')
-          .attr('x', 0)
-          .attr('y', y)
-          .attr('width', innerWidth)
-          .attr('height', barH)
-          .attr('rx', 6)
-          .attr('fill', '#090d16')
-          .attr('stroke', '#06281c');
-
-        g.append('rect')
-          .attr('x', 0)
-          .attr('y', y)
-          .attr('width', Math.max(3, barW))
-          .attr('height', barH)
-          .attr('rx', 6)
-          .attr('fill', '#a855f7')
-          .attr('opacity', 0.85);
-
-        g.append('text')
-          .attr('x', 8)
-          .attr('y', y + barH / 2 + 4)
-          .attr('font-size', '11px')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#ffffff')
-          .text(d.bentuk.length > 22 ? d.bentuk.substring(0, 22) + '...' : d.bentuk);
-
-        g.append('text')
-          .attr('x', innerWidth - 8)
-          .attr('y', y + barH / 2 + 4)
-          .attr('text-anchor', 'end')
-          .attr('font-size', '11px')
-          .attr('font-family', 'monospace')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#c084fc')
-          .text(`${d.count} Santri`);
-      });
+  const pieSlices = useMemo(() => {
+    if (totalSanksi === 0) {
+      return [{ name: 'Nihil Sanksi (Tertib)', value: 1, color: '#10b981', persen: 100 }];
     }
+    const raw = [
+      {
+        name: 'Sanksi Tuntas',
+        value: sanksiSelesai.length,
+        color: '#10b981',
+        persen: Math.round((sanksiSelesai.length / totalSanksi) * 100),
+      },
+      {
+        name: 'Sedang Dibina',
+        value: sanksiAktif.length,
+        color: '#f59e0b',
+        persen: Math.round((sanksiAktif.length / totalSanksi) * 100),
+      },
+    ].filter((item) => item.value > 0);
+    return raw.length > 0 ? raw : [{ name: 'Sanksi Tuntas', value: 1, color: '#10b981', persen: 100 }];
+  }, [sanksiAktif.length, sanksiSelesai.length, totalSanksi]);
 
-  }, [sanksiList, viewMode, sanksiAktif, sanksiSelesai, totalSanksi]);
+  const bentukBarData = useMemo(() => {
+    const bentukMap: Record<string, number> = {};
+    sanksiList.forEach((s) => {
+      const b = s.bentukSanksi || 'Lain-lain';
+      bentukMap[b] = (bentukMap[b] || 0) + 1;
+    });
+    const list = Object.entries(bentukMap)
+      .map(([bentuk, jumlah], idx) => ({
+        bentuk,
+        jumlah,
+        color: idx % 2 === 0 ? '#a855f7' : '#d4af37',
+      }))
+      .sort((a, b) => b.jumlah - a.jumlah)
+      .slice(0, 5);
+    if (list.length === 0) {
+      list.push({ bentuk: 'Belum Ada Sanksi', jumlah: 0, color: '#10b981' });
+    }
+    return list;
+  }, [sanksiList]);
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
-      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-purple-500 via-emerald-500 to-transparent opacity-80" />
-      
+    <div className="kpi-glass-3d rounded-3xl p-5 sm:p-6 space-y-4 relative overflow-hidden flex flex-col justify-between">
       {/* Header Panel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-purple-950/80 border border-purple-500/40 text-purple-300">
+          <div className="p-2 rounded-xl bg-purple-950/80 border border-purple-500/40 text-purple-300 shadow-inner">
             <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold text-purple-300 uppercase tracking-wider">MODUL C</span>
-              <span className="text-[10px] font-mono text-emerald-200/75">· PEMBINAAN & TAKZIR</span>
+              <span className="text-[10px] font-mono font-bold text-purple-300 uppercase tracking-wider">
+                3D ANALYTICS C
+              </span>
+              <span className="text-[10px] font-mono text-emerald-200/75">· PEMBINAAN &amp; TAKZIR</span>
             </div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase font-sans tracking-tight">
-              Grafik Sanksi Edukatif
+              Grafik 3D Pie &amp; Takzir Edukatif
             </h3>
           </div>
         </div>
 
         {/* View mode toggle */}
-        <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
+        <div className="flex items-center bg-[#02100a]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono shrink-0">
           <button
             onClick={() => setViewMode('status')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'status' ? 'bg-purple-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              viewMode === 'status'
+                ? 'bg-gradient-to-r from-purple-600 to-emerald-600 text-white font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
-            Status
+            3D Pie Status
           </button>
           <button
             onClick={() => setViewMode('jenis')}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${viewMode === 'jenis' ? 'bg-purple-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              viewMode === 'jenis'
+                ? 'bg-gradient-to-r from-purple-600 to-emerald-600 text-white font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
             Bentuk Sanksi
           </button>
         </div>
       </div>
 
-      {/* KPI Chips */}
-      <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
-        <div className="p-2 rounded-xl bg-amber-950/30 border border-amber-500/30">
-          <span className="text-[10px] text-emerald-200/75 block">Sanksi Aktif:</span>
-          <span className="font-bold text-amber-300 text-sm">{sanksiAktif.length}</span>
+      {/* 3D KPI Chips */}
+      <div className="grid grid-cols-3 gap-2.5 text-center font-mono">
+        <div className="p-2.5 rounded-2xl bg-[#03160f]/90 border border-amber-500/30 shadow-inner">
+          <span className="text-[10px] text-emerald-200/75 block uppercase">Sanksi Aktif</span>
+          <Extruded3DValue value={sanksiAktif.length} tone="gold" className="text-lg sm:text-xl mt-0.5" />
         </div>
-        <div className="p-2 rounded-xl bg-emerald-950/30 border border-emerald-500/30">
-          <span className="text-[10px] text-emerald-200/75 block">Sanksi Selesai:</span>
-          <span className="font-bold text-emerald-400 text-sm">{sanksiSelesai.length}</span>
+        <div className="p-2.5 rounded-2xl bg-[#03160f]/90 border border-emerald-500/30 shadow-inner">
+          <span className="text-[10px] text-emerald-200/75 block uppercase">Sanksi Tuntas</span>
+          <Extruded3DValue value={sanksiSelesai.length} tone="emerald" className="text-lg sm:text-xl mt-0.5" />
         </div>
-        <div className="p-2 rounded-xl bg-purple-950/30 border border-purple-500/30">
-          <span className="text-[10px] text-emerald-200/75 block">Total Berkas:</span>
-          <span className="font-bold text-purple-300 text-sm">{totalSanksi}</span>
+        <div className="p-2.5 rounded-2xl bg-[#03160f]/90 border border-purple-500/35 shadow-inner">
+          <span className="text-[10px] text-emerald-200/75 block uppercase">Total Berkas</span>
+          <Extruded3DValue value={totalSanksi} tone="silver" className="text-lg sm:text-xl mt-0.5" />
         </div>
       </div>
 
-      {/* D3 Render Area */}
-      <div 
-        ref={containerRef} 
-        className="w-full min-h-[240px] bg-[#02100a]/60 rounded-2xl border border-emerald-800/80 p-2 flex items-center justify-center overflow-x-auto" 
-      />
+      {/* 3D Chart Stage */}
+      <div className="w-full bg-[#02100a]/85 bg-security-grid rounded-2xl border border-emerald-700/45 p-3 shadow-inner flex items-center justify-center min-h-[248px]">
+        {viewMode === 'status' ? (
+          <div className="w-full flex flex-col sm:flex-row items-center justify-around gap-4 py-1">
+            <PieChart3D
+              data={pieSlices}
+              size={172}
+              innerRadiusRatio={0.54}
+              depth={15}
+              centerValue={tuntasPercent}
+              centerSuffix="%"
+              centerLabel="TAKZIR TUNTAS"
+              centerTone={tuntasPercent >= 80 ? 'emerald' : 'gold'}
+              unit=" santri"
+            />
+            <div className="space-y-2 w-full sm:w-auto min-w-[165px]">
+              {pieSlices.map((slice) => (
+                <div
+                  key={slice.name}
+                  className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-[#041d13]/90 border border-emerald-800/70 text-xs font-mono"
+                >
+                  <span className="flex items-center gap-2 text-emerald-100">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: slice.color,
+                        boxShadow: `0 0 8px ${slice.color}`,
+                      }}
+                    />
+                    <span className="truncate">{slice.name}</span>
+                  </span>
+                  <span className="font-extrabold text-[#f3d266] tabular-nums">{slice.persen}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="w-full">
+            <BarChart3D
+              data={bentukBarData}
+              xKey="bentuk"
+              height={224}
+              unit=" santri"
+              series={[{ key: 'jumlah', label: 'Penerima Sanksi', color: '#a855f7' }]}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Footer Summary */}
       <div className="pt-2 border-t border-emerald-800/80 flex items-center justify-between text-[11px] font-mono text-emerald-200/75">
-        <span>Dibina: <strong className="text-amber-300">{sanksiAktif.length} Santri</strong></span>
+        <span>
+          Dibina: <strong className="text-amber-300 tabular-nums">{sanksiAktif.length} Santri</strong>
+        </span>
         <span className="text-emerald-400 font-bold">REKAPITULASI TAKZIR AKTUAL</span>
       </div>
     </div>
@@ -985,14 +702,13 @@ export const GrafikSanksiSantri: React.FC<{
 };
 
 // ==========================================
-// 4. PANEL GRAFIK KOMPARASI LAPORAN BULANAN
+// 4. PANEL GRAFIK 3D KOMPARASI LAPORAN BULANAN
 // ==========================================
 export const GrafikKomparasiBulanan: React.FC<{
   perizinanList: Perizinan[];
   pelanggaranList: Pelanggaran[];
   sanksiList: Sanksi[];
 }> = ({ perizinanList, pelanggaranList, sanksiList }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [rangeMonths, setRangeMonths] = useState<6 | 12>(6);
 
   const monthlyData = useMemo(() => {
@@ -1005,169 +721,89 @@ export const GrafikKomparasiBulanan: React.FC<{
       const y = d.getFullYear();
       const m = d.getMonth();
       const monthStr = `${y}-${String(m + 1).padStart(2, '0')}`;
-      const label = `${monthNames[m]} ${y}`;
+      const label = `${monthNames[m]} '${String(y).slice(-2)}`;
 
-      const countIzin = perizinanList.filter(p => (p.tglKeluar || p.tglPengajuan || '').startsWith(monthStr)).length;
-      const countPel = pelanggaranList.filter(p => (p.tanggal || '').startsWith(monthStr)).length;
-      const countSanksi = sanksiList.filter(s => (s.tanggalAktualSelesai || s.tanggalPenetapan || '').startsWith(monthStr) && s.status === 'Selesai').length;
+      const countIzin = perizinanList.filter((p) =>
+        (p.tglKeluar || p.tglPengajuan || '').startsWith(monthStr)
+      ).length;
+      const countPel = pelanggaranList.filter((p) => (p.tanggal || '').startsWith(monthStr)).length;
+      const countSanksi = sanksiList.filter(
+        (s) =>
+          (s.tanggalAktualSelesai || s.tanggalPenetapan || '').startsWith(monthStr) &&
+          s.status === 'Selesai'
+      ).length;
 
       data.push({ label, perizinan: countIzin, pelanggaran: countPel, sanksiSelesai: countSanksi });
     }
     return data;
   }, [perizinanList, pelanggaranList, sanksiList, rangeMonths]);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-    d3.select(container).selectAll('*').remove();
-
-    const width = container.clientWidth || 450;
-    const height = 240;
-    const margin = { top: 20, right: 25, bottom: 35, left: 35 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
-
-    const svg = d3.select(container)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .attr('class', 'overflow-visible');
-
-    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-
-    const x0 = d3.scaleBand()
-      .domain(monthlyData.map(d => d.label))
-      .range([0, innerWidth])
-      .padding(0.24);
-
-    const x1 = d3.scaleBand()
-      .domain(['perizinan', 'pelanggaran', 'sanksi'])
-      .range([0, x0.bandwidth()])
-      .padding(0.1);
-
-    const maxVal = Math.max(4, d3.max(monthlyData, d => Math.max(d.perizinan, d.pelanggaran, d.sanksiSelesai)) || 4);
-    const yScale = d3.scaleLinear()
-      .domain([0, maxVal + 1])
-      .range([innerHeight, 0])
-      .nice();
-
-    // Grid lines
-    g.append('g')
-      .attr('stroke', '#06281c')
-      .attr('stroke-dasharray', '3,3')
-      .attr('stroke-opacity', 0.5)
-      .call(d3.axisLeft(yScale).tickSize(-innerWidth).tickFormat(() => ''));
-
-    monthlyData.forEach(d => {
-      const groupX = x0(d.label) || 0;
-      const barW = x1.bandwidth();
-
-      // Perizinan (Cyan)
-      const hIzin = innerHeight - yScale(d.perizinan);
-      g.append('rect')
-        .attr('x', groupX + (x1('perizinan') || 0))
-        .attr('y', yScale(d.perizinan))
-        .attr('width', barW)
-        .attr('height', Math.max(2, hIzin))
-        .attr('rx', 4)
-        .attr('fill', '#10b981')
-        .attr('opacity', 0.9);
-
-      // Pelanggaran (Red)
-      const hPel = innerHeight - yScale(d.pelanggaran);
-      g.append('rect')
-        .attr('x', groupX + (x1('pelanggaran') || 0))
-        .attr('y', yScale(d.pelanggaran))
-        .attr('width', barW)
-        .attr('height', Math.max(2, hPel))
-        .attr('rx', 4)
-        .attr('fill', '#ef4444')
-        .attr('opacity', 0.9);
-
-      // Sanksi Selesai (Emerald)
-      const hSanksi = innerHeight - yScale(d.sanksiSelesai);
-      g.append('rect')
-        .attr('x', groupX + (x1('sanksi') || 0))
-        .attr('y', yScale(d.sanksiSelesai))
-        .attr('width', barW)
-        .attr('height', Math.max(2, hSanksi))
-        .attr('rx', 4)
-        .attr('fill', '#10b981')
-        .attr('opacity', 0.9);
-
-      // X Label
-      g.append('text')
-        .attr('x', groupX + x0.bandwidth() / 2)
-        .attr('y', innerHeight + 18)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', '9px')
-        .attr('font-family', 'ui-monospace, monospace')
-        .attr('fill', '#94a3b8')
-        .text(d.label);
-    });
-
-  }, [monthlyData]);
-
   return (
-    <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl space-y-4 hover-rainbow-edge relative overflow-hidden flex flex-col justify-between">
-      <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-amber-500 via-emerald-500 to-transparent opacity-80" />
-      
+    <div className="kpi-glass-3d rounded-3xl p-5 sm:p-6 space-y-4 relative overflow-hidden flex flex-col justify-between">
       {/* Header Panel */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-800/80">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300">
+          <div className="p-2 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 shadow-inner">
             <Calendar className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-wider">MODUL D</span>
+              <span className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-wider">
+                3D ANALYTICS D
+              </span>
               <span className="text-[10px] font-mono text-emerald-200/75">· KOMPARASI MULTI-BULAN</span>
             </div>
             <h3 className="text-sm sm:text-base font-black text-white uppercase font-sans tracking-tight">
-              Grafik Komparasi Laporan Bulanan
+              Grafik 3D Komparasi Laporan Bulanan
             </h3>
           </div>
         </div>
 
         {/* Range Selector */}
-        <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
+        <div className="flex items-center bg-[#02100a]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono shrink-0">
           <button
             onClick={() => setRangeMonths(6)}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${rangeMonths === 6 ? 'bg-amber-500 text-slate-950 font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              rangeMonths === 6
+                ? 'bg-gradient-to-r from-[#d4af37] to-[#f3d266] text-[#02120a] font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
             6 Bulan
           </button>
           <button
             onClick={() => setRangeMonths(12)}
-            className={`px-2.5 py-1 rounded-lg cursor-pointer ${rangeMonths === 12 ? 'bg-amber-500 text-slate-950 font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+              rangeMonths === 12
+                ? 'bg-gradient-to-r from-[#d4af37] to-[#f3d266] text-[#02120a] font-bold shadow'
+                : 'text-emerald-200/75 hover:text-white'
+            }`}
           >
             12 Bulan
           </button>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-4 text-xs font-mono">
-        <span className="flex items-center gap-1.5 text-emerald-300">
-          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span> Perizinan
-        </span>
-        <span className="flex items-center gap-1.5 text-red-400">
-          <span className="w-2.5 h-2.5 rounded-sm bg-red-500"></span> Pelanggaran
-        </span>
-        <span className="flex items-center gap-1.5 text-emerald-400">
-          <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span> Takzir Tuntas
-        </span>
+      {/* 3D Isometric Grouped Pillars Stage */}
+      <div className="w-full bg-[#02100a]/85 bg-security-grid rounded-2xl border border-emerald-700/45 p-3 shadow-inner">
+        <BarChart3D
+          data={monthlyData}
+          xKey="label"
+          height={250}
+          unit=" data"
+          series={[
+            { key: 'perizinan', label: 'Perizinan', color: '#10b981' },
+            { key: 'pelanggaran', label: 'Pelanggaran', color: '#f43f5e' },
+            { key: 'sanksiSelesai', label: 'Takzir Tuntas', color: '#d4af37' },
+          ]}
+        />
       </div>
-
-      {/* D3 Render Area */}
-      <div 
-        ref={containerRef} 
-        className="w-full min-h-[240px] bg-[#02100a]/60 rounded-2xl border border-emerald-800/80 p-2 flex items-center justify-center overflow-x-auto" 
-      />
 
       {/* Footer Summary */}
       <div className="pt-2 border-t border-emerald-800/80 flex items-center justify-between text-[11px] font-mono text-emerald-200/75">
-        <span>Periode: <strong className="text-amber-300">{rangeMonths} Bulan Terakhir</strong></span>
+        <span>
+          Periode: <strong className="text-amber-300">{rangeMonths} Bulan Terakhir</strong>
+        </span>
         <span className="text-emerald-300 font-bold">REKAPITULASI DUA ARAH REAL-TIME</span>
       </div>
     </div>
@@ -1182,102 +818,119 @@ export const AdvancedDataVisualization: React.FC<AdvancedDataVisualizationProps>
   perizinanList,
   pelanggaranList,
   sanksiList,
-  currentUser,
 }) => {
-  // Global Filter State
   const [periodFilter, setPeriodFilter] = useState<'today' | '7d' | '30d' | 'all'>('30d');
   const [selectedKelas, setSelectedKelas] = useState<string>('all');
   const [selectedKategori, setSelectedKategori] = useState<string>('all');
 
-  // Extract distinct kelas from santri and perizinan
   const distinctClasses = useMemo(() => {
     const set = new Set<string>();
-    santriList.forEach(s => s.kelas && set.add(s.kelas));
-    perizinanList.forEach(p => p.santriKelas && set.add(p.santriKelas));
+    santriList.forEach((s) => s.kelas && set.add(s.kelas));
+    perizinanList.forEach((p) => p.santriKelas && set.add(p.santriKelas));
     return Array.from(set).sort();
   }, [santriList, perizinanList]);
 
-  // Aggregate Metrics for Top Counter Bar (Exact Database Sync)
   const totalSantri = santriList.length;
   const totalIzin = perizinanList.length;
-  const totalIzinAktif = perizinanList.filter(p => (p.status === 'Sedang Keluar' || p.status === 'Disetujui') && !p.actualKembali).length;
-  const totalIzinSelesai = perizinanList.filter(p => p.status === 'Sudah Kembali' || Boolean(p.actualKembali)).length;
-  const totalTerlambat = perizinanList.filter(p => (p.status === 'Terlambat' || (p.menitKeterlambatan && p.menitKeterlambatan > 0)) && !p.actualKembali).length;
+  const totalIzinAktif = perizinanList.filter(
+    (p) => (p.status === 'Sedang Keluar' || p.status === 'Disetujui') && !p.actualKembali
+  ).length;
+  const totalIzinSelesai = perizinanList.filter(
+    (p) => p.status === 'Sudah Kembali' || Boolean(p.actualKembali)
+  ).length;
+  const totalTerlambat = perizinanList.filter(
+    (p) => (p.status === 'Terlambat' || (p.menitKeterlambatan && p.menitKeterlambatan > 0)) && !p.actualKembali
+  ).length;
 
   const totalPelanggaran = pelanggaranList.length;
   const totalPoinPelanggaran = pelanggaranList.reduce((acc, curr) => acc + (curr.poin || 0), 0);
 
-  const totalSanksiAktif = sanksiList.filter(s => s.status === 'Sedang Berjalan' || s.status === 'Belum Dikerjakan').length;
-  const totalSanksiSelesai = sanksiList.filter(s => s.status === 'Selesai').length;
+  const totalSanksiAktif = sanksiList.filter(
+    (s) => s.status === 'Sedang Berjalan' || s.status === 'Belum Dikerjakan'
+  ).length;
+  const totalSanksiSelesai = sanksiList.filter((s) => s.status === 'Selesai').length;
+  const totalSanksi = sanksiList.length;
+
+  const izinSelesaiPct = totalIzin > 0 ? Number(((totalIzinSelesai / totalIzin) * 100).toFixed(1)) : 100;
+  const pelanggaranBeratCount = pelanggaranList.filter((p) => p.kategori === 'Berat').length;
+  const pelanggaranBeratPct =
+    totalPelanggaran > 0 ? -Number(((pelanggaranBeratCount / totalPelanggaran) * 100).toFixed(1)) : 0;
+  const sanksiTuntasPct = totalSanksi > 0 ? Number(((totalSanksiSelesai / totalSanksi) * 100).toFixed(1)) : 100;
+  const terlambatPct =
+    totalSantri > 0 ? -Number(((totalTerlambat / totalSantri) * 100).toFixed(1)) : 0;
 
   return (
     <div className="space-y-6">
-      
-      {/* 1. Master Filter & Live Telemetry Count-Up Bar */}
-      <div className="p-5 sm:p-6 rounded-3xl metallic-glass-card border border-emerald-800 shadow-2xl relative overflow-hidden hover-rainbow-edge">
-        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-500 opacity-80" />
-        
+      {/* 1. Master Filter & Live 3D KPI Counter Bar */}
+      <div className="kpi-glass-3d rounded-3xl p-5 sm:p-6 relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-emerald-800/80">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 uppercase tracking-wider flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                INTEGRATED ANALYTIC GRID & VISUALIZATION
+                3D INTEGRATED SECURITY ANALYTICS
               </span>
-              <span className="text-xs font-mono text-emerald-200/75">· 4 Modul Terhubung</span>
+              <span className="text-xs font-mono text-emerald-200/75">· 4 Modul 3D Terhubung</span>
             </div>
             <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight font-sans mt-1">
-              Pusat Analitik Keamanan, Perizinan & Kedisiplinan Santri
+              Pusat Analitik 3D Keamanan, Perizinan &amp; Kedisiplinan Santri
             </h2>
           </div>
 
           {/* Global Interactive Filters */}
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Periode filter */}
-            <div className="flex items-center bg-[#041d13]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
+            <div className="flex items-center bg-[#02100a]/90 p-1 rounded-xl border border-emerald-800/80 text-[10px] font-mono">
               <button
                 onClick={() => setPeriodFilter('today')}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === 'today' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+                className={`px-2 py-0.5 rounded-lg cursor-pointer ${
+                  periodFilter === 'today' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
+                }`}
               >
                 Hari Ini
               </button>
               <button
                 onClick={() => setPeriodFilter('7d')}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === '7d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+                className={`px-2 py-0.5 rounded-lg cursor-pointer ${
+                  periodFilter === '7d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
+                }`}
               >
                 7 Hari
               </button>
               <button
                 onClick={() => setPeriodFilter('30d')}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === '30d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+                className={`px-2 py-0.5 rounded-lg cursor-pointer ${
+                  periodFilter === '30d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
+                }`}
               >
                 30 Hari
               </button>
               <button
                 onClick={() => setPeriodFilter('all')}
-                className={`px-2 py-0.5 rounded-lg cursor-pointer ${periodFilter === 'all' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'}`}
+                className={`px-2 py-0.5 rounded-lg cursor-pointer ${
+                  periodFilter === 'all' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
+                }`}
               >
                 Semua
               </button>
             </div>
 
-            {/* Kelas filter */}
             <select
               value={selectedKelas}
               onChange={(e) => setSelectedKelas(e.target.value)}
-              className="bg-[#041d13]/90 border border-emerald-800 text-amber-300 text-[11px] font-mono font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
+              className="bg-[#02100a]/90 border border-emerald-800 text-amber-300 text-[11px] font-mono font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
             >
               <option value="all">Semua Kelas</option>
-              {distinctClasses.map(cls => (
-                <option key={cls} value={cls}>{cls}</option>
+              {distinctClasses.map((cls) => (
+                <option key={cls} value={cls}>
+                  {cls}
+                </option>
               ))}
             </select>
 
-            {/* Kategori filter */}
             <select
               value={selectedKategori}
               onChange={(e) => setSelectedKategori(e.target.value)}
-              className="bg-[#041d13]/90 border border-emerald-800 text-emerald-300 text-[11px] font-mono font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-400 cursor-pointer"
+              className="bg-[#02100a]/90 border border-emerald-800 text-emerald-300 text-[11px] font-mono font-bold rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-400 cursor-pointer"
             >
               <option value="all">Semua Kategori</option>
               <option value="Ringan">Ringan</option>
@@ -1287,106 +940,69 @@ export const AdvancedDataVisualization: React.FC<AdvancedDataVisualizationProps>
           </div>
         </div>
 
-        {/* 4 Animated KPI Stat Counters (Matching exact database numbers) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4">
-          
-          {/* Stat 1: Total Perizinan */}
-          <div className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800/80 hover:border-emerald-500/40 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase text-emerald-200/75 font-bold">Total Perizinan</span>
-              <DoorOpen className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-2xl font-black font-mono text-white mt-1">
-              <AnimatedCounter value={totalIzin} />
-            </div>
-            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-200/75 mt-1 pt-1 border-t border-emerald-800">
-              <span className="text-emerald-300">{totalIzinAktif} Aktif</span>
-              <span className="text-emerald-400">{totalIzinSelesai} Selesai</span>
-            </div>
-          </div>
-
-          {/* Stat 2: Total Pelanggaran & Poin */}
-          <div className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800/80 hover:border-red-500/40 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase text-emerald-200/75 font-bold">Pelanggaran Terdata</span>
-              <AlertTriangle className="w-4 h-4 text-red-400" />
-            </div>
-            <div className="text-2xl font-black font-mono text-red-400 mt-1">
-              <AnimatedCounter value={totalPelanggaran} />
-            </div>
-            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-200/75 mt-1 pt-1 border-t border-emerald-800">
-              <span className="text-emerald-100/90">{totalPoinPelanggaran} Poin</span>
-              <span className="text-red-400">{pelanggaranList.filter(p => p.kategori === 'Berat').length} Berat</span>
-            </div>
-          </div>
-
-          {/* Stat 3: Santri Menjalani Sanksi */}
-          <div className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800/80 hover:border-purple-500/40 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase text-emerald-200/75 font-bold">Sanksi Edukatif</span>
-              <ShieldCheck className="w-4 h-4 text-purple-400" />
-            </div>
-            <div className="text-2xl font-black font-mono text-amber-300 mt-1">
-              <AnimatedCounter value={totalSanksiAktif} />
-            </div>
-            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-200/75 mt-1 pt-1 border-t border-emerald-800">
-              <span className="text-amber-300">{totalSanksiAktif} Dibina</span>
-              <span className="text-emerald-400">{totalSanksiSelesai} Tuntas</span>
-            </div>
-          </div>
-
-          {/* Stat 4: Keterlambatan Gerbang */}
-          <div className="p-3.5 rounded-2xl bg-[#041d13]/80 border border-emerald-800/80 hover:border-amber-500/40 transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase text-emerald-200/75 font-bold">Santri Terlambat</span>
-              <Clock className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-2xl font-black font-mono text-red-400 mt-1">
-              <AnimatedCounter value={totalTerlambat} />
-            </div>
-            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-200/75 mt-1 pt-1 border-t border-emerald-800">
-              <span className="text-red-400">{totalTerlambat} Lewat Jadwal</span>
-              <span className="text-emerald-200/75">/ {totalSantri} Santri</span>
-            </div>
-          </div>
-
+        {/* 4 Animated 3D KPI Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-4">
+          <KpiStatCard3D
+            label="Total Perizinan"
+            value={totalIzin}
+            tone="emerald"
+            icon={<DoorOpen className="w-4 h-4 text-emerald-300" />}
+            trendPercent={izinSelesaiPct}
+            subtitle={`${totalIzinAktif} Aktif · ${totalIzinSelesai} Selesai`}
+          />
+          <KpiStatCard3D
+            label="Pelanggaran Terdata"
+            value={totalPelanggaran}
+            tone="rose"
+            icon={<AlertTriangle className="w-4 h-4 text-rose-400" />}
+            trendPercent={pelanggaranBeratPct}
+            subtitle={`${totalPoinPelanggaran} Total Poin · ${pelanggaranBeratCount} Berat`}
+          />
+          <KpiStatCard3D
+            label="Sanksi Edukatif Aktif"
+            value={totalSanksiAktif}
+            tone="gold"
+            icon={<ShieldCheck className="w-4 h-4 text-[#f3d266]" />}
+            trendPercent={sanksiTuntasPct}
+            subtitle={`${totalSanksiAktif} Dibina · ${totalSanksiSelesai} Tuntas`}
+          />
+          <KpiStatCard3D
+            label="Santri Terlambat"
+            value={totalTerlambat}
+            tone="rose"
+            icon={<Clock className="w-4 h-4 text-amber-300" />}
+            trendPercent={terlambatPct}
+            subtitle={`${totalTerlambat} Lewat Jadwal · / ${totalSantri} Santri`}
+          />
         </div>
-
       </div>
 
-      {/* 2. THE 4 SYNCHRONIZED CHARTS IN 2-COLUMN RESPONSIVE GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Modul A: Grafik Perizinan Santri */}
-        <GrafikPerizinanSantri 
-          perizinanList={perizinanList} 
+      {/* 2. THE 4 SYNCHRONIZED 3D CHARTS IN RESPONSIVE GRID (grid-cols-1 md:grid-cols-2 gap-6) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <GrafikPerizinanSantri
+          perizinanList={perizinanList}
           selectedKelas={selectedKelas}
           periodFilter={periodFilter}
         />
 
-        {/* Modul B: Grafik Pelanggaran Santri */}
-        <GrafikPelanggaranSantri 
-          pelanggaranList={pelanggaranList} 
+        <GrafikPelanggaranSantri
+          pelanggaranList={pelanggaranList}
           selectedKelas={selectedKelas}
           selectedKategori={selectedKategori}
           periodFilter={periodFilter}
         />
 
-        {/* Modul C: Grafik Sanksi Edukatif */}
-        <GrafikSanksiSantri 
-          sanksiList={sanksiList} 
-          pelanggaranList={pelanggaranList} 
+        <GrafikSanksiSantri
+          sanksiList={sanksiList}
+          pelanggaranList={pelanggaranList}
         />
 
-        {/* Modul D: Grafik Komparasi Laporan Bulanan */}
-        <GrafikKomparasiBulanan 
-          perizinanList={perizinanList} 
-          pelanggaranList={pelanggaranList} 
-          sanksiList={sanksiList} 
+        <GrafikKomparasiBulanan
+          perizinanList={perizinanList}
+          pelanggaranList={pelanggaranList}
+          sanksiList={sanksiList}
         />
-
       </div>
-
     </div>
   );
 };

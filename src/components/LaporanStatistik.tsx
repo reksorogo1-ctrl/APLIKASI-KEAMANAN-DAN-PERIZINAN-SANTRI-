@@ -16,6 +16,7 @@ import {
   Activity
 } from 'lucide-react';
 import { Santri, Perizinan, Pelanggaran, Sanksi, LogAktivitas } from '../types';
+import { KpiStatCard3D } from './Charts3D';
 
 interface LaporanStatistikProps {
   santriList: Santri[];
@@ -187,41 +188,39 @@ export const LaporanStatistik: React.FC<LaporanStatistikProps> = ({
       </div>
 
       {/* KPI Stat Strip - 3D Floating Glass Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="metallic-glass-card rounded-3xl p-5 border border-emerald-800/80 hover-rainbow-edge card-3d-floating shadow-xl">
-          <span className="text-[11px] font-mono text-emerald-200/75 font-bold uppercase tracking-wider">Total Perizinan Santri</span>
-          <p className="text-3xl font-black font-mono text-white mt-1.5 tabular-nums">{totalIzin}</p>
-          <p className="text-[10px] text-emerald-300 font-mono mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            Tercatat di sistem database
-          </p>
-        </div>
-
-        <div className="metallic-glass-card rounded-3xl p-5 border border-emerald-800/80 hover-rainbow-edge card-3d-floating shadow-xl">
-          <span className="text-[11px] font-mono text-emerald-200/75 font-bold uppercase tracking-wider">Kasus Keterlambatan</span>
-          <p className="text-3xl font-black font-mono text-rose-400 mt-1.5 tabular-nums glow-red">{totalTerlambat}</p>
-          <p className="text-[10px] text-rose-400 font-mono mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-            Melewati batas jam kepulangan
-          </p>
-        </div>
-
-        <div className="metallic-glass-card rounded-3xl p-5 border border-emerald-800/80 hover-rainbow-edge card-3d-floating shadow-xl">
-          <span className="text-[11px] font-mono text-emerald-200/75 font-bold uppercase tracking-wider">Total Akumulasi Poin</span>
-          <p className="text-3xl font-black font-mono text-amber-300 mt-1.5 tabular-nums glow-gold">{totalPoinPelanggaran}</p>
-          <p className="text-[10px] text-emerald-200/75 font-mono mt-1">
-            Dari {totalPelanggaran} insiden pelanggaran
-          </p>
-        </div>
-
-        <div className="metallic-glass-card rounded-3xl p-5 border border-emerald-800/80 hover-rainbow-edge card-3d-floating shadow-xl">
-          <span className="text-[11px] font-mono text-emerald-200/75 font-bold uppercase tracking-wider">Takzir Edukatif Tuntas</span>
-          <p className="text-3xl font-black font-mono text-emerald-400 mt-1.5 tabular-nums glow-gold">{totalSanksiTuntas}</p>
-          <p className="text-[10px] text-emerald-400 font-mono mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            Hafalan & khidmah selesai
-          </p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiStatCard3D
+          label="Total Perizinan Santri"
+          value={totalIzin}
+          tone="silver"
+          icon={<DoorOpen className="w-4 h-4 text-emerald-300" />}
+          trendPercent={totalIzin > 0 ? Number(((totalKeluarGerbang / totalIzin) * 100).toFixed(1)) : 0}
+          subtitle="Tercatat di sistem database"
+        />
+        <KpiStatCard3D
+          label="Kasus Keterlambatan"
+          value={totalTerlambat}
+          tone="rose"
+          icon={<Clock className="w-4 h-4 text-rose-400" />}
+          trendPercent={totalIzin > 0 ? -Number(((totalTerlambat / totalIzin) * 100).toFixed(1)) : 0}
+          subtitle="Melewati batas jam kepulangan"
+        />
+        <KpiStatCard3D
+          label="Total Akumulasi Poin"
+          value={totalPoinPelanggaran}
+          tone="gold"
+          icon={<AlertTriangle className="w-4 h-4 text-amber-300" />}
+          trendPercent={totalPelanggaran > 0 ? -Number(((totalPelanggaran / Math.max(1, santriList.length)) * 100).toFixed(1)) : 0}
+          subtitle={`Dari ${totalPelanggaran} insiden pelanggaran`}
+        />
+        <KpiStatCard3D
+          label="Takzir Edukatif Tuntas"
+          value={totalSanksiTuntas}
+          tone="emerald"
+          icon={<CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+          trendPercent={sanksiList.length > 0 ? Number(((totalSanksiTuntas / sanksiList.length) * 100).toFixed(1)) : 100}
+          subtitle="Hafalan & khidmah selesai"
+        />
       </div>
 
       {/* Report Type Selector Tabs - 3D Styled */}
