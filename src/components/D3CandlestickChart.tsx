@@ -120,30 +120,51 @@ export const D3CandlestickChart: React.FC<D3CandlestickChartProps> = ({
       .attr('width', innerWidth)
       .attr('height', innerHeight);
 
-    // Bullish & Bearish 3D gradients
+    // Bullish & Bearish 3D volumetric gradients (bright left face -> rich mid -> shaded right)
     const bullGrad = defs
       .append('linearGradient')
       .attr('id', 'd3-bull-candle-grad')
       .attr('x1', '0%')
       .attr('y1', '0%')
-      .attr('x2', '0%')
-      .attr('y2', '100%');
-    bullGrad.append('stop').attr('offset', '0%').attr('stop-color', '#6ee7b7');
+      .attr('x2', '100%')
+      .attr('y2', '15%');
+    bullGrad.append('stop').attr('offset', '0%').attr('stop-color', '#a7f3d0');
     bullGrad.append('stop').attr('offset', '45%').attr('stop-color', '#10b981');
-    bullGrad.append('stop').attr('offset', '100%').attr('stop-color', '#047857');
+    bullGrad.append('stop').attr('offset', '100%').attr('stop-color', '#065f46');
 
     const bearGrad = defs
       .append('linearGradient')
       .attr('id', 'd3-bear-candle-grad')
       .attr('x1', '0%')
       .attr('y1', '0%')
+      .attr('x2', '100%')
+      .attr('y2', '15%');
+    bearGrad.append('stop').attr('offset', '0%').attr('stop-color', '#fecdd3');
+    bearGrad.append('stop').attr('offset', '45%').attr('stop-color', '#f43f5e');
+    bearGrad.append('stop').attr('offset', '100%').attr('stop-color', '#881337');
+
+    // Dark right-side 3D extrusion gradients
+    const bullSideGrad = defs
+      .append('linearGradient')
+      .attr('id', 'd3-bull-side-grad')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
       .attr('x2', '0%')
       .attr('y2', '100%');
-    bearGrad.append('stop').attr('offset', '0%').attr('stop-color', '#fda4af');
-    bearGrad.append('stop').attr('offset', '45%').attr('stop-color', '#f43f5e');
-    bearGrad.append('stop').attr('offset', '100%').attr('stop-color', '#be123c');
+    bullSideGrad.append('stop').attr('offset', '0%').attr('stop-color', '#047857');
+    bullSideGrad.append('stop').attr('offset', '100%').attr('stop-color', '#022c22');
 
-    // Soft neon glow filter for wicks & threshold lines
+    const bearSideGrad = defs
+      .append('linearGradient')
+      .attr('id', 'd3-bear-side-grad')
+      .attr('x1', '0%')
+      .attr('y1', '0%')
+      .attr('x2', '0%')
+      .attr('y2', '100%');
+    bearSideGrad.append('stop').attr('offset', '0%').attr('stop-color', '#be123c');
+    bearSideGrad.append('stop').attr('offset', '100%').attr('stop-color', '#4c0519');
+
+    // Soft neon glow filter for wicks, 3D live markers & neon price line
     const glowFilter = defs
       .append('filter')
       .attr('id', 'd3-trader-glow')
@@ -151,7 +172,7 @@ export const D3CandlestickChart: React.FC<D3CandlestickChartProps> = ({
       .attr('y', '-25%')
       .attr('width', '150%')
       .attr('height', '150%');
-    glowFilter.append('feGaussianBlur').attr('stdDeviation', '2.4').attr('result', 'blur');
+    glowFilter.append('feGaussianBlur').attr('stdDeviation', '2.8').attr('result', 'blur');
     const feMerge = glowFilter.append('feMerge');
     feMerge.append('feMergeNode').attr('in', 'blur');
     feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
@@ -410,31 +431,34 @@ export const D3CandlestickChart: React.FC<D3CandlestickChartProps> = ({
       .attr('font-weight', '800')
       .attr('font-family', 'ui-monospace, monospace');
 
-    // Latest Close Price Marker on Right Axis
+    // Latest Close Price Neon Floating Marker Line on Right Axis
     const lastCandle = activeCandles[activeCandles.length - 1];
     if (lastCandle) {
       const yLast = yScale(lastCandle.close);
       const isLastBull = lastCandle.close >= lastCandle.open;
+      const neonColor = isLastBull ? '#34d399' : '#fb7185';
       latestPriceLineLayer
         .append('line')
         .attr('x1', 0)
         .attr('x2', innerWidth)
         .attr('y1', yLast)
         .attr('y2', yLast)
-        .attr('stroke', isLastBull ? '#10b981' : '#f43f5e')
-        .attr('stroke-width', 1)
-        .attr('stroke-dasharray', '2 3')
-        .attr('opacity', 0.7);
+        .attr('stroke', neonColor)
+        .attr('stroke-width', 1.6)
+        .attr('stroke-dasharray', '5 3')
+        .attr('filter', 'url(#d3-trader-glow)')
+        .attr('opacity', 0.92);
 
       const lastBadge = rootG.append('g').attr('transform', `translate(${innerWidth + 2}, ${yLast - 10})`);
       lastBadge
         .append('rect')
         .attr('width', margin.right - 6)
         .attr('height', 20)
-        .attr('rx', 4)
+        .attr('rx', 5)
         .attr('fill', isLastBull ? '#059669' : '#e11d48')
         .attr('stroke', '#f3d266')
-        .attr('stroke-width', 0.8);
+        .attr('stroke-width', 1.1)
+        .attr('filter', 'url(#d3-trader-glow)');
       lastBadge
         .append('text')
         .attr('x', (margin.right - 6) / 2)
@@ -521,36 +545,90 @@ export const D3CandlestickChart: React.FC<D3CandlestickChartProps> = ({
         const yClose = yScale(d.close);
         const bodyTop = Math.min(yOpen, yClose);
         const bodyBottom = Math.max(yOpen, yClose);
-        const bodyHeight = Math.max(5, bodyBottom - bodyTop);
+        const bodyHeight = Math.max(6, bodyBottom - bodyTop);
 
-        // Wick
+        const depthX = Math.max(3, Math.min(7.5, candleWidth * 0.24));
+        const depthY = Math.round(depthX * 0.55);
+        const frontW = Math.max(5, candleWidth - depthX * 0.45);
+        const xLeft = cx - frontW / 2 - depthX * 0.2;
+        const xRight = xLeft + frontW;
+
+        // 3D Ambient Shadow Behind Candle
+        g.append('rect')
+          .attr('x', xLeft + 3)
+          .attr('y', bodyTop + 3)
+          .attr('width', frontW + depthX)
+          .attr('height', bodyHeight)
+          .attr('rx', 2)
+          .attr('fill', 'rgba(0, 0, 0, 0.52)');
+
+        // Glowing Sharp Wick
         g.append('line')
-          .attr('x1', cx)
-          .attr('x2', cx)
+          .attr('x1', xLeft + frontW / 2)
+          .attr('x2', xLeft + frontW / 2)
           .attr('y1', yHigh)
           .attr('y2', yLow)
-          .attr('stroke', isBull ? '#34d399' : '#fb7185')
-          .attr('stroke-width', 2)
+          .attr('stroke', isBull ? '#6ee7b7' : '#fda4af')
+          .attr('stroke-width', 2.2)
+          .attr('stroke-linecap', 'round')
           .attr('filter', 'url(#d3-trader-glow)');
 
-        // Body
+        // 3D Bright Front / Left Cylindrical Face
         g.append('rect')
-          .attr('x', cx - candleWidth / 2)
+          .attr('x', xLeft)
           .attr('y', bodyTop)
-          .attr('width', candleWidth)
+          .attr('width', frontW)
           .attr('height', bodyHeight)
-          .attr('rx', 3.5)
+          .attr('rx', 1.5)
           .attr('fill', isBull ? 'url(#d3-bull-candle-grad)' : 'url(#d3-bear-candle-grad)')
           .attr('stroke', isBull ? '#a7f3d0' : '#fecdd3')
-          .attr('stroke-width', d.isLive ? 1.4 : 0.9);
+          .attr('stroke-width', d.isLive ? 1.2 : 0.75);
 
-        // Live pulse marker on live Bendahara candles
-        if (d.isLive && idx === activeCandles.length - 1) {
+        // 3D Shaded Right Extrusion Wall
+        g.append('polygon')
+          .attr(
+            'points',
+            `${xRight},${bodyTop} ${xRight + depthX},${bodyTop - depthY} ${xRight + depthX},${bodyBottom - depthY} ${xRight},${bodyBottom}`
+          )
+          .attr('fill', isBull ? 'url(#d3-bull-side-grad)' : 'url(#d3-bear-side-grad)')
+          .attr('stroke', 'rgba(0,0,0,0.45)')
+          .attr('stroke-width', 0.6);
+
+        // 3D Bright Lit Top Cap
+        g.append('polygon')
+          .attr(
+            'points',
+            `${xLeft},${bodyTop} ${xLeft + depthX},${bodyTop - depthY} ${xRight + depthX},${bodyTop - depthY} ${xRight},${bodyTop}`
+          )
+          .attr('fill', isBull ? '#a7f3d0' : '#fecdd3')
+          .attr('stroke', 'rgba(255,255,255,0.4)')
+          .attr('stroke-width', 0.6);
+
+        // Left Specular Edge Highlight
+        g.append('line')
+          .attr('x1', xLeft + 1)
+          .attr('x2', xLeft + 1)
+          .attr('y1', bodyTop + 1)
+          .attr('y2', bodyBottom - 1)
+          .attr('stroke', 'rgba(255, 255, 255, 0.45)')
+          .attr('stroke-width', 1);
+
+        // Live Neon Pulsing Beacon on Latest Live Candle
+        if (idx === activeCandles.length - 1) {
           g.append('circle')
-            .attr('cx', cx)
-            .attr('cy', Math.max(8, yHigh - 7))
-            .attr('r', 3.2)
+            .attr('cx', xLeft + frontW / 2)
+            .attr('cy', Math.max(8, yHigh - 8))
+            .attr('r', 7)
+            .attr('fill', isBull ? '#10b981' : '#f43f5e')
+            .attr('class', 'node-pulse-3d');
+
+          g.append('circle')
+            .attr('cx', xLeft + frontW / 2)
+            .attr('cy', Math.max(8, yHigh - 8))
+            .attr('r', 3.4)
             .attr('fill', '#f3d266')
+            .attr('stroke', '#ffffff')
+            .attr('stroke-width', 1)
             .attr('filter', 'url(#d3-trader-glow)');
         }
       });

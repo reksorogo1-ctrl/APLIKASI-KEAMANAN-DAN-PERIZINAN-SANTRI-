@@ -23,141 +23,71 @@ export interface ResolvedPejabatSurat {
   tampilkanKetua: boolean;
 }
 
+// Legacy localStorage key removed: Cloud Firestore (system_config/main) is the single source of truth.
 export function readPengaturanSuratFromStorage(): PengaturanPejabatSurat | null {
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return null;
-    const raw = window.localStorage.getItem(PENGATURAN_SURAT_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return null;
-    return {
-      namaKetua: typeof parsed.namaKetua === 'string' ? parsed.namaKetua : '',
-      jabatanKetua:
-        typeof parsed.jabatanKetua === 'string' && parsed.jabatanKetua.trim() !== ''
-          ? parsed.jabatanKetua
-          : 'Ketua Pondok Pesantren',
-      ttdKetua: typeof parsed.ttdKetua === 'string' ? parsed.ttdKetua : '',
-      namaSekretaris: typeof parsed.namaSekretaris === 'string' ? parsed.namaSekretaris : '',
-      jabatanSekretaris:
-        typeof parsed.jabatanSekretaris === 'string' && parsed.jabatanSekretaris.trim() !== ''
-          ? parsed.jabatanSekretaris
-          : 'Sekretaris Pondok',
-      ttdSekretaris: typeof parsed.ttdSekretaris === 'string' ? parsed.ttdSekretaris : '',
-      tampilkanKetua: typeof parsed.tampilkanKetua === 'boolean' ? parsed.tampilkanKetua : true,
-      updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : undefined,
-    };
-  } catch (err) {
-    console.warn('Gagal membaca almaliki_pengaturan_surat:', err);
-    return null;
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(PENGATURAN_SURAT_STORAGE_KEY);
+    }
+  } catch {
+    // ignore
   }
+  return null;
 }
 
 export function savePengaturanSuratToStorage(
   data: Partial<PengaturanPejabatSurat>
 ): PengaturanPejabatSurat {
-  const prev = readPengaturanSuratFromStorage();
-  const payload: PengaturanPejabatSurat = {
-    namaKetua: data.namaKetua ?? prev?.namaKetua ?? '',
-    jabatanKetua: data.jabatanKetua ?? prev?.jabatanKetua ?? 'Ketua Pondok Pesantren',
-    ttdKetua: data.ttdKetua ?? prev?.ttdKetua ?? '',
-    namaSekretaris: data.namaSekretaris ?? prev?.namaSekretaris ?? '',
-    jabatanSekretaris: data.jabatanSekretaris ?? prev?.jabatanSekretaris ?? 'Sekretaris Pondok',
-    ttdSekretaris: data.ttdSekretaris ?? prev?.ttdSekretaris ?? '',
-    tampilkanKetua: data.tampilkanKetua ?? prev?.tampilkanKetua ?? true,
-    updatedAt: data.updatedAt ?? Date.now(),
-  };
-
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(PENGATURAN_SURAT_STORAGE_KEY, JSON.stringify(payload));
+      window.localStorage.removeItem(PENGATURAN_SURAT_STORAGE_KEY);
     }
-  } catch (err) {
-    console.error('Gagal menyimpan almaliki_pengaturan_surat ke localStorage:', err);
+  } catch {
+    // ignore
   }
 
-  return payload;
+  return {
+    namaKetua: data.namaKetua ?? '',
+    jabatanKetua: data.jabatanKetua || 'Ketua Pondok Pesantren',
+    ttdKetua: data.ttdKetua ?? '',
+    namaSekretaris: data.namaSekretaris ?? '',
+    jabatanSekretaris: data.jabatanSekretaris || 'Sekretaris Pondok',
+    ttdSekretaris: data.ttdSekretaris ?? '',
+    tampilkanKetua: data.tampilkanKetua ?? true,
+    updatedAt: data.updatedAt ?? Date.now(),
+  };
 }
 
 export function applyPengaturanSuratToConfig(
   cfg: SuratSekretarisConfig
 ): SuratSekretarisConfig {
-  const saved = readPengaturanSuratFromStorage();
-  if (!saved) return cfg;
-
-  const cloudTs = cfg.pejabatUpdatedAt ?? 0;
-  const localTs = saved.updatedAt ?? 0;
-
-  // Jika data localStorage lebih baru atau setara (atau cloud belum punya timestamp pejabat),
-  // selalu prioritaskan data yang tersimpan di almaliki_pengaturan_surat.
-  if (cloudTs > localTs && localTs > 0) {
-    return cfg;
-  }
-
-  return {
-    ...cfg,
-    namaPenandatangan2: saved.namaKetua,
-    jabatanPenandatangan2: saved.jabatanKetua || cfg.jabatanPenandatangan2 || 'Ketua Pondok Pesantren',
-    ttdUrl2: saved.ttdKetua,
-    namaPenandatangan: saved.namaSekretaris,
-    jabatanPenandatangan: saved.jabatanSekretaris || cfg.jabatanPenandatangan || 'Sekretaris Pondok',
-    ttdUrl1: saved.ttdSekretaris,
-    tampilkanPenandatangan2: saved.tampilkanKetua,
-    pejabatUpdatedAt: saved.updatedAt ?? cfg.pejabatUpdatedAt,
-  };
+  return cfg;
 }
 
 /**
- * Mengambil data pejabat & tanda tangan terbaru secara dinamis untuk seluruh 15 template surat.
- * - Jika `preferLiveConfig` bernilai false (default untuk Pratinjau Cetak, Cetak @media print, & PDF),
- *   selalu memprioritaskan `almaliki_pengaturan_surat` dari localStorage bila tersedia.
- * - Jika `preferLiveConfig` bernilai true (khusus Live Preview saat sedang mengetik di Editor Pengaturan),
- *   membaca state editor aktif (`cfg`) sebelum menyimpan.
+ * Mengambil data pejabat & tanda tangan terbaru secara dinamis untuk seluruh 15 template surat
+ * langsung dari Cloud Firestore (`systemConfig.suratSekretarisConfig`) atau arsip surat terkait.
  */
 export function resolvePejabatSurat(
   cfg?: Partial<SuratSekretarisConfig>,
   suratData?: Partial<ArsipSurat>,
-  preferLiveConfig = false
+  _preferLiveConfig = false
 ): ResolvedPejabatSurat {
-  const saved = readPengaturanSuratFromStorage();
-
-  if (!preferLiveConfig && saved) {
-    return {
-      namaKetua: saved.namaKetua || cfg?.namaPenandatangan2 || suratData?.namaPenandatangan2 || '',
-      jabatanKetua:
-        saved.jabatanKetua ||
-        cfg?.jabatanPenandatangan2 ||
-        suratData?.jabatanPenandatangan2 ||
-        'Ketua Pondok Pesantren',
-      ttdKetua: saved.ttdKetua,
-      namaSekretaris:
-        saved.namaSekretaris || cfg?.namaPenandatangan || suratData?.namaPenandatangan || '',
-      jabatanSekretaris:
-        saved.jabatanSekretaris ||
-        cfg?.jabatanPenandatangan ||
-        suratData?.jabatanPenandatangan ||
-        'Sekretaris Pondok',
-      ttdSekretaris: saved.ttdSekretaris,
-      tampilkanKetua: saved.tampilkanKetua,
-    };
-  }
-
   return {
-    namaKetua: cfg?.namaPenandatangan2 ?? suratData?.namaPenandatangan2 ?? saved?.namaKetua ?? '',
+    namaKetua: cfg?.namaPenandatangan2 ?? suratData?.namaPenandatangan2 ?? '',
     jabatanKetua:
       cfg?.jabatanPenandatangan2 ||
       suratData?.jabatanPenandatangan2 ||
-      saved?.jabatanKetua ||
       'Ketua Pondok Pesantren',
-    ttdKetua: cfg?.ttdUrl2 ?? suratData?.ttdUrl2 ?? saved?.ttdKetua ?? '',
-    namaSekretaris: cfg?.namaPenandatangan ?? suratData?.namaPenandatangan ?? saved?.namaSekretaris ?? '',
+    ttdKetua: cfg?.ttdUrl2 ?? suratData?.ttdUrl2 ?? '',
+    namaSekretaris: cfg?.namaPenandatangan ?? suratData?.namaPenandatangan ?? '',
     jabatanSekretaris:
       cfg?.jabatanPenandatangan ||
       suratData?.jabatanPenandatangan ||
-      saved?.jabatanSekretaris ||
       'Sekretaris Pondok',
-    ttdSekretaris: cfg?.ttdUrl1 ?? suratData?.ttdUrl1 ?? saved?.ttdSekretaris ?? '',
+    ttdSekretaris: cfg?.ttdUrl1 ?? suratData?.ttdUrl1 ?? '',
     tampilkanKetua:
-      cfg?.tampilkanPenandatangan2 ?? suratData?.tampilkanPenandatangan2 ?? saved?.tampilkanKetua ?? true,
+      cfg?.tampilkanPenandatangan2 ?? suratData?.tampilkanPenandatangan2 ?? true,
   };
 }
 
@@ -184,7 +114,6 @@ export async function convertSignatureFileToBase64(file: File): Promise<string> 
       const maxHeight = 220;
       const scale = Math.min(1, maxWidth / (img.width || maxWidth), maxHeight / (img.height || maxHeight));
 
-      // Jika gambar sudah kecil dan ringkas, pertahankan Base64 aslinya
       if (scale === 1 && dataUrl.length <= 160000) {
         resolve(dataUrl);
         return;

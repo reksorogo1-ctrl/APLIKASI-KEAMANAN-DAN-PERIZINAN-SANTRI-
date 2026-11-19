@@ -28,22 +28,6 @@ import {
   Check,
 } from 'lucide-react';
 import {
-  ResponsiveContainer,
-  ComposedChart,
-  BarChart,
-  Bar,
-  Area,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import {
   UserAccount,
   SystemConfig,
   Santri,
@@ -61,18 +45,16 @@ import {
   StatusAbsensiPjMurotil,
   MurotilConfig,
 } from '../types';
-import {
-  INITIAL_MUROTIL_TINGKATAN,
-  INITIAL_MUROTIL_KELOMPOK,
-  INITIAL_MUROTIL_ABSENSI_SANTRI,
-  INITIAL_MUROTIL_SETORAN,
-  INITIAL_MUROTIL_ABSENSI_PJ,
-  INITIAL_MUROTIL_CONFIG,
-} from '../data/seedData';
+import { INITIAL_MUROTIL_CONFIG } from '../data/seedData';
 import { storageService } from '../services/storageService';
 import { downloadWordDocument } from '../utils/wordExport';
 import { PusatInformasiSection } from './PusatInformasiSection';
-import { GlowingDot, GlowingActiveDot, LuxuryChartTooltip } from './LuxuryChartComponents';
+import {
+  BarChart3D,
+  KpiStatCard3D,
+  LineChart3D,
+  PieChart3D,
+} from './Charts3D';
 
 export type MurotilSubTab =
   | 'dashboard_murotil'
@@ -139,12 +121,12 @@ export const MurotilTahfidzPanel: React.FC<MurotilTahfidzPanelProps> = ({
     }
   }, [initialSubTab]);
 
-  // Extract persisted Murotil data from SystemConfig
+  // Extract persisted Murotil data from live Cloud Firestore SystemConfig
   const tingkatanList: MurotilTingkatan[] = useMemo(
     () =>
-      (systemConfig.murotilTingkatanList && systemConfig.murotilTingkatanList.length > 0
+      (Array.isArray(systemConfig.murotilTingkatanList)
         ? systemConfig.murotilTingkatanList
-        : INITIAL_MUROTIL_TINGKATAN
+        : []
       )
         .slice()
         .sort((a, b) => a.urutan - b.urutan),
@@ -153,9 +135,9 @@ export const MurotilTahfidzPanel: React.FC<MurotilTahfidzPanelProps> = ({
 
   const kelompokList: MurotilKelompok[] = useMemo(
     () =>
-      systemConfig.murotilKelompokList && systemConfig.murotilKelompokList.length > 0
+      Array.isArray(systemConfig.murotilKelompokList)
         ? systemConfig.murotilKelompokList
-        : INITIAL_MUROTIL_KELOMPOK,
+        : [],
     [systemConfig.murotilKelompokList]
   );
 
@@ -163,7 +145,7 @@ export const MurotilTahfidzPanel: React.FC<MurotilTahfidzPanelProps> = ({
     () =>
       Array.isArray(systemConfig.murotilAbsensiSantriList)
         ? systemConfig.murotilAbsensiSantriList
-        : INITIAL_MUROTIL_ABSENSI_SANTRI,
+        : [],
     [systemConfig.murotilAbsensiSantriList]
   );
 
@@ -171,7 +153,7 @@ export const MurotilTahfidzPanel: React.FC<MurotilTahfidzPanelProps> = ({
     () =>
       Array.isArray(systemConfig.murotilSetoranList)
         ? systemConfig.murotilSetoranList
-        : INITIAL_MUROTIL_SETORAN,
+        : [],
     [systemConfig.murotilSetoranList]
   );
 
@@ -179,7 +161,7 @@ export const MurotilTahfidzPanel: React.FC<MurotilTahfidzPanelProps> = ({
     () =>
       Array.isArray(systemConfig.murotilAbsensiPjList)
         ? systemConfig.murotilAbsensiPjList
-        : INITIAL_MUROTIL_ABSENSI_PJ,
+        : [],
     [systemConfig.murotilAbsensiPjList]
   );
 
@@ -1401,73 +1383,49 @@ export const MurotilTahfidzPanel: React.FC<MurotilTahfidzPanelProps> = ({
       {/* ===================================================================== */}
       {activeTab === 'dashboard_murotil' && (
         <div className="space-y-4">
-          {/* LAYER 1: 4 COMPACT GLASS KPI TILES */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-            <div className="rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-4 shadow-lg">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-mono text-emerald-200/80 uppercase">Santri Binaan</p>
-                <Users className="w-4 h-4 text-[#D4AF37]" />
-              </div>
-              <div className="mt-2 flex items-baseline justify-between gap-2">
-                <span className="text-2xl font-black text-white tabular-nums">
-                  {dashboardStats.totalSantri}
-                </span>
-                <span className="text-[11px] font-mono text-[#D4AF37] font-bold">
-                  {dashboardStats.totalKelompok} Kelompok
-                </span>
-              </div>
-              <p className="text-[11px] text-emerald-100/70 mt-1 truncate">
-                {dashboardKelompok.map((k) => k.kodeKelompok).join(', ') || 'Belum ada kelompok'}
-              </p>
-            </div>
+          {/* LAYER 1: 4 COMPACT 3D GLASS KPI TILES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <KpiStatCard3D
+              label="Santri Binaan"
+              value={dashboardStats.totalSantri}
+              tone="silver"
+              trendText={`${dashboardStats.totalKelompok} Kelompok`}
+              trendPercent={dashboardStats.totalKelompok > 0 ? 100 : 0}
+              subtitle={dashboardKelompok.map((k) => k.kodeKelompok).join(', ') || 'Belum ada kelompok'}
+              icon={<Users className="w-4 h-4 text-[#D4AF37]" />}
+            />
 
-            <div className="rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-4 shadow-lg">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-mono text-emerald-200/80 uppercase">Hadir Santri</p>
-                <ClipboardCheck className="w-4 h-4 text-[#10B981]" />
-              </div>
-              <div className="mt-2 flex items-baseline justify-between gap-2">
-                <span className="text-2xl font-black text-[#10B981] tabular-nums">
-                  {dashboardStats.pctHadirSantri}%
-                </span>
-                <span className="text-[11px] font-mono text-emerald-100/80 tabular-nums">
-                  {dashboardStats.hadirSantri}/{dashboardStats.totalAbsSantri} sesi
-                </span>
-              </div>
-              <p className="text-[11px] text-emerald-100/70 mt-1 truncate">Akumulasi absensi aktif</p>
-            </div>
+            <KpiStatCard3D
+              label="Hadir Santri"
+              value={dashboardStats.pctHadirSantri}
+              suffix="%"
+              tone="emerald"
+              trendText={`${dashboardStats.hadirSantri}/${dashboardStats.totalAbsSantri}`}
+              trendPercent={dashboardStats.pctHadirSantri >= 80 ? dashboardStats.pctHadirSantri : -Math.max(1, 100 - dashboardStats.pctHadirSantri)}
+              subtitle="Akumulasi absensi aktif"
+              icon={<ClipboardCheck className="w-4 h-4 text-[#10B981]" />}
+            />
 
-            <div className="rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-4 shadow-lg">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-mono text-emerald-200/80 uppercase">Hadir Pengurus</p>
-                <UserCheck className="w-4 h-4 text-[#D4AF37]" />
-              </div>
-              <div className="mt-2 flex items-baseline justify-between gap-2">
-                <span className="text-2xl font-black text-[#D4AF37] tabular-nums">
-                  {dashboardStats.pctHadirPj}%
-                </span>
-                <span className="text-[11px] font-mono text-emerald-100/80 tabular-nums">
-                  {dashboardStats.hadirPj}/{dashboardStats.totalAbsPj} pertemuan
-                </span>
-              </div>
-              <p className="text-[11px] text-emerald-100/70 mt-1 truncate">
-                {isPengurusMurotil ? currentUser.nama : 'Seluruh Ustadz & Ustadzah PJ'}
-              </p>
-            </div>
+            <KpiStatCard3D
+              label="Hadir Pengurus"
+              value={dashboardStats.pctHadirPj}
+              suffix="%"
+              tone="gold"
+              trendText={`${dashboardStats.hadirPj}/${dashboardStats.totalAbsPj}`}
+              trendPercent={dashboardStats.pctHadirPj >= 80 ? dashboardStats.pctHadirPj : -Math.max(1, 100 - dashboardStats.pctHadirPj)}
+              subtitle={isPengurusMurotil ? currentUser.nama : 'Seluruh Ustadz & Ustadzah PJ'}
+              icon={<UserCheck className="w-4 h-4 text-[#D4AF37]" />}
+            />
 
-            <div className="rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-4 shadow-lg">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-mono text-emerald-200/80 uppercase">Total Setoran</p>
-                <Award className="w-4 h-4 text-sky-400" />
-              </div>
-              <div className="mt-2 flex items-baseline justify-between gap-2">
-                <span className="text-2xl font-black text-white tabular-nums">
-                  {dashboardStats.totalSetoran}
-                </span>
-                <span className="text-[11px] font-mono text-sky-300 font-bold">6 Tingkatan</span>
-              </div>
-              <p className="text-[11px] text-emerald-100/70 mt-1 truncate">Ziyadah, Murajaah &amp; Tasmi&apos;</p>
-            </div>
+            <KpiStatCard3D
+              label="Total Setoran"
+              value={dashboardStats.totalSetoran}
+              tone="sky"
+              trendText="6 Tingkatan"
+              trendPercent={dashboardStats.totalSetoran > 0 ? 18.5 : 0}
+              subtitle="Ziyadah, Murajaah & Tasmi'"
+              icon={<Award className="w-4 h-4 text-sky-400" />}
+            />
           </div>
 
           {/* LAYER 2: KELOMPOK BINAAN & AKSI CEPAT (DIATAS GRAFIK AGAR MUDAH DIOPERASIKAN) */}
@@ -1578,105 +1536,69 @@ export const MurotilTahfidzPanel: React.FC<MurotilTahfidzPanelProps> = ({
             )}
           </div>
 
-          {/* LAYER 3: GRAFIK KEHADIRAN & SETORAN HAFALAN */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-7 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-4 sm:p-5 shadow-xl">
-              <div className="mb-3">
+          {/* LAYER 3: GRAFIK 3D KEHADIRAN & SETORAN HAFALAN */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="kpi-glass-3d rounded-2xl p-4 sm:p-5 space-y-3">
+              <div>
                 <h3 className="text-sm font-black text-white uppercase tracking-wide">
-                  Grafik Kehadiran Santri &amp; Pengurus
+                  Grafik 3D Kehadiran Santri &amp; Pengurus
                 </h3>
                 <p className="text-[11px] text-emerald-100/75">
                   Tren persentase kehadiran harian santri binaan dan Ustadz/Ustadzah PJ
                 </p>
               </div>
-              <div className="h-[250px] w-full">
-                {chartKehadiranTimeline.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-xs text-emerald-100/60">
-                    Belum ada data absensi untuk ditampilkan pada grafik.
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartKehadiranTimeline}>
-                      <defs>
-                        <linearGradient id="murotilSantriGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
-                          <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#0b3a27" />
-                      <XAxis dataKey="tanggal" stroke="#D1FAE5" fontSize={11} />
-                      <YAxis domain={[0, 100]} stroke="#D1FAE5" fontSize={11} unit="%" />
-                      <Tooltip content={<LuxuryChartTooltip unit="%" />} />
-                      <Legend wrapperStyle={{ fontSize: '11px' }} />
-                      <Area
-                        type="monotone"
-                        dataKey="persenSantri"
-                        name="Kehadiran Santri (%)"
-                        stroke="#10B981"
-                        fill="url(#murotilSantriGrad)"
-                        strokeWidth={2.5}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="persenPengurus"
-                        name="Kehadiran Pengurus PJ (%)"
-                        stroke="#D4AF37"
-                        strokeWidth={2.8}
-                        dot={<GlowingDot color="#D4AF37" accentColor="#f9e29c" />}
-                        activeDot={<GlowingActiveDot color="#D4AF37" accentColor="#ffffff" />}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
+              <LineChart3D
+                data={chartKehadiranTimeline}
+                xKey="tanggal"
+                height={235}
+                yDomain={[0, 100]}
+                yUnit="%"
+                tooltipUnit="%"
+                subtitle="Kehadiran Murotil & Tahfidz"
+                series={[
+                  { key: 'persenSantri', label: 'Kehadiran Santri (%)', color: '#10B981', accentColor: '#6ee7b7' },
+                  { key: 'persenPengurus', label: 'Kehadiran Pengurus PJ (%)', color: '#D4AF37', accentColor: '#fef08a' },
+                ]}
+              />
             </div>
 
-            <div className="lg:col-span-5 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-4 sm:p-5 shadow-xl flex flex-col justify-between">
-              <div className="mb-3">
+            <div className="kpi-glass-3d rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-3">
+              <div>
                 <h3 className="text-sm font-black text-white uppercase tracking-wide">
-                  Grafik Setoran (6 Tingkatan)
+                  Grafik 3D Setoran (6 Tingkatan)
                 </h3>
                 <p className="text-[11px] text-emerald-100/75">
                   Distribusi Ziyadah, Murajaah &amp; Tasmi&apos; per tingkatan
                 </p>
               </div>
-              <div className="h-[190px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartSetoranPerTingkatan}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#0b3a27" />
-                    <XAxis dataKey="nama" stroke="#D1FAE5" fontSize={11} />
-                    <YAxis allowDecimals={false} stroke="#D1FAE5" fontSize={11} />
-                    <Tooltip content={<LuxuryChartTooltip unit=" setoran" />} />
-                    <Legend wrapperStyle={{ fontSize: '10px' }} />
-                    <Bar dataKey="ziyadah" name="Ziyadah" stackId="a" fill="#10B981" />
-                    <Bar dataKey="murajaah" name="Murajaah" stackId="a" fill="#D4AF37" />
-                    <Bar dataKey="tasmi" name="Tasmi'" stackId="a" fill="#38bdf8" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <BarChart3D
+                data={chartSetoranPerTingkatan}
+                xKey="nama"
+                stacked={true}
+                height={210}
+                unit=" setoran"
+                series={[
+                  { key: 'ziyadah', label: 'Ziyadah', color: '#10B981' },
+                  { key: 'murajaah', label: 'Murajaah', color: '#D4AF37' },
+                  { key: 'tasmi', label: "Tasmi'", color: '#38bdf8' },
+                ]}
+              />
               {chartPredikatPie.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-emerald-500/20 flex items-center gap-3">
-                  <div className="w-16 h-16 shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={chartPredikatPie}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={16}
-                          outerRadius={28}
-                          paddingAngle={3}
-                        >
-                          {chartPredikatPie.map((entry, idx) => (
-                            <Cell key={idx} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
+                <div className="mt-2 pt-3 border-t border-emerald-500/20 flex flex-col sm:flex-row items-center gap-3">
+                  <div className="shrink-0">
+                    <PieChart3D
+                      data={chartPredikatPie.map((entry) => ({
+                        name: entry.name,
+                        value: entry.value,
+                        color: entry.color,
+                      }))}
+                      size={112}
+                      innerRadiusRatio={0.48}
+                      depth={10}
+                      unit=" setoran"
+                    />
                   </div>
-                  <div className="flex flex-wrap gap-1.5 text-[10px] font-mono">
+                  <div className="flex flex-wrap gap-1.5 text-[10px] font-mono justify-center sm:justify-start">
                     {chartPredikatPie.map((c) => (
                       <span
                         key={c.name}

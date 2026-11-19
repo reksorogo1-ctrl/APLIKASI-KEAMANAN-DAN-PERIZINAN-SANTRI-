@@ -86,12 +86,12 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 bg-emerald-950/60 border-b border-emerald-500/25 text-white shadow-2xl backdrop-blur-md w-full max-w-full">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-4 px-2.5 sm:px-6 py-2 sm:py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(0.625rem,env(safe-area-inset-left))] pr-[max(0.625rem,env(safe-area-inset-right))] sm:px-6 bg-[#041A13]/92 sm:bg-emerald-950/60 border-b border-emerald-500/25 text-white shadow-2xl backdrop-blur-md w-full max-w-full">
       {/* Subtle Top Gold & Emerald Specular Line */}
       <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent pointer-events-none" />
 
       {/* Zone 1: Official Pesantren Brand Identity */}
-      <div className="flex items-center gap-2.5 shrink-0 min-w-0">
+      <div className="flex items-center gap-2 sm:gap-2.5 flex-1 md:flex-initial min-w-0">
         {(() => {
           const isKeamananLogo = Boolean(
             logoUrl && (logoUrl.includes('2026-11-11-7ffd46ad') || logoUrl.includes('logo-keamanan'))
@@ -105,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
             : logoUrl;
           return (
             <div
-              className={`relative shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-[10px] border border-[#D4AF37]/85 shadow-lg overflow-hidden ${
+              className={`relative shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-[10px] border border-[#D4AF37]/85 shadow-lg overflow-hidden ${
                 isKeamananLogo ? 'bg-white p-0.5' : 'bg-[#041A13]'
               }`}
             >
@@ -125,16 +125,16 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           );
         })()}
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 flex-nowrap">
-            <span className="text-xs sm:text-sm font-black tracking-tight text-white uppercase truncate">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-nowrap min-w-0">
+            <span className="text-[11px] sm:text-sm font-black tracking-tight text-white uppercase truncate">
               {namaPendekAplikasi || 'SIM PENGURUS'}
             </span>
-            <span className="hidden sm:inline-block text-[10px] font-mono text-[#D4AF37] font-bold">
+            <span className="hidden sm:inline-block text-[10px] font-mono text-[#D4AF37] font-bold shrink-0">
               · SALAF AL-MALIKI
             </span>
           </div>
-          <span className="text-[10px] block text-[#D1FAE5] truncate max-w-[170px] sm:max-w-sm">
+          <span className="text-[9px] sm:text-[10px] block text-[#D1FAE5] truncate">
             {namaPondok || 'Pondok Pesantren Salaf Al-Maliki'}
           </span>
         </div>
@@ -155,20 +155,20 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Zone 3: Actions & Mobile 3-Line Menu Drawer Trigger */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-auto">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         <div className="hidden sm:flex lg:hidden items-center gap-1.5 font-mono bg-[#041A13]/80 px-2.5 py-1 rounded-xl border border-emerald-500/25 text-[11px] shrink-0">
           <Clock className="w-3 h-3 text-[#D4AF37]" />
           <span className="tabular-nums font-bold text-[#D4AF37]">{currentTime}</span>
         </div>
 
-        <PWAInstallButton variant="header" />
+        <PWAInstallButton variant="header" className="hidden sm:flex" />
 
         {/* Speaker Mute / Replay Welcome Speech Controls */}
         <div className="flex items-center rounded-xl border border-emerald-500/25 bg-[#041A13]/60 overflow-hidden shrink-0">
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleToggleMute}
-            className={`p-2 sm:p-2.5 transition-colors cursor-pointer touch-manipulation ${
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center transition-colors cursor-pointer touch-manipulation ${
               isMuted
                 ? 'text-red-300 hover:bg-red-950/50'
                 : 'text-[#10B981] hover:text-[#D4AF37] hover:bg-emerald-950/80'
@@ -178,11 +178,11 @@ export const Header: React.FC<HeaderProps> = ({
           >
             {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </motion.button>
-          <div className="w-[1px] h-4 bg-emerald-500/25" />
+          <div className="hidden sm:block w-[1px] h-4 bg-emerald-500/25" />
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleReplayWelcome}
-            className="p-2 sm:p-2.5 text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 transition-colors cursor-pointer touch-manipulation"
+            className="hidden sm:flex w-10 h-10 items-center justify-center text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 transition-colors cursor-pointer touch-manipulation"
             title="Putar Ulang Suara Sambutan"
             aria-label="Putar Ulang Suara Sambutan"
           >
@@ -197,7 +197,7 @@ export const Header: React.FC<HeaderProps> = ({
             playClickSound();
             onOpenNotifications();
           }}
-          className="relative p-2 sm:p-2.5 text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 rounded-xl transition-colors border border-emerald-500/25 cursor-pointer shrink-0 touch-manipulation"
+          className="relative w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 rounded-xl transition-colors border border-emerald-500/25 cursor-pointer shrink-0 touch-manipulation"
           title="Notifikasi Sistem"
           aria-label="Notifikasi Sistem"
         >
@@ -212,32 +212,33 @@ export const Header: React.FC<HeaderProps> = ({
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={toggleTheme}
-          className="p-2 sm:p-2.5 text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 rounded-xl transition-colors border border-emerald-500/25 cursor-pointer shrink-0 touch-manipulation"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-[#D1FAE5] hover:text-[#D4AF37] hover:bg-emerald-950/80 rounded-xl transition-colors border border-emerald-500/25 cursor-pointer shrink-0 touch-manipulation"
           title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
           aria-label="Ganti Tema"
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </motion.button>
 
-        {/* Mobile 3-Line Hamburger Button at Top Right */}
-        <motion.button
-          whileTap={{ scale: 0.97 }}
+        {/* Mobile 3-Line Hamburger Button */}
+        <button
+          type="button"
           onClick={() => {
             unlockAudioAndSpeech();
             playClickSound();
             onToggleSidebar();
           }}
-          className="md:hidden flex items-center justify-center gap-1.5 px-3 py-2.5 text-[#D4AF37] hover:text-white bg-emerald-950/75 hover:bg-emerald-900/75 rounded-xl transition-colors cursor-pointer border border-[#D4AF37]/50 shadow-lg shrink-0 touch-manipulation"
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          className="md:hidden flex items-center justify-center gap-1.5 min-w-[46px] min-h-[44px] px-3 py-2.5 sm:px-3.5 text-[#D4AF37] hover:text-white active:scale-95 bg-emerald-950/85 hover:bg-emerald-900/80 rounded-xl transition-all cursor-pointer border border-[#D4AF37]/60 shadow-lg shrink-0 touch-manipulation select-none"
           aria-label="Buka Menu Navigasi"
           title="Buka Menu"
         >
-          <div className="flex flex-col justify-between items-center w-5 h-3.5">
+          <div className="flex flex-col justify-between items-center w-5 h-3.5 shrink-0 pointer-events-none">
             <span className="w-5 h-[2.5px] bg-[#D4AF37] rounded-full" />
             <span className="w-5 h-[2.5px] bg-[#D4AF37] rounded-full" />
             <span className="w-5 h-[2.5px] bg-[#D4AF37] rounded-full" />
           </div>
-          <span className="text-[10px] font-mono font-bold tracking-wider">MENU</span>
-        </motion.button>
+          <span className="hidden min-[410px]:inline text-[10px] font-mono font-bold tracking-wider whitespace-nowrap pointer-events-none">MENU</span>
+        </button>
       </div>
     </header>
   );

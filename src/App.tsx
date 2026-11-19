@@ -329,7 +329,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-[100dvh] w-full bg-[#041A13] overflow-x-hidden overflow-y-auto">
+      <div className="min-h-[100dvh] w-full bg-[#041A13] overflow-x-clip">
         {!currentUser ? (
           <div
             className="min-h-[100dvh] w-full"
@@ -361,7 +361,7 @@ export default function App() {
         ) : (
           <div
             style={{ opacity: 1, visibility: 'visible' }}
-            className="min-h-[100dvh] w-full bg-[#041A13] text-white flex flex-col font-sans antialiased selection:bg-[#D4AF37] selection:text-[#041A13] overflow-y-auto overflow-x-hidden"
+            className="min-h-[100dvh] w-full bg-[#041A13] text-white flex flex-col font-sans antialiased selection:bg-[#D4AF37] selection:text-[#041A13] overflow-x-clip"
           >
               {/* Luxury Top Header Bar */}
               <Header
@@ -426,28 +426,31 @@ export default function App() {
                     }
                   }}
                   style={{ opacity: 1, visibility: 'visible' }}
-                  className={`flex-1 min-w-0 p-2.5 sm:p-4 lg:p-6 overflow-y-auto overflow-x-hidden bg-[#041A13] bg-security-grid transition-all ${
+                  className={`flex-1 min-w-0 p-2.5 sm:p-4 lg:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] overflow-x-clip bg-[#041A13] bg-security-grid transition-all ${
                     isSidebarOpen ? 'max-md:overflow-hidden max-md:pointer-events-none' : ''
                   }`}
                 >
           <div className="w-full max-w-full" style={{ opacity: 1, visibility: 'visible' }}>
             <DashboardErrorBoundary onResetSession={handleLogout}>
               <StaggeredTabPanel key={activeMenu} tabKey={activeMenu}>
-                {/* 1. Dashboard Utama Pesantren */}
-                {activeMenu === 'dashboard' && (
+            {/* 1. Dashboard Utama Pesantren */}
+            {activeMenu === 'dashboard' && (
               <MainDashboard
                 currentUser={currentUser}
                 systemConfig={systemConfig}
                 santriList={santriList}
                 perizinanList={perizinanList}
                 pelanggaranList={pelanggaranList}
+                sanksiList={sanksiList}
                 transaksiKeuangan={transaksiKeuangan}
                 arsipSurat={arsipSurat}
                 barangInventaris={barangInventaris}
                 peminjamanBarang={peminjamanBarang}
                 agendaPengurus={agendaPengurus}
+                evaluasiKepengurusan={evaluasiKepengurusan}
                 pengajuanDivisi={pengajuanDivisi}
                 koordinasiList={koordinasiList}
+                dewanList={dewanList}
                 onNavigate={handleSelectSidebarMenu}
               />
             )}
@@ -484,9 +487,11 @@ export default function App() {
                 santriList={santriList}
                 perizinanList={perizinanList}
                 pelanggaranList={pelanggaranList}
+                sanksiList={sanksiList}
                 arsipSurat={arsipSurat}
                 transaksiKeuangan={transaksiKeuangan}
                 barangInventaris={barangInventaris}
+                peminjamanBarang={peminjamanBarang}
                 agendaPengurus={agendaPengurus}
                 evaluasiKepengurusan={evaluasiKepengurusan}
                 pengajuanDivisi={pengajuanDivisi}
@@ -506,6 +511,7 @@ export default function App() {
                 santriList={santriList}
                 koordinasiList={koordinasiList}
                 agendaPengurus={agendaPengurus}
+                evaluasiKepengurusan={evaluasiKepengurusan}
                 initialSubTab={activeSubTab as any}
               />
             )}
@@ -520,6 +526,7 @@ export default function App() {
                 pengajuanDivisi={pengajuanDivisi}
                 koordinasiList={koordinasiList}
                 logsList={logsList}
+                evaluasiKepengurusan={evaluasiKepengurusan}
                 initialSubTab={activeSubTab as any}
               />
             )}
@@ -534,6 +541,7 @@ export default function App() {
                 peminjamanBarang={peminjamanBarang}
                 pengajuanDivisi={pengajuanDivisi}
                 koordinasiList={koordinasiList}
+                evaluasiKepengurusan={evaluasiKepengurusan}
                 initialSubTab={(activeSubTab as PerlengkapanSubTab) || undefined}
               />
             )}
@@ -562,6 +570,8 @@ export default function App() {
                 scopedSanksiList={scopedSanksiList}
                 logsList={logsList}
                 koordinasiList={koordinasiList}
+                evaluasiKepengurusan={evaluasiKepengurusan}
+                pengajuanDivisi={pengajuanDivisi}
                 pendingApprovalsCount={pendingApprovalsCount}
                 lateSantriCount={lateSantriCount}
                 unreadKoordinasiCount={unreadKoordinasiCount}

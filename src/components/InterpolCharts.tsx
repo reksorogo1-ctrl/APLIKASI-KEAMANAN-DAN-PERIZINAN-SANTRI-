@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Perizinan, Pelanggaran, Santri } from '../types';
-import { Activity, TrendingUp, ShieldAlert, Users, Calendar, Radar, MapPin, Radio, ShieldCheck, Compass, RefreshCw } from 'lucide-react';
+import { TrendingUp, ShieldAlert, Users, Radar, ShieldCheck } from 'lucide-react';
+import { BarChart3D, Extruded3DValue, LineChart3D, PieChart3D } from './Charts3D';
 
 interface InterpolLineChartProps {
   perizinanList: Perizinan[];
@@ -12,36 +13,20 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
   perizinanList,
   pelanggaranList,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [activeRange, setActiveRange] = useState<'7d' | '14d' | '30d'>('7d');
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Clear previous SVG
-    d3.select(containerRef.current).selectAll('*').remove();
-
-    const width = containerRef.current.clientWidth || 600;
-    const height = 260;
-    const margin = { top: 20, right: 30, bottom: 40, left: 45 };
-
-    // Generate timeline data for the last 7, 14, or 30 days
+  const data = useMemo(() => {
     const numDays = activeRange === '7d' ? 7 : activeRange === '14d' ? 14 : 30;
-    const data: { date: string; displayDate: string; perizinan: number; pelanggaran: number; kembali: number }[] = [];
-
+    const rows: { date: string; displayDate: string; perizinan: number; pelanggaran: number; kembali: number }[] = [];
     const now = new Date();
     for (let i = numDays - 1; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 86400000);
       const iso = d.toISOString().split('T')[0];
       const dayLabel = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' });
-
-      // Count occurrences
-      const izinCount = perizinanList.filter(p => p.tglKeluar === iso).length;
-      const kembaliCount = perizinanList.filter(p => p.actualKembali && p.actualKembali.startsWith(iso)).length;
-      const pelCount = pelanggaranList.filter(p => p.tanggal === iso).length;
-
-      // Exact counts from database
-      data.push({
+      const izinCount = perizinanList.filter((p) => p.tglKeluar === iso).length;
+      const kembaliCount = perizinanList.filter((p) => p.actualKembali && p.actualKembali.startsWith(iso)).length;
+      const pelCount = pelanggaranList.filter((p) => p.tanggal === iso).length;
+      rows.push({
         date: iso,
         displayDate: dayLabel,
         perizinan: izinCount,
@@ -49,185 +34,18 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
         pelanggaran: pelCount,
       });
     }
-
-    const svg = d3
-      .select(containerRef.current)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .attr('viewBox', `0 0 ${width} ${height}`)
-      .attr('class', 'overflow-visible');
-
-    // Defs for glowing gradients
-    const defs = svg.append('defs');
-
-    // Blue Gradient
-    const blueGradient = defs.append('linearGradient')
-      .attr('id', 'blueAreaGrad')
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '0%').attr('y2', '100%');
-    blueGradient.append('stop').attr('offset', '0%').attr('stop-color', '#d4af37').attr('stop-opacity', 0.4);
-    blueGradient.append('stop').attr('offset', '100%').attr('stop-color', '#1e3a8a').attr('stop-opacity', 0.0);
-
-    // Gold Gradient
-    const goldGradient = defs.append('linearGradient')
-      .attr('id', 'goldAreaGrad')
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '0%').attr('y2', '100%');
-    goldGradient.append('stop').attr('offset', '0%').attr('stop-color', '#fbbf24').attr('stop-opacity', 0.35);
-    goldGradient.append('stop').attr('offset', '100%').attr('stop-color', '#d97706').attr('stop-opacity', 0.0);
-
-    // Glow Filter
-    const filter = defs.append('filter')
-      .attr('id', 'glow')
-      .attr('x', '-20%').attr('y', '-20%').attr('width', '140%').attr('height', '140%');
-    filter.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'coloredBlur');
-    const feMerge = filter.append('feMerge');
-    feMerge.append('feMergeNode').attr('in', 'coloredBlur');
-    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
-
-    // Scales
-    const xScale = d3
-      .scalePoint()
-      .domain(data.map(d => d.displayDate))
-      .range([margin.left, width - margin.right])
-      .padding(0.2);
-
-    const maxY = Math.max(
-      8,
-      d3.max(data, d => Math.max(d.perizinan, d.kembali, d.pelanggaran)) || 10
-    );
-
-    const yScale = d3
-      .scaleLinear()
-      .domain([0, maxY + 2])
-      .range([height - margin.bottom, margin.top]);
-
-    // Gridlines
-    const yGrid = d3.axisLeft(yScale)
-      .ticks(5)
-      .tickSize(-(width - margin.left - margin.right))
-      .tickFormat(() => '');
-
-    svg.append('g')
-      .attr('transform', `translate(${margin.left}, 0)`)
-      .attr('class', 'stroke-zinc-800/80 stroke-dasharray-2')
-      .call(yGrid);
-
-    // Line Generators
-    const lineIzin = d3.line<typeof data[0]>()
-      .x(d => xScale(d.displayDate) || 0)
-      .y(d => yScale(d.perizinan))
-      .curve(d3.curveMonotoneX);
-
-    const lineKembali = d3.line<typeof data[0]>()
-      .x(d => xScale(d.displayDate) || 0)
-      .y(d => yScale(d.kembali))
-      .curve(d3.curveMonotoneX);
-
-    const linePel = d3.line<typeof data[0]>()
-      .x(d => xScale(d.displayDate) || 0)
-      .y(d => yScale(d.pelanggaran))
-      .curve(d3.curveMonotoneX);
-
-    // Area Generator for Blue Line
-    const areaIzin = d3.area<typeof data[0]>()
-      .x(d => xScale(d.displayDate) || 0)
-      .y0(height - margin.bottom)
-      .y1(d => yScale(d.perizinan))
-      .curve(d3.curveMonotoneX);
-
-    // Draw Blue Area
-    svg.append('path')
-      .datum(data)
-      .attr('fill', 'url(#blueAreaGrad)')
-      .attr('d', areaIzin);
-
-    // Draw Lines
-    // 1. Izin (Cobalt Blue with Glow)
-    svg.append('path')
-      .datum(data)
-      .attr('fill', 'none')
-      .attr('stroke', '#d4af37')
-      .attr('stroke-width', 2.5)
-      .attr('filter', 'url(#glow)')
-      .attr('d', lineIzin);
-
-    // 2. Kembali (Gold)
-    svg.append('path')
-      .datum(data)
-      .attr('fill', 'none')
-      .attr('stroke', '#fbbf24')
-      .attr('stroke-width', 2)
-      .attr('stroke-dasharray', '4 2')
-      .attr('d', lineKembali);
-
-    // 3. Pelanggaran (Crimson Red)
-    svg.append('path')
-      .datum(data)
-      .attr('fill', 'none')
-      .attr('stroke', '#ef4444')
-      .attr('stroke-width', 2)
-      .attr('d', linePel);
-
-    // Draw Data Dots & Interactive Hover Tooltip
-    data.forEach((d) => {
-      const cx = xScale(d.displayDate) || 0;
-
-      // Blue dot
-      svg.append('circle')
-        .attr('cx', cx)
-        .attr('cy', yScale(d.perizinan))
-        .attr('r', 4)
-        .attr('fill', '#ffffff')
-        .attr('stroke', '#d4af37')
-        .attr('stroke-width', 2);
-
-      // Red dot
-      if (d.pelanggaran > 0) {
-        svg.append('circle')
-          .attr('cx', cx)
-          .attr('cy', yScale(d.pelanggaran))
-          .attr('r', 3.5)
-          .attr('fill', '#ef4444')
-          .attr('stroke', '#ffffff')
-          .attr('stroke-width', 1.5);
-      }
-    });
-
-    // X Axis
-    const xAxis = d3.axisBottom(xScale);
-    svg.append('g')
-      .attr('transform', `translate(0, ${height - margin.bottom})`)
-      .call(xAxis)
-      .selectAll('text')
-      .attr('class', 'text-[10px] font-mono fill-zinc-400')
-      .attr('dy', '1em');
-
-    // Y Axis
-    const yAxis = d3.axisLeft(yScale).ticks(5);
-    svg.append('g')
-      .attr('transform', `translate(${margin.left}, 0)`)
-      .call(yAxis)
-      .selectAll('text')
-      .attr('class', 'text-[10px] font-mono fill-zinc-400');
-
-    // Style axis paths
-    svg.selectAll('.domain').attr('stroke', '#27272a');
-    svg.selectAll('.tick line').attr('stroke', '#27272a');
-
+    return rows;
   }, [perizinanList, pelanggaranList, activeRange]);
 
   return (
-    <div className="p-6 rounded-2xl bg-neutral-950 border border-emerald-800 shadow-2xl space-y-4 relative overflow-hidden">
-      {/* Tactical Glow Header */}
+    <div className="kpi-glass-3d p-6 rounded-2xl space-y-4 relative overflow-hidden">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-amber-400" />
-              Statistik Tren Mutasi & Insiden Keamanan (D3.js Line Chart)
+              Statistik 3D Tren Mutasi &amp; Insiden Keamanan
             </h3>
           </div>
           <p className="text-xs text-emerald-200/75 mt-0.5">
@@ -235,54 +53,46 @@ export const InterpolLineChart: React.FC<InterpolLineChartProps> = ({
           </p>
         </div>
 
-        {/* Legend & Filter Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-3 text-[11px] font-mono bg-[#041d13]/90 px-3 py-1.5 rounded-xl border border-emerald-800">
-            <span className="flex items-center gap-1.5 text-amber-400">
-              <span className="w-2.5 h-0.5 bg-emerald-500 inline-block" />
-              Izin Keluar
-            </span>
-            <span className="flex items-center gap-1.5 text-yellow-400">
-              <span className="w-2.5 h-0.5 bg-yellow-400 inline-block border-b border-dashed" />
-              Kembali Tepat
-            </span>
-            <span className="flex items-center gap-1.5 text-red-400">
-              <span className="w-2.5 h-0.5 bg-red-500 inline-block" />
-              Insiden/Takzir
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1 bg-[#041d13] p-1 rounded-xl border border-emerald-800 text-[10px] font-mono">
-            <button
-              onClick={() => setActiveRange('7d')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeRange === '7d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
-              }`}
-            >
-              7 HARI
-            </button>
-            <button
-              onClick={() => setActiveRange('14d')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeRange === '14d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
-              }`}
-            >
-              14 HARI
-            </button>
-            <button
-              onClick={() => setActiveRange('30d')}
-              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                activeRange === '30d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
-              }`}
-            >
-              30 HARI
-            </button>
-          </div>
+        <div className="flex items-center gap-1 bg-[#041d13] p-1 rounded-xl border border-emerald-800 text-[10px] font-mono self-start sm:self-auto">
+          <button
+            onClick={() => setActiveRange('7d')}
+            className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+              activeRange === '7d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
+            }`}
+          >
+            7 HARI
+          </button>
+          <button
+            onClick={() => setActiveRange('14d')}
+            className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+              activeRange === '14d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
+            }`}
+          >
+            14 HARI
+          </button>
+          <button
+            onClick={() => setActiveRange('30d')}
+            className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+              activeRange === '30d' ? 'bg-emerald-600 text-white font-bold' : 'text-emerald-200/75 hover:text-white'
+            }`}
+          >
+            30 HARI
+          </button>
         </div>
       </div>
 
-      {/* D3 Render Target Container */}
-      <div ref={containerRef} className="w-full min-h-[260px] text-emerald-200/75" />
+      <LineChart3D
+        data={data}
+        xKey="displayDate"
+        height={250}
+        tooltipUnit=" santri"
+        subtitle="Interpol Security Telemetry"
+        series={[
+          { key: 'perizinan', label: 'Izin Keluar', color: '#d4af37', accentColor: '#fef08a' },
+          { key: 'kembali', label: 'Kembali Tepat', color: '#10b981', accentColor: '#6ee7b7', dashed: true },
+          { key: 'pelanggaran', label: 'Insiden/Takzir', color: '#ef4444', accentColor: '#fca5a5' },
+        ]}
+      />
     </div>
   );
 };
@@ -296,91 +106,52 @@ export const InterpolStatusDonut: React.FC<InterpolStatusDonutProps> = ({
   santriList,
   perizinanList,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const sedangDiLuar = perizinanList.filter(p => p.status === 'Sedang Keluar').length;
-  const terlambat = perizinanList.filter(p => p.status === 'Terlambat').length;
+  const sedangDiLuar = perizinanList.filter((p) => p.status === 'Sedang Keluar').length;
+  const terlambat = perizinanList.filter((p) => p.status === 'Terlambat').length;
   const diAsrama = Math.max(0, santriList.length - sedangDiLuar - terlambat);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    d3.select(containerRef.current).selectAll('*').remove();
-
-    const width = 220;
-    const height = 220;
-    const radius = Math.min(width, height) / 2 - 10;
-
-    const data = [
-      { label: 'Di Asrama', value: diAsrama, color: '#1e3a8a' },
-      { label: 'Di Luar Izin', value: sedangDiLuar, color: '#d4af37' },
-      { label: 'Terlambat', value: terlambat, color: '#ef4444' },
-    ];
-
-    const svg = d3
-      .select(containerRef.current)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .append('g')
-      .attr('transform', `translate(${width / 2}, ${height / 2})`);
-
-    const pie = d3.pie<typeof data[0]>()
-      .value(d => d.value)
-      .sort(null);
-
-    const arc = d3.arc<d3.PieArcDatum<typeof data[0]>>()
-      .innerRadius(radius * 0.68)
-      .outerRadius(radius)
-      .cornerRadius(4);
-
-    svg.selectAll('path')
-      .data(pie(data))
-      .enter()
-      .append('path')
-      .attr('d', arc)
-      .attr('fill', d => d.data.color)
-      .attr('stroke', '#000000')
-      .attr('stroke-width', 2);
-
-    // Center HUD text
-    svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '-0.2em')
-      .attr('class', 'text-2xl font-black font-mono fill-white')
-      .text(santriList.length);
-
-    svg.append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '1.4em')
-      .attr('class', 'text-[10px] font-mono uppercase tracking-wider fill-zinc-400')
-      .text('TOTAL SANTRI');
-
-  }, [santriList, perizinanList, diAsrama, sedangDiLuar, terlambat]);
+  const pieData = [
+    { name: 'Di Asrama', value: diAsrama, color: '#10b981' },
+    { name: 'Di Luar Izin', value: sedangDiLuar, color: '#d4af37' },
+    { name: 'Terlambat', value: terlambat, color: '#ef4444' },
+  ];
 
   return (
-    <div className="p-5 rounded-2xl bg-neutral-950 border border-emerald-800 shadow-xl flex flex-col justify-between">
+    <div className="kpi-glass-3d p-5 rounded-2xl flex flex-col justify-between gap-3">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-amber-400" />
-          Status Lokasi Santri Real-time
+          Status Lokasi Santri 3D Real-time
         </h4>
-        <span className="text-[10px] font-mono text-yellow-400">D3 HUD</span>
+        <span className="text-[10px] font-mono text-yellow-400">3D HUD</span>
       </div>
 
-      <div className="flex items-center justify-center py-2" ref={containerRef} />
+      <div className="flex items-center justify-center py-1">
+        <PieChart3D
+          data={pieData}
+          size={196}
+          innerRadiusRatio={0.56}
+          depth={15}
+          centerValue={santriList.length}
+          centerSuffix=""
+          centerLabel="TOTAL SANTRI"
+          centerTone="silver"
+          unit=" santri"
+        />
+      </div>
 
-      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-zinc-850 text-center font-mono text-[10px]">
-        <div className="p-1.5 rounded-lg bg-[#041d13] border border-emerald-800">
+      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-emerald-800/60 text-center font-mono text-[10px]">
+        <div className="p-2 rounded-lg bg-[#041d13] border border-emerald-800">
           <p className="text-emerald-200/75">Asrama</p>
-          <p className="text-sm font-bold text-amber-400 mt-0.5">{diAsrama}</p>
+          <Extruded3DValue value={diAsrama} tone="emerald" className="text-base mt-0.5" />
         </div>
-        <div className="p-1.5 rounded-lg bg-[#041d13] border border-emerald-800">
+        <div className="p-2 rounded-lg bg-[#041d13] border border-emerald-800">
           <p className="text-emerald-200/75">Di Luar</p>
-          <p className="text-sm font-bold text-yellow-400 mt-0.5">{sedangDiLuar}</p>
+          <Extruded3DValue value={sedangDiLuar} tone="gold" className="text-base mt-0.5" />
         </div>
-        <div className="p-1.5 rounded-lg bg-[#041d13] border border-emerald-800">
+        <div className="p-2 rounded-lg bg-[#041d13] border border-emerald-800">
           <p className="text-emerald-200/75">Terlambat</p>
-          <p className="text-sm font-bold text-red-500 mt-0.5">{terlambat}</p>
+          <Extruded3DValue value={terlambat} tone="rose" className="text-base mt-0.5" />
         </div>
       </div>
     </div>
@@ -392,89 +163,38 @@ interface InterpolBarChartProps {
 }
 
 export const InterpolBarChart: React.FC<InterpolBarChartProps> = ({ pelanggaranList }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    d3.select(containerRef.current).selectAll('*').remove();
-
-    const width = containerRef.current.clientWidth || 300;
-    const height = 180;
-    const margin = { top: 15, right: 20, bottom: 35, left: 30 };
-
+  const counts = useMemo(() => {
     const categories = ['Ubudiyah', 'Ketertiban', 'Elektronik', 'Akhlaq', 'Kebersihan'];
-    const counts = categories.map(cat => ({
+    return categories.map((cat) => ({
       name: cat,
-      count: pelanggaranList.filter(p => p.jenisPelanggaran.toLowerCase().includes(cat.toLowerCase()) || p.kategori.toLowerCase().includes(cat.toLowerCase())).length,
+      count: pelanggaranList.filter(
+        (p) =>
+          p.jenisPelanggaran.toLowerCase().includes(cat.toLowerCase()) ||
+          p.kategori.toLowerCase().includes(cat.toLowerCase())
+      ).length,
     }));
-
-    const svg = d3
-      .select(containerRef.current)
-      .append('svg')
-      .attr('width', width)
-      .attr('height', height)
-      .attr('viewBox', `0 0 ${width} ${height}`);
-
-    const x = d3.scaleBand()
-      .domain(categories)
-      .range([margin.left, width - margin.right])
-      .padding(0.3);
-
-    const maxVal = d3.max(counts, d => d.count) || 5;
-    const y = d3.scaleLinear()
-      .domain([0, maxVal + 1])
-      .range([height - margin.bottom, margin.top]);
-
-    // Bars
-    svg.selectAll('rect')
-      .data(counts)
-      .enter()
-      .append('rect')
-      .attr('x', d => x(d.name) || 0)
-      .attr('y', d => y(d.count))
-      .attr('width', x.bandwidth())
-      .attr('height', d => (height - margin.bottom) - y(d.count))
-      .attr('rx', 4)
-      .attr('fill', (d, i) => i === 1 ? '#ef4444' : i === 0 ? '#d4af37' : '#d97706');
-
-    // Values labels
-    svg.selectAll('.val-label')
-      .data(counts)
-      .enter()
-      .append('text')
-      .attr('class', 'val-label text-[10px] font-mono font-bold fill-white')
-      .attr('text-anchor', 'middle')
-      .attr('x', d => (x(d.name) || 0) + x.bandwidth() / 2)
-      .attr('y', d => y(d.count) - 4)
-      .text(d => d.count);
-
-    // X axis
-    svg.append('g')
-      .attr('transform', `translate(0, ${height - margin.bottom})`)
-      .call(d3.axisBottom(x))
-      .selectAll('text')
-      .attr('class', 'text-[9px] font-mono fill-zinc-400')
-      .attr('dy', '1em');
-
-    svg.selectAll('.domain').attr('stroke', '#27272a');
-    svg.selectAll('.tick line').attr('stroke', '#27272a');
-
   }, [pelanggaranList]);
 
   return (
-    <div className="p-5 rounded-2xl bg-neutral-950 border border-emerald-800 shadow-xl flex flex-col justify-between">
+    <div className="kpi-glass-3d p-5 rounded-2xl flex flex-col justify-between gap-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
           <ShieldAlert className="w-3.5 h-3.5 text-red-500" />
-          Kategori Kasus Pelanggaran (D3 Bar)
+          Kategori Kasus Pelanggaran (3D Bar)
         </h4>
         <span className="text-[10px] font-mono text-emerald-200/75">Audit Disiplin</span>
       </div>
 
-      <div ref={containerRef} className="w-full min-h-[180px] my-1" />
+      <BarChart3D
+        data={counts}
+        xKey="name"
+        height={196}
+        unit=" kasus"
+        series={[{ key: 'count', label: 'Jumlah Kasus', color: '#d4af37' }]}
+      />
 
-      <p className="text-[10px] text-emerald-300/60 text-center font-mono border-t border-zinc-850 pt-2">
-        Interpol Threat Spectrum & Santri Behavior Index
+      <p className="text-[10px] text-emerald-300/60 text-center font-mono border-t border-emerald-800/60 pt-2">
+        Interpol Threat Spectrum &amp; Santri Behavior Index
       </p>
     </div>
   );

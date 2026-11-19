@@ -21,7 +21,7 @@ export const OfflineIndicator: React.FC = () => {
             <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
           </div>
           <p className="text-[11px] text-emerald-100/90 leading-relaxed">
-            Koneksi internet terputus. Data perizinan dan keamanan tetap tersimpan di penyimpanan lokal dan akan disinkronkan otomatis saat online.
+            Koneksi internet terputus. Perubahan tetap diantrekan otomatis oleh cache offline Firestore dan langsung disinkronkan real-time ke semua perangkat saat kembali online.
           </p>
         </div>
         <button

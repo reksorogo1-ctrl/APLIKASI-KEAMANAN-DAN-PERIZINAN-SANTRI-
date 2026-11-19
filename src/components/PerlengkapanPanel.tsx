@@ -31,12 +31,15 @@ import {
   DataFasilitasGedung,
   FasilitasItemGedung,
   PerlengkapanConfig,
+  EvaluasiKepengurusan,
 } from '../types';
 import { storageService } from '../services/storageService';
 import { openPrintWindow } from '../utils/printDocument';
 import { downloadWordDocument } from '../utils/wordExport';
 import { DivisiKotakMasuk } from './DivisiKotakMasuk';
-import { INITIAL_FASILITAS_GEDUNG_LIST, INITIAL_PERLENGKAPAN_CONFIG } from '../data/seedData';
+import { PieChart3D } from './Charts3D';
+import { computeRealtimePondokAnalytics } from '../utils/realtimeAnalytics';
+import { INITIAL_PERLENGKAPAN_CONFIG } from '../data/seedData';
 
 export type PerlengkapanSubTab =
   | 'kotak_masuk'
@@ -57,6 +60,7 @@ interface PerlengkapanPanelProps {
   peminjamanBarang: PeminjamanBarang[];
   pengajuanDivisi: PengajuanDivisi[];
   koordinasiList?: PesanKoordinasi[];
+  evaluasiKepengurusan?: EvaluasiKepengurusan[];
   initialSubTab?: PerlengkapanSubTab;
 }
 
@@ -69,15 +73,42 @@ function normalizePerlengkapanSubTab(tab?: PerlengkapanSubTab): PerlengkapanSubT
 export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
   currentUser,
   systemConfig,
+  santriList = [],
   barangInventaris,
   peminjamanBarang,
   pengajuanDivisi,
   koordinasiList = [],
+  evaluasiKepengurusan = [],
   initialSubTab,
 }) => {
   const [activeTab, setActiveTab] = useState<PerlengkapanSubTab>(() =>
     normalizePerlengkapanSubTab(initialSubTab)
   );
+
+  const perlengkapanKpi = useMemo(() => {
+    return computeRealtimePondokAnalytics({
+      santriList,
+      perizinanList: [],
+      pelanggaranList: [],
+      transaksiKeuangan: [],
+      arsipSurat: [],
+      barangInventaris,
+      peminjamanBarang,
+      agendaPengurus: [],
+      evaluasiKepengurusan,
+      pengajuanDivisi,
+      koordinasiList,
+      systemConfig,
+    }).divisions.perlengkapan;
+  }, [
+    santriList,
+    barangInventaris,
+    peminjamanBarang,
+    evaluasiKepengurusan,
+    pengajuanDivisi,
+    koordinasiList,
+    systemConfig,
+  ]);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -161,7 +192,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     () =>
       Array.isArray(systemConfig.fasilitasGedungList)
         ? systemConfig.fasilitasGedungList
-        : INITIAL_FASILITAS_GEDUNG_LIST,
+        : [],
     [systemConfig.fasilitasGedungList]
   );
 
@@ -914,6 +945,38 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
               <span>{t.label}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Grafik 3D Pie Chart Indikator Kinerja Perlengkapan Real-Time (Sinkron Dashboard Utama) */}
+      <div className="kpi-glass-3d rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-5">
+        <div className="shrink-0">
+          <PieChart3D
+            data={[
+              { name: 'Kinerja Perlengkapan', value: perlengkapanKpi.score, color: perlengkapanKpi.color },
+              { name: 'Ruang Optimasi', value: Math.max(1, 100 - perlengkapanKpi.score), color: '#093827' },
+            ]}
+            size={136}
+            innerRadiusRatio={0.5}
+            depth={12}
+            centerValue={perlengkapanKpi.score}
+            centerSuffix="%"
+            centerLabel={perlengkapanKpi.ratingLabel.toUpperCase()}
+            centerTone={perlengkapanKpi.score >= 90 ? 'gold' : 'emerald'}
+            unit="%"
+          />
+        </div>
+        <div className="space-y-1 text-center sm:text-left min-w-0">
+          <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/35 text-[10px] font-mono font-bold uppercase">
+            SINKRON REAL-TIME DASHBOARD UTAMA &amp; KETUA PONDOK
+          </span>
+          <h2 className="text-sm font-extrabold text-white uppercase">
+            Indikator Penilaian {perlengkapanKpi.title}
+          </h2>
+          <p className="text-xs text-emerald-200/80">{perlengkapanKpi.subtitle}</p>
+          <p className="text-[11px] font-mono text-[#f3d266] bg-[#02100a]/80 px-2.5 py-1 rounded-lg border border-emerald-800/60 inline-block">
+            {perlengkapanKpi.detail}
+          </p>
         </div>
       </div>
 

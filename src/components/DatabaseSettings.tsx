@@ -87,7 +87,7 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
       const content = evt.target?.result as string;
       const success = await storageService.importFullBackup(content);
       if (success) {
-        setStatusMessage('Alhamdulillah, pemulihan database dari file JSON berhasil diterapkan dan disinkronkan ke database pusat & penyimpanan lokal.');
+        setStatusMessage('Alhamdulillah, pemulihan database dari file JSON berhasil diterapkan dan disinkronkan real-time ke Database Pusat Firestore.');
         setSyncTelemetry(storageService.getCloudSyncStatus());
       } else {
         setStatusMessage('Gagal memulihkan database: Format file JSON tidak valid.');
@@ -101,12 +101,15 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
     setIsSyncing(true);
     setStatusMessage('Menghubungkan dan menarik data terbaru dari Database Pusat...');
     const ok = await storageService.forcePullFromCloud();
+    const latestTelemetry = storageService.getCloudSyncStatus();
+    setSyncTelemetry(latestTelemetry);
     setIsSyncing(false);
     if (ok) {
       setStatusMessage('Data berhasil disinkronkan langsung dari Database Pusat Firestore.');
-      setSyncTelemetry(storageService.getCloudSyncStatus());
+    } else if (latestTelemetry.quotaExceeded) {
+      setStatusMessage('Kuota baca harian gratis Firestore hari ini telah tercapai dan akan reset otomatis besok. Cache offline Firestore tetap aktif.');
     } else {
-      setStatusMessage('Gagal memperbarui dari cloud, menggunakan data lokal.');
+      setStatusMessage('Gagal memperbarui dari server cloud saat ini; cache offline Firestore tetap aktif.');
     }
   };
 
@@ -129,7 +132,7 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
   const handleResetToDefault = async () => {
     await storageService.forcePullFromCloud();
     setSyncTelemetry(storageService.getCloudSyncStatus());
-    setStatusMessage('Database lokal telah disinkronkan kembali dari database pusat pesantren.');
+    setStatusMessage('Seluruh data perangkat telah disinkronkan ulang secara langsung dari Database Pusat Firestore.');
   };
 
   return (
@@ -360,7 +363,7 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
           </div>
 
           <p className="text-xs text-emerald-100/90 leading-relaxed font-sans">
-            Fitur ini akan memperbarui dan menyelaraskan seluruh tabel database dengan berkas arsip yang Anda pilih, sekaligus memperbarui database pusat Firestore &amp; cadangan lokal.
+            Fitur ini akan memperbarui dan menyelaraskan seluruh tabel database dengan berkas arsip yang Anda pilih langsung ke Database Pusat Firestore sehingga seluruh perangkat otomatis terbarui secara real-time.
           </p>
 
           <label className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-800/80 text-white font-bold font-mono text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xl hover-rainbow-edge">
@@ -383,7 +386,7 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
           </div>
 
           <p className="text-xs text-emerald-200/75 font-mono">
-            Data yang sudah Anda tambahkan atau ubah tersimpan permanen di Firestore &amp; cadangan lokal dan tidak akan tertimpa data sample saat refresh maupun deploy ulang.
+            Seluruh data tersimpan tunggal secara real-time di Database Pusat Firestore sehingga perubahan di Laptop, HP Android, iPhone, maupun Web App langsung sinkron otomatis.
           </p>
 
           <div className="flex flex-wrap items-center gap-3">

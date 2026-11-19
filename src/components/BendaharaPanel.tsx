@@ -20,29 +20,15 @@ import {
   Receipt,
   Plus,
 } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ComposedChart,
-  Area,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from 'recharts';
-import {
-  GlowingDot,
-  GlowingActiveDot,
-  LuxuryChartTooltip,
-} from './LuxuryChartComponents';
 import { D3CandlestickChart } from './D3CandlestickChart';
 import { DivisiKotakMasuk } from './DivisiKotakMasuk';
+import {
+  BarChart3D,
+  Extruded3DValue,
+  KpiStatCard3D,
+  LineChart3D,
+  PieChart3D,
+} from './Charts3D';
 import {
   TransaksiKeuangan,
   TipeTransaksiKeuangan,
@@ -56,6 +42,7 @@ import {
   UangSakuMutasi,
   AnggaranPondok,
   BendaharaConfig,
+  EvaluasiKepengurusan,
 } from '../types';
 import { storageService } from '../services/storageService';
 import { openPrintWindow } from '../utils/printDocument';
@@ -63,6 +50,11 @@ import {
   computeFinanceAnalytics,
   resolveBendaharaConfig,
 } from '../utils/financeCandlestick';
+import {
+  computeBendaharaWeeklyCashflow,
+  computeRealtimePondokAnalytics,
+  computeSyahriyahWeeklySeries,
+} from '../utils/realtimeAnalytics';
 
 interface BendaharaPanelProps {
   currentUser: UserAccount;
@@ -72,6 +64,7 @@ interface BendaharaPanelProps {
   pengajuanDivisi: PengajuanDivisi[];
   koordinasiList: PesanKoordinasi[];
   logsList: LogAktivitas[];
+  evaluasiKepengurusan?: EvaluasiKepengurusan[];
   initialSubTab?:
     | 'kotak_masuk'
     | 'syahriyah'
@@ -116,6 +109,7 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
   santriList,
   pengajuanDivisi,
   koordinasiList,
+  evaluasiKepengurusan = [],
   initialSubTab,
 }) => {
   const [activeTab, setActiveTab] = useState<BendaharaTabKey>(
@@ -299,31 +293,28 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
     const total = mergedSyahriyahList.length;
     const lunasRows = mergedSyahriyahList.filter((s) => s.status === 'Lunas');
     const menunggakRows = mergedSyahriyahList.filter((s) => s.status === 'Menunggak');
-    const pctNow = total > 0 ? Math.round((lunasRows.length / total) * 100) : 0;
-    const pctLast = 82;
-    const diff = pctNow - pctLast;
     const totalTerkumpul = lunasRows.reduce((acc, r) => acc + (Number(r.nominal) || 0), 0);
     const totalTunggakan = menunggakRows.reduce((acc, r) => acc + (Number(r.nominal) || 0), 0);
 
-    const chartData = [
-      { pekan: 'Minggu 1 (Tgl 1-7)', bulanLalu: 45, bulanIni: Math.max(35, Math.min(pctNow, Math.round(pctNow * 0.6))) },
-      { pekan: 'Minggu 2 (Tgl 8-14)', bulanLalu: 68, bulanIni: Math.max(48, Math.min(pctNow, Math.round(pctNow * 0.82))) },
-      { pekan: 'Minggu 3 (Tgl 15-21)', bulanLalu: 77, bulanIni: Math.max(55, Math.min(pctNow, Math.round(pctNow * 0.93))) },
-      { pekan: 'Minggu 4 (Tgl 22-30)', bulanLalu: pctLast, bulanIni: pctNow },
-    ];
+    const series = computeSyahriyahWeeklySeries(
+      mergedSyahriyahList,
+      systemConfig.syahriyahList || [],
+      periodeSyahriyahFilter
+    );
 
     return {
       total,
       lunasCount: lunasRows.length,
       menunggakCount: menunggakRows.length,
-      pctNow,
-      pctLast,
-      diff,
+      pctNow: series.pctNow,
+      pctLast: series.pctLast,
+      diff: series.diff,
+      hasPrevPeriodData: series.hasPrevPeriodData,
       totalTerkumpul,
       totalTunggakan,
-      chartData,
+      chartData: series.chartData,
     };
-  }, [mergedSyahriyahList]);
+  }, [mergedSyahriyahList, systemConfig.syahriyahList, periodeSyahriyahFilter]);
 
   // =========================================================================
   // STATE UANG SAKU & ANGGARAN
@@ -427,6 +418,30 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
     return computeFinanceAnalytics(transaksiKeuangan, systemConfig.bendaharaConfig);
   }, [transaksiKeuangan, systemConfig.bendaharaConfig]);
 
+  // Synchronized Kinerja Bendahara KPI (Identik Real-Time dengan Dashboard Utama & Ketua Pondok)
+  const bendaharaKpi = useMemo(() => {
+    return computeRealtimePondokAnalytics({
+      santriList,
+      perizinanList: [],
+      pelanggaranList: [],
+      transaksiKeuangan,
+      arsipSurat: [],
+      barangInventaris: [],
+      agendaPengurus: [],
+      evaluasiKepengurusan,
+      pengajuanDivisi,
+      koordinasiList,
+      systemConfig,
+    }).divisions.bendahara;
+  }, [
+    santriList,
+    transaksiKeuangan,
+    evaluasiKepengurusan,
+    pengajuanDivisi,
+    koordinasiList,
+    systemConfig,
+  ]);
+
   // Statistik Filtered Buku Kas, Line Chart, Pie Chart & Kategori Keseluruhan Periode
   const financeCharts = useMemo(() => {
     const totalMasuk = filteredTransaksi
@@ -459,12 +474,7 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
       else allCatMap[t.kategori].pengeluaran += t.nominal;
     });
 
-    const lineData = [
-      { pekan: 'Pekan 1', pemasukan: 28500000, pengeluaran: 11200000 },
-      { pekan: 'Pekan 2', pemasukan: 17300000, pengeluaran: 8500000 },
-      { pekan: 'Pekan 3', pemasukan: 14200000, pengeluaran: 6400000 },
-      { pekan: 'Pekan 4', pemasukan: totalMasuk, pengeluaran: totalKeluar },
-    ];
+    const lineData = computeBendaharaWeeklyCashflow(filteredTransaksi);
 
     return {
       totalMasuk,
@@ -1053,24 +1063,69 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
       {/* ===================================================================== */}
       {activeTab === 'pemasukan_pengeluaran' && (
         <div className="space-y-6">
-          {/* 3 Ringkasan Saldo */}
+          {/* 3 Ringkasan Saldo 3D KPI Cards + Indikator Kinerja Bendahara Real-Time */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 rounded-2xl bg-[#041d14]/95 border border-emerald-500/35 shadow-lg">
-              <p className="text-[10px] font-mono uppercase text-emerald-300">Total Pemasukan Kas</p>
-              <p className="text-2xl font-black text-emerald-400 font-mono mt-1">
-                {formatRupiah(financeCharts.totalMasuk)}
-              </p>
+            <KpiStatCard3D
+              label="Total Pemasukan Kas"
+              value={financeCharts.totalMasuk}
+              formatAsRupiah={true}
+              tone="emerald"
+              valueClassName="text-xl sm:text-2xl"
+              trendPercent={
+                financeCharts.totalMasuk > 0
+                  ? Number((((financeCharts.totalMasuk - financeCharts.totalKeluar) / financeCharts.totalMasuk) * 100).toFixed(1))
+                  : 0
+              }
+              subtitle="Akumulasi kas masuk terverifikasi"
+            />
+            <KpiStatCard3D
+              label="Total Pengeluaran Kas"
+              value={financeCharts.totalKeluar}
+              formatAsRupiah={true}
+              tone="rose"
+              valueClassName="text-xl sm:text-2xl"
+              trendPercent={financeCharts.totalMasuk > 0 ? -Number(((financeCharts.totalKeluar / financeCharts.totalMasuk) * 100).toFixed(1)) : 0}
+              subtitle="Realisasi operasional & anggaran"
+            />
+            <KpiStatCard3D
+              label="Saldo Akhir Kas Pondok"
+              value={financeCharts.saldo}
+              formatAsRupiah={true}
+              tone="gold"
+              valueClassName="text-xl sm:text-2xl"
+              trendPercent={financeCharts.totalMasuk > 0 ? Number(((financeCharts.saldo / financeCharts.totalMasuk) * 100).toFixed(1)) : 0}
+              subtitle="Likuiditas kas bendahara aktif"
+            />
+          </div>
+
+          {/* 3D Pie Chart Indikator Kinerja Bendahara Real-Time (Sinkron Dashboard Utama) */}
+          <div className="kpi-glass-3d rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-6">
+            <div className="shrink-0">
+              <PieChart3D
+                data={[
+                  { name: 'Kinerja Bendahara', value: bendaharaKpi.score, color: bendaharaKpi.color },
+                  { name: 'Ruang Optimasi', value: Math.max(1, 100 - bendaharaKpi.score), color: '#093827' },
+                ]}
+                size={154}
+                innerRadiusRatio={0.5}
+                depth={14}
+                centerValue={bendaharaKpi.score}
+                centerSuffix="%"
+                centerLabel={bendaharaKpi.ratingLabel.toUpperCase()}
+                centerTone={bendaharaKpi.score >= 90 ? 'gold' : 'emerald'}
+                unit="%"
+              />
             </div>
-            <div className="p-5 rounded-2xl bg-[#041d14]/95 border border-rose-500/35 shadow-lg">
-              <p className="text-[10px] font-mono uppercase text-rose-300">Total Pengeluaran Kas</p>
-              <p className="text-2xl font-black text-rose-400 font-mono mt-1">
-                {formatRupiah(financeCharts.totalKeluar)}
-              </p>
-            </div>
-            <div className="p-5 rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/45 shadow-lg">
-              <p className="text-[10px] font-mono uppercase text-[#f3d266]">Saldo Akhir Kas Pondok</p>
-              <p className="text-2xl font-black text-[#f3d266] font-mono mt-1">
-                {formatRupiah(financeCharts.saldo)}
+            <div className="space-y-1.5 text-center sm:text-left min-w-0">
+              <span className="px-2.5 py-0.5 rounded bg-[#d4af37]/20 text-[#f3d266] border border-[#d4af37]/40 text-[10px] font-mono font-bold uppercase">
+                SINKRON REAL-TIME DASHBOARD UTAMA &amp; KETUA PONDOK
+              </span>
+              <h2 className="text-sm font-extrabold text-white uppercase">
+                Indikator Penilaian {bendaharaKpi.title}
+              </h2>
+              <p className="text-xs text-emerald-200/80">{bendaharaKpi.subtitle}</p>
+              <p className="text-[11px] font-mono text-[#f3d266] bg-[#02100a]/80 px-2.5 py-1 rounded-lg border border-emerald-800/60 inline-block">
+                {bendaharaKpi.detail}
               </p>
             </div>
           </div>
@@ -1106,124 +1161,59 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Line Chart Arus Kas */}
-            <div className="lg:col-span-6 rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl">
-              <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider mb-1">
-                Grafik Line Chart Tren Arus Kas
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* 3D Line Chart Arus Kas */}
+            <div className="kpi-glass-3d rounded-2xl p-5 space-y-2">
+              <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
+                Grafik 3D Line Chart Tren Arus Kas
               </h2>
-              <p className="text-[11px] text-emerald-200/70 mb-3">Tren Pemasukan vs Pengeluaran Mingguan</p>
-              <div className="h-52 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    data={financeCharts.lineData}
-                    margin={{ top: 10, right: 10, left: -12, bottom: 0 }}
-                  >
-                    <defs>
-                      <filter id="glowArusKas" x="-25%" y="-25%" width="150%" height="150%">
-                        <feGaussianBlur stdDeviation="3" result="blur" />
-                        <feMerge>
-                          <feMergeNode in="blur" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-                      <linearGradient id="lineGradMasuk" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#34d399" />
-                        <stop offset="100%" stopColor="#10b981" />
-                      </linearGradient>
-                      <linearGradient id="lineGradKeluar" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#fb7185" />
-                        <stop offset="100%" stopColor="#f43f5e" />
-                      </linearGradient>
-                      <linearGradient id="areaGradMasuk" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.38} />
-                        <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                      </linearGradient>
-                      <linearGradient id="areaGradKeluar" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.22} />
-                        <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                    <XAxis dataKey="pekan" stroke="#a7f3d0" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#a7f3d0" fontSize={10} tickLine={false} />
-                    <Tooltip
-                      content={<LuxuryChartTooltip unit="" valuePrefix="Rp " subtitle="Arus Kas Mingguan Bendahara" />}
-                      cursor={{ stroke: '#d4af37', strokeWidth: 1.5, strokeDasharray: '4 4' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '4px' }} />
-                    <Area
-                      type="monotone"
-                      dataKey="pengeluaran"
-                      name="Pengeluaran"
-                      fill="url(#areaGradKeluar)"
-                      stroke="none"
-                      legendType="none"
-                      isAnimationActive={true}
-                      animationDuration={1400}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="pemasukan"
-                      name="Pemasukan"
-                      fill="url(#areaGradMasuk)"
-                      stroke="none"
-                      legendType="none"
-                      isAnimationActive={true}
-                      animationDuration={1600}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="pengeluaran"
-                      name="Pengeluaran"
-                      stroke="url(#lineGradKeluar)"
-                      strokeWidth={2.5}
-                      dot={<GlowingDot color="#f43f5e" accentColor="#fecdd3" />}
-                      activeDot={<GlowingActiveDot color="#f43f5e" accentColor="#ffffff" />}
-                      isAnimationActive={true}
-                      animationDuration={1500}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="pemasukan"
-                      name="Pemasukan"
-                      stroke="url(#lineGradMasuk)"
-                      strokeWidth={3.2}
-                      filter="url(#glowArusKas)"
-                      dot={<GlowingDot color="#10b981" accentColor="#f3d266" />}
-                      activeDot={<GlowingActiveDot color="#10b981" accentColor="#f3d266" />}
-                      isAnimationActive={true}
-                      animationDuration={1700}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              <p className="text-[11px] text-emerald-200/70">Tren Pemasukan vs Pengeluaran Mingguan</p>
+              <LineChart3D
+                data={financeCharts.lineData}
+                xKey="pekan"
+                height={218}
+                tooltipPrefix="Rp "
+                subtitle="Arus Kas Mingguan Bendahara"
+                series={[
+                  { key: 'pemasukan', label: 'Pemasukan', color: '#10b981', accentColor: '#6ee7b7' },
+                  { key: 'pengeluaran', label: 'Pengeluaran', color: '#f43f5e', accentColor: '#fda4af' },
+                ]}
+              />
             </div>
 
-            {/* Pie Chart Kategori & Persentasenya */}
-            <div className="lg:col-span-6 rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl">
-              <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider mb-1">
-                Pie Chart Proporsi Kategori &amp; Persentase (%)
-              </h2>
-              <p className="text-[11px] text-emerald-200/70 mb-2">Distribusi persentase transaksi per kategori</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={financeCharts.pieData} dataKey="value" nameKey="name" outerRadius={64} innerRadius={32}>
-                        {financeCharts.pieData.map((_, idx) => (
-                          <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: '#02120a', borderColor: '#d4af37', borderRadius: '10px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+            {/* 3D Pie Chart Kategori & Persentasenya */}
+            <div className="kpi-glass-3d rounded-2xl p-5 flex flex-col justify-between">
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider mb-1">
+                  3D Pie Chart Proporsi Kategori &amp; Persentase (%)
+                </h2>
+                <p className="text-[11px] text-emerald-200/70 mb-2">Distribusi persentase transaksi per kategori</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                <div className="flex items-center justify-center py-2">
+                  <PieChart3D
+                    data={financeCharts.pieData.map((p, idx) => ({
+                      name: p.name,
+                      value: p.value,
+                      persen: p.persen,
+                      color: PIE_COLORS[idx % PIE_COLORS.length],
+                    }))}
+                    size={172}
+                    innerRadiusRatio={0.44}
+                    depth={15}
+                  />
                 </div>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
                   {financeCharts.pieData.map((p, idx) => (
-                    <div key={p.name} className="flex items-center justify-between text-[11px] font-mono bg-[#03160f] px-2.5 py-1.5 rounded-lg border border-emerald-900/60">
-                      <span className="text-emerald-100 truncate pr-2">{idx + 1}. {p.name}</span>
-                      <span className="text-[#f3d266] font-bold shrink-0">{p.persen}%</span>
+                    <div key={p.name} className="flex items-center justify-between text-[11px] font-mono bg-[#03160f]/90 px-2.5 py-1.5 rounded-lg border border-emerald-900/60">
+                      <span className="flex items-center gap-1.5 text-emerald-100 truncate pr-2">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
+                        />
+                        <span className="truncate">{idx + 1}. {p.name}</span>
+                      </span>
+                      <span className="text-[#f3d266] font-bold shrink-0 tabular-nums">{p.persen}%</span>
                     </div>
                   ))}
                 </div>
@@ -1231,25 +1221,24 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
             </div>
           </div>
 
-          {/* Grafik Kategori Pemasukan & Pengeluaran */}
-          <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-1">
-              Grafik Kategori Pemasukan &amp; Pengeluaran (Keseluruhan Periode)
-            </h2>
-            <p className="text-xs text-emerald-200/70 mb-4">Perbandingan volume kas masuk dan keluar pada setiap pos kategori</p>
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={financeCharts.categoryBarData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                  <XAxis dataKey="kategori" stroke="#a7f3d0" fontSize={10} />
-                  <YAxis stroke="#a7f3d0" fontSize={10} />
-                  <Tooltip contentStyle={{ backgroundColor: '#02120a', borderColor: '#d4af37', borderRadius: '12px' }} />
-                  <Legend />
-                  <Bar dataKey="pemasukan" name="Pemasukan (Rp)" fill="#10b981" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="pengeluaran" name="Pengeluaran (Rp)" fill="#f43f5e" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Grafik 3D Diagram Kategori Pemasukan & Pengeluaran */}
+          <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+            <div>
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-1">
+                Grafik 3D Diagram Kategori Pemasukan &amp; Pengeluaran (Keseluruhan Periode)
+              </h2>
+              <p className="text-xs text-emerald-200/70">Perbandingan volume kas masuk dan keluar pada setiap pos kategori</p>
             </div>
+            <BarChart3D
+              data={financeCharts.categoryBarData}
+              xKey="kategori"
+              height={240}
+              valuePrefix="Rp "
+              series={[
+                { key: 'pemasukan', label: 'Pemasukan (Rp)', color: '#10b981' },
+                { key: 'pengeluaran', label: 'Pengeluaran (Rp)', color: '#f43f5e' },
+              ]}
+            />
           </div>
 
           {/* Input Transaksi & Buku Kas Harian / Bulanan / Tahunan */}
@@ -1535,112 +1524,63 @@ export const BendaharaPanel: React.FC<BendaharaPanelProps> = ({
       {/* ===================================================================== */}
       {activeTab === 'syahriyah' && (
         <div className="space-y-6">
-          {/* Grafik Statistik Line Chart Syahriyah & Perbandingan Bulan Lalu */}
-          <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          {/* Grafik Statistik 3D Line Chart Syahriyah & Perbandingan Bulan Lalu */}
+          <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  Grafik Statistik Line Chart Syahriyah &amp; Perbandingan Bulan Lalu (%)
+                  Grafik Statistik 3D Line Chart Syahriyah &amp; Perbandingan Bulan Lalu (%)
                 </h2>
                 <p className="text-xs text-emerald-200/75">
                   Terkonfigurasi langsung dengan {activeSantriList.length} Santri Aktif dari Data Santri Sekretaris · Periode {periodeSyahriyahFilter}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-emerald-400 font-mono">
-                  {syahriyahStats.pctNow}% Lunas ({syahriyahStats.lunasCount}/{syahriyahStats.total})
-                </p>
-                <p className="text-[10px] font-mono text-[#f3d266]">
-                  {syahriyahStats.diff >= 0 ? `+${syahriyahStats.diff}%` : `${syahriyahStats.diff}%`} dibanding Bulan Lalu ({syahriyahStats.pctLast}%)
-                </p>
+              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
+                <div className="flex items-baseline gap-2">
+                  <Extruded3DValue
+                    value={syahriyahStats.pctNow}
+                    suffix="% Lunas"
+                    tone="emerald"
+                    className="text-xl sm:text-2xl"
+                  />
+                  <span className="text-xs font-mono text-emerald-200/80">
+                    ({syahriyahStats.lunasCount}/{syahriyahStats.total})
+                  </span>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                    !syahriyahStats.hasPrevPeriodData || syahriyahStats.diff >= 0
+                      ? 'badge-3d-up text-emerald-100'
+                      : 'badge-3d-down text-rose-100'
+                  }`}
+                >
+                  {syahriyahStats.hasPrevPeriodData ? (
+                    <>
+                      {syahriyahStats.diff >= 0 ? '▲' : '▼'}{' '}
+                      {syahriyahStats.diff >= 0 ? `+${syahriyahStats.diff}%` : `${syahriyahStats.diff}%`}{' '}
+                      vs {syahriyahStats.pctLast}%
+                    </>
+                  ) : (
+                    <>▲ {syahriyahStats.lunasCount}/{syahriyahStats.total} Lunas Periode Ini</>
+                  )}
+                </span>
               </div>
             </div>
 
-            <div className="h-52 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={syahriyahStats.chartData}
-                  margin={{ top: 12, right: 18, left: -12, bottom: 4 }}
-                >
-                  <defs>
-                    <filter id="glowSyahriyah" x="-25%" y="-25%" width="150%" height="150%">
-                      <feGaussianBlur stdDeviation="3.5" result="blur" />
-                      <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                    <linearGradient id="syahriyahLineCurr" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#34d399" />
-                      <stop offset="55%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#f3d266" />
-                    </linearGradient>
-                    <linearGradient id="syahriyahAreaCurr" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
-                      <stop offset="55%" stopColor="#10b981" stopOpacity={0.14} />
-                      <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                    </linearGradient>
-                    <linearGradient id="syahriyahAreaPrev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#d4af37" stopOpacity={0.18} />
-                      <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                  <XAxis dataKey="pekan" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                  <YAxis domain={[0, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                  <Tooltip
-                    content={<LuxuryChartTooltip unit="%" subtitle="Kolektibilitas Pembayaran Syahriyah" />}
-                    cursor={{ stroke: '#34d399', strokeWidth: 1.5, strokeDasharray: '4 4' }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                  <Area
-                    type="monotone"
-                    dataKey="bulanLalu"
-                    name="Kolektibilitas Bulan Lalu (%)"
-                    fill="url(#syahriyahAreaPrev)"
-                    stroke="none"
-                    legendType="none"
-                    isAnimationActive={true}
-                    animationDuration={1400}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="bulanIni"
-                    name="Kolektibilitas Bulan Ini (%)"
-                    fill="url(#syahriyahAreaCurr)"
-                    stroke="none"
-                    legendType="none"
-                    isAnimationActive={true}
-                    animationDuration={1600}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="bulanLalu"
-                    name="Kolektibilitas Bulan Lalu (%)"
-                    stroke="#d4af37"
-                    strokeWidth={2.2}
-                    strokeDasharray="5 5"
-                    dot={<GlowingDot color="#d4af37" accentColor="#f3d266" />}
-                    activeDot={<GlowingActiveDot color="#d4af37" accentColor="#ffffff" />}
-                    isAnimationActive={true}
-                    animationDuration={1500}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="bulanIni"
-                    name="Kolektibilitas Bulan Ini (%)"
-                    stroke="url(#syahriyahLineCurr)"
-                    strokeWidth={3.5}
-                    filter="url(#glowSyahriyah)"
-                    dot={<GlowingDot color="#10b981" accentColor="#f3d266" />}
-                    activeDot={<GlowingActiveDot color="#10b981" accentColor="#f3d266" />}
-                    isAnimationActive={true}
-                    animationDuration={1700}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+            <LineChart3D
+              data={syahriyahStats.chartData}
+              xKey="pekan"
+              height={222}
+              yDomain={[0, 100]}
+              yUnit="%"
+              tooltipUnit="%"
+              subtitle="Kolektibilitas Pembayaran Syahriyah"
+              series={[
+                { key: 'bulanIni', label: 'Kolektibilitas Bulan Ini (%)', color: '#10b981', accentColor: '#f3d266' },
+                { key: 'bulanLalu', label: 'Kolektibilitas Bulan Lalu (%)', color: '#d4af37', accentColor: '#fef08a', dashed: true },
+              ]}
+            />
           </div>
 
           {/* FORM INPUT MANUAL PEMBAYARAN SYAHRIYAH (SAAT WALI SANTRI BAYAR) */}

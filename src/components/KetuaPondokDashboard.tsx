@@ -30,21 +30,11 @@ import {
   History,
 } from 'lucide-react';
 import {
-  ComposedChart,
-  Area,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend
-} from 'recharts';
-import {
-  GlowingDot,
-  GlowingActiveDot,
-  LuxuryChartTooltip,
-} from './LuxuryChartComponents';
+  Extruded3DValue,
+  KpiStatCard3D,
+  LineChart3D,
+  PieChart3D,
+} from './Charts3D';
 import {
   AgendaPengurus,
   EvaluasiKepengurusan,
@@ -52,8 +42,10 @@ import {
   ArsipSurat,
   TransaksiKeuangan,
   BarangInventaris,
+  PeminjamanBarang,
   Perizinan,
   Pelanggaran,
+  Sanksi,
   Santri,
   UserAccount,
   DivisiPondok,
@@ -68,6 +60,7 @@ import { storageService } from '../services/storageService';
 import { openPrintWindow } from '../utils/printDocument';
 import { downloadWordDocument } from '../utils/wordExport';
 import { PusatInformasiSection } from './PusatInformasiSection';
+import { computeRealtimePondokAnalytics } from '../utils/realtimeAnalytics';
 
 interface KetuaPondokDashboardProps {
   currentUser: UserAccount;
@@ -75,9 +68,11 @@ interface KetuaPondokDashboardProps {
   santriList: Santri[];
   perizinanList: Perizinan[];
   pelanggaranList: Pelanggaran[];
+  sanksiList?: Sanksi[];
   arsipSurat: ArsipSurat[];
   transaksiKeuangan: TransaksiKeuangan[];
   barangInventaris: BarangInventaris[];
+  peminjamanBarang?: PeminjamanBarang[];
   agendaPengurus: AgendaPengurus[];
   evaluasiKepengurusan: EvaluasiKepengurusan[];
   pengajuanDivisi: PengajuanDivisi[];
@@ -213,9 +208,11 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
   santriList,
   perizinanList,
   pelanggaranList,
+  sanksiList: propSanksiList,
   arsipSurat,
   transaksiKeuangan,
   barangInventaris,
+  peminjamanBarang: propPeminjamanBarang,
   agendaPengurus,
   evaluasiKepengurusan,
   pengajuanDivisi,
@@ -224,6 +221,8 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
   koordinasiList,
   initialSubTab,
 }) => {
+  const sanksiList = propSanksiList || storageService.getSanksiList();
+  const peminjamanBarang = propPeminjamanBarang || storageService.getPeminjamanBarang();
   const [activeTab, setActiveTab] = useState<KetuaPondokTab>(normalizeKetuaTab(initialSubTab));
 
   React.useEffect(() => {
@@ -332,52 +331,59 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
   const formatRupiah = (val: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
 
-  // 1. Ringkasan Semua Bagian & Grafik Line Chart Kinerja Pengurus + Kedisiplinan Santri
+  // 1. Pusat Analitik Real-Time Terpadu (Tersinkronisasi dengan Dashboard Utama & Semua Divisi)
+  const realtimeAnalytics = useMemo(
+    () =>
+      computeRealtimePondokAnalytics({
+        santriList,
+        perizinanList,
+        pelanggaranList,
+        sanksiList,
+        transaksiKeuangan,
+        arsipSurat,
+        barangInventaris,
+        peminjamanBarang,
+        agendaPengurus,
+        evaluasiKepengurusan,
+        pengajuanDivisi,
+        koordinasiList,
+        dewanList,
+        systemConfig,
+      }),
+    [
+      santriList,
+      perizinanList,
+      pelanggaranList,
+      sanksiList,
+      transaksiKeuangan,
+      arsipSurat,
+      barangInventaris,
+      peminjamanBarang,
+      agendaPengurus,
+      evaluasiKepengurusan,
+      pengajuanDivisi,
+      koordinasiList,
+      dewanList,
+      systemConfig,
+    ]
+  );
+
   const executiveMetrics = useMemo(() => {
-    const pemasukan = transaksiKeuangan.filter(t => t.tipe === 'Pemasukan').reduce((a, b) => a + b.nominal, 0);
-    const pengeluaran = transaksiKeuangan.filter(t => t.tipe === 'Pengeluaran').reduce((a, b) => a + b.nominal, 0);
-    const saldoKas = pemasukan - pengeluaran;
-
-    const prokerList = systemConfig.programKerjaList || [];
-    const avgKinerja = prokerList.length > 0
-      ? Math.round(prokerList.reduce((acc, p) => acc + p.progresPersen, 0) / prokerList.length)
-      : 90;
-    const kinerjaBulanLalu = 85;
-    const kinerjaDiff = avgKinerja - kinerjaBulanLalu;
-
-    const penaltyDisiplin = Math.min(22, pelanggaranList.length * 2 + perizinanList.filter(p => p.status === 'Terlambat').length * 2);
-    const disiplinBulanIni = Math.max(76, 98 - penaltyDisiplin);
-    const disiplinBulanLalu = 89;
-    const disiplinDiff = disiplinBulanIni - disiplinBulanLalu;
-
-    const kinerjaChartData = [
-      { minggu: 'Pekan 1', bulanLalu: 82, bulanIni: 86 },
-      { minggu: 'Pekan 2', bulanLalu: 84, bulanIni: 89 },
-      { minggu: 'Pekan 3', bulanLalu: 86, bulanIni: 91 },
-      { minggu: 'Pekan 4', bulanLalu: kinerjaBulanLalu, bulanIni: avgKinerja },
-    ];
-
-    const disiplinChartData = [
-      { minggu: 'Pekan 1', bulanLalu: 88, bulanIni: 92 },
-      { minggu: 'Pekan 2', bulanLalu: 87, bulanIni: 94 },
-      { minggu: 'Pekan 3', bulanLalu: 90, bulanIni: 93 },
-      { minggu: 'Pekan 4', bulanLalu: disiplinBulanLalu, bulanIni: disiplinBulanIni },
-    ];
-
+    const { financeAnalytics, kinerjaPengurusStats, kedisiplinanSantriStats } = realtimeAnalytics;
     return {
-      pemasukan,
-      pengeluaran,
-      saldoKas,
-      avgKinerja,
-      kinerjaBulanLalu,
-      kinerjaDiff,
-      disiplinBulanIni,
-      disiplinBulanLalu,
-      disiplinDiff,
-      kinerjaChartData,
-      disiplinChartData,
+      pemasukan: financeAnalytics.totalPemasukan,
+      pengeluaran: financeAnalytics.totalPengeluaran,
+      saldoKas: financeAnalytics.saldoPondok,
+      avgKinerja: kinerjaPengurusStats.bulanIni,
+      kinerjaBulanLalu: kinerjaPengurusStats.bulanLalu,
+      kinerjaDiff: kinerjaPengurusStats.selisih,
+      disiplinBulanIni: kedisiplinanSantriStats.bulanIni,
+      disiplinBulanLalu: kedisiplinanSantriStats.bulanLalu,
+      disiplinDiff: kedisiplinanSantriStats.selisih,
+      kinerjaChartData: kinerjaPengurusStats.chartData,
+      disiplinChartData: kedisiplinanSantriStats.chartData,
     };
-  }, [transaksiKeuangan, systemConfig.programKerjaList, pelanggaranList.length, perizinanList]);
+  }, [realtimeAnalytics]);
 
   // Handlers Persetujuan
   const handleKeputusanPengajuan = (item: PengajuanDivisi, status: PengajuanDivisi['status']) => {
@@ -609,6 +615,7 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
         {/* Navigasi Sub-Tab Ketua Pondok */}
         <div className="flex flex-wrap items-center gap-1.5 bg-[#02100a] p-1.5 rounded-2xl border border-emerald-800/70">
           {[
+            { id: 'ringkasan', label: 'Ringkasan & Grafik' },
             { id: 'sk_koordinasi', label: 'Kotak Masuk & Pesan (SK)' },
             { id: 'persetujuan', label: `Persetujuan (${pengajuanDivisi.filter(p => p.status === 'Menunggu Persetujuan').length + izinPulangPending.length})` },
             { id: 'evaluasi_rapat', label: 'Evaluasi Kinerja & Rapat' },
@@ -636,372 +643,228 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
       {/* TAB 1: RINGKASAN SEMUA BAGIAN & GRAFIK LINE CHART KINERJA + KEDISIPLINAN */}
       {activeTab === 'ringkasan' && (
         <div className="space-y-6">
-          {/* Ringkasan Semua Bagian dalam Satu Layar */}
+          {/* Ringkasan Semua Bagian dalam Satu Layar (3D Futuristic KPI Cards) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-[#041d14]/95 border border-emerald-500/35 shadow-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">1. Bagian Keuangan</span>
-                <Wallet className="w-5 h-5 text-emerald-400" />
-              </div>
-              <p className="text-lg font-black text-emerald-400 font-mono">{formatRupiah(executiveMetrics.saldoKas)}</p>
-              <p className="text-[11px] text-emerald-200/75 mt-1">
-                Masuk: {formatRupiah(executiveMetrics.pemasukan)} · Keluar: {formatRupiah(executiveMetrics.pengeluaran)}
-              </p>
-            </div>
+            <KpiStatCard3D
+              label="1. Bagian Keuangan"
+              value={executiveMetrics.saldoKas}
+              formatAsRupiah={true}
+              tone="emerald"
+              valueClassName="text-lg sm:text-xl"
+              trendPercent={executiveMetrics.pemasukan > 0 ? Number((((executiveMetrics.pemasukan - executiveMetrics.pengeluaran) / executiveMetrics.pemasukan) * 100).toFixed(1)) : 0}
+              subtitle={`Masuk: ${formatRupiah(executiveMetrics.pemasukan)} · Keluar: ${formatRupiah(executiveMetrics.pengeluaran)}`}
+              icon={<Wallet className="w-5 h-5 text-emerald-400" />}
+            />
 
-            <div className="p-5 rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/35 shadow-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-[#f3d266]">2. Bagian Sekretaris</span>
-                <FileText className="w-5 h-5 text-[#f3d266]" />
-              </div>
-              <p className="text-lg font-black text-white font-mono">{arsipSurat.length} Dokumen Surat</p>
-              <p className="text-[11px] text-emerald-200/75 mt-1">
-                {arsipSurat.filter(s => s.status === 'Resmi / Terbit').length} Surat Resmi Terbit · {(systemConfig.notulenRapatList || []).length} Notulen Rapat
-              </p>
-            </div>
+            <KpiStatCard3D
+              label="2. Bagian Sekretaris"
+              value={arsipSurat.length}
+              suffix=" Dok"
+              tone="gold"
+              valueClassName="text-lg sm:text-xl"
+              trendText={`${arsipSurat.filter(s => s.status === 'Resmi / Terbit').length} Terbit`}
+              trendPercent={10.5}
+              subtitle={`${arsipSurat.filter(s => s.status === 'Resmi / Terbit').length} Surat Resmi · ${(systemConfig.notulenRapatList || []).length} Notulen Rapat`}
+              icon={<FileText className="w-5 h-5 text-[#f3d266]" />}
+            />
 
-            <div className="p-5 rounded-2xl bg-[#041d14]/95 border border-amber-500/35 shadow-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-amber-300">3. Bagian Keamanan</span>
-                <ShieldCheck className="w-5 h-5 text-amber-400" />
-              </div>
-              <p className="text-lg font-black text-white font-mono">
-                {perizinanList.filter(p => p.status === 'Sedang Keluar').length} Izin Aktif
-              </p>
-              <p className="text-[11px] text-emerald-200/75 mt-1">
-                {perizinanList.filter(p => p.status === 'Terlambat').length} Terlambat · {pelanggaranList.length} Catatan Pelanggaran
-              </p>
-            </div>
+            <KpiStatCard3D
+              label="3. Bagian Keamanan"
+              value={perizinanList.filter(p => p.status === 'Sedang Keluar').length}
+              suffix=" Izin"
+              tone="gold"
+              valueClassName="text-lg sm:text-xl"
+              trendPercent={perizinanList.filter(p => p.status === 'Terlambat').length > 0 ? -perizinanList.filter(p => p.status === 'Terlambat').length : 100}
+              trendText={`${perizinanList.filter(p => p.status === 'Terlambat').length} Terlambat`}
+              subtitle={`${perizinanList.filter(p => p.status === 'Terlambat').length} Terlambat · ${pelanggaranList.length} Catatan Pelanggaran`}
+              icon={<ShieldCheck className="w-5 h-5 text-amber-400" />}
+            />
 
-            <div className="p-5 rounded-2xl bg-[#041d14]/95 border border-emerald-500/35 shadow-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">4. Bagian Inventaris</span>
-                <Package className="w-5 h-5 text-emerald-400" />
-              </div>
-              <p className="text-lg font-black text-white font-mono">
-                {barangInventaris.reduce((a, b) => a + b.jumlah, 0)} Unit Aset
-              </p>
-              <p className="text-[11px] text-emerald-200/75 mt-1">
-                {barangInventaris.filter(b => b.kondisi === 'Baik').length} Jenis Baik · {barangInventaris.filter(b => b.kondisi !== 'Baik').length} Perlu Perbaikan
-              </p>
-            </div>
+            <KpiStatCard3D
+              label="4. Bagian Inventaris"
+              value={barangInventaris.reduce((a, b) => a + b.jumlah, 0)}
+              suffix=" Unit"
+              tone="silver"
+              valueClassName="text-lg sm:text-xl"
+              trendPercent={barangInventaris.length > 0 ? Number(((barangInventaris.filter(b => b.kondisi === 'Baik').length / barangInventaris.length) * 100).toFixed(1)) : 100}
+              subtitle={`${barangInventaris.filter(b => b.kondisi === 'Baik').length} Jenis Baik · ${barangInventaris.filter(b => b.kondisi !== 'Baik').length} Perlu Perbaikan`}
+              icon={<Package className="w-5 h-5 text-emerald-400" />}
+            />
           </div>
 
-          {/* 2 Grafik Line Chart: Kinerja Pengurus & Kedisiplinan Santri (Bulan Ini vs Bulan Lalu) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl">
-              <div className="flex items-center justify-between mb-4">
+          {/* 3D Pie Charts Tersinkronisasi Real-Time: Kinerja Ketua Pondok & Kinerja Keamanan */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[realtimeAnalytics.divisions.ketua_pondok, realtimeAnalytics.divisions.keamanan].map((kpi) => (
+              <div key={kpi.key} className="kpi-glass-3d rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5">
+                <div className="shrink-0">
+                  <PieChart3D
+                    data={[
+                      { name: 'Capaian Kinerja', value: kpi.score, color: kpi.color },
+                      { name: 'Ruang Optimasi', value: Math.max(1, 100 - kpi.score), color: '#093827' },
+                    ]}
+                    size={156}
+                    innerRadiusRatio={0.5}
+                    depth={13}
+                    centerValue={kpi.score}
+                    centerSuffix="%"
+                    centerLabel={kpi.ratingLabel}
+                    centerTone={kpi.score >= 90 ? 'gold' : 'emerald'}
+                    unit="%"
+                  />
+                </div>
+                <div className="space-y-1.5 text-center sm:text-left min-w-0">
+                  <span className="px-2.5 py-0.5 rounded bg-[#d4af37]/20 text-[#f3d266] border border-[#d4af37]/40 text-[10px] font-mono font-bold uppercase">
+                    SINKRON REAL-TIME DASHBOARD UTAMA
+                  </span>
+                  <h3 className="text-sm font-extrabold text-white uppercase">{kpi.title}</h3>
+                  <p className="text-xs text-emerald-200/80">{kpi.subtitle}</p>
+                  <p className="text-[11px] font-mono text-[#f3d266] bg-[#02100a]/80 px-2.5 py-1 rounded-lg border border-emerald-800/60 inline-block">
+                    {kpi.detail}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 2 Grafik 3D Line Chart: Kinerja Pengurus & Kedisiplinan Santri (Bulan Ini vs Bulan Lalu) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <Activity className="w-4 h-4 text-emerald-400" />
-                    Grafik Line Chart Kinerja Pengurus
+                    Grafik 3D Line Chart Kinerja Pengurus
                   </h2>
                   <p className="text-xs text-emerald-200/70">Perbandingan Bulan Ini vs Bulan Lalu</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-black text-emerald-400 font-mono">{executiveMetrics.avgKinerja}%</p>
-                  <p className="text-[10px] font-mono text-emerald-300">
-                    {executiveMetrics.kinerjaDiff >= 0 ? `+${executiveMetrics.kinerjaDiff}%` : `${executiveMetrics.kinerjaDiff}%`} vs Bulan Lalu ({executiveMetrics.kinerjaBulanLalu}%)
-                  </p>
+                  <Extruded3DValue
+                    value={executiveMetrics.avgKinerja}
+                    suffix="%"
+                    tone="emerald"
+                    className="text-2xl"
+                  />
+                  <div className="mt-0.5">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                        executiveMetrics.kinerjaDiff >= 0 ? 'badge-3d-up text-emerald-100' : 'badge-3d-down text-rose-100'
+                      }`}
+                    >
+                      {executiveMetrics.kinerjaDiff >= 0 ? '▲' : '▼'}{' '}
+                      {executiveMetrics.kinerjaDiff >= 0 ? `+${executiveMetrics.kinerjaDiff}%` : `${executiveMetrics.kinerjaDiff}%`}{' '}
+                      vs {executiveMetrics.kinerjaBulanLalu}%
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    data={executiveMetrics.kinerjaChartData}
-                    margin={{ top: 12, right: 16, left: -12, bottom: 4 }}
-                  >
-                    <defs>
-                      <filter id="glowExecKinerja" x="-25%" y="-25%" width="150%" height="150%">
-                        <feGaussianBlur stdDeviation="3.5" result="blur" />
-                        <feMerge>
-                          <feMergeNode in="blur" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-                      <linearGradient id="execKinerjaLine" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#34d399" />
-                        <stop offset="55%" stopColor="#10b981" />
-                        <stop offset="100%" stopColor="#f3d266" />
-                      </linearGradient>
-                      <linearGradient id="execKinerjaArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
-                        <stop offset="55%" stopColor="#10b981" stopOpacity={0.14} />
-                        <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                      </linearGradient>
-                      <linearGradient id="execKinerjaAreaPrev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#d4af37" stopOpacity={0.18} />
-                        <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                    <XAxis dataKey="minggu" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                    <YAxis domain={[65, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                    <Tooltip
-                      content={<LuxuryChartTooltip unit="%" subtitle="Indeks Kinerja Pengurus" />}
-                      cursor={{ stroke: '#34d399', strokeWidth: 1.5, strokeDasharray: '4 4' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                    <Area
-                      type="monotone"
-                      dataKey="bulanLalu"
-                      name="Bulan Lalu (%)"
-                      fill="url(#execKinerjaAreaPrev)"
-                      stroke="none"
-                      legendType="none"
-                      isAnimationActive={true}
-                      animationDuration={1400}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="bulanIni"
-                      name="Bulan Ini (%)"
-                      fill="url(#execKinerjaArea)"
-                      stroke="none"
-                      legendType="none"
-                      isAnimationActive={true}
-                      animationDuration={1600}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="bulanLalu"
-                      name="Bulan Lalu (%)"
-                      stroke="#d4af37"
-                      strokeWidth={2.2}
-                      strokeDasharray="5 5"
-                      dot={<GlowingDot color="#d4af37" accentColor="#f3d266" />}
-                      activeDot={<GlowingActiveDot color="#d4af37" accentColor="#ffffff" />}
-                      isAnimationActive={true}
-                      animationDuration={1500}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="bulanIni"
-                      name="Bulan Ini (%)"
-                      stroke="url(#execKinerjaLine)"
-                      strokeWidth={3.5}
-                      filter="url(#glowExecKinerja)"
-                      dot={<GlowingDot color="#10b981" accentColor="#f3d266" />}
-                      activeDot={<GlowingActiveDot color="#10b981" accentColor="#f3d266" />}
-                      isAnimationActive={true}
-                      animationDuration={1700}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              <LineChart3D
+                data={executiveMetrics.kinerjaChartData}
+                xKey="minggu"
+                height={226}
+                yDomain={[65, 100]}
+                yUnit="%"
+                tooltipUnit="%"
+                subtitle="Indeks Kinerja Pengurus"
+                series={[
+                  { key: 'bulanIni', label: 'Bulan Ini (%)', color: '#10b981', accentColor: '#f3d266' },
+                  { key: 'bulanLalu', label: 'Bulan Lalu (%)', color: '#d4af37', accentColor: '#fef08a', dashed: true },
+                ]}
+              />
             </div>
 
-            <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl">
-              <div className="flex items-center justify-between mb-4">
+            <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-[#f3d266]" />
-                    Grafik Line Chart Kedisiplinan Santri
+                    Grafik 3D Line Chart Kedisiplinan Santri
                   </h2>
                   <p className="text-xs text-emerald-200/70">Perbandingan Bulan Ini vs Bulan Lalu</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-black text-[#f3d266] font-mono">{executiveMetrics.disiplinBulanIni}%</p>
-                  <p className="text-[10px] font-mono text-emerald-300">
-                    {executiveMetrics.disiplinDiff >= 0 ? `+${executiveMetrics.disiplinDiff}%` : `${executiveMetrics.disiplinDiff}%`} vs Bulan Lalu ({executiveMetrics.disiplinBulanLalu}%)
-                  </p>
+                  <Extruded3DValue
+                    value={executiveMetrics.disiplinBulanIni}
+                    suffix="%"
+                    tone="gold"
+                    className="text-2xl"
+                  />
+                  <div className="mt-0.5">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                        executiveMetrics.disiplinDiff >= 0 ? 'badge-3d-up text-emerald-100' : 'badge-3d-down text-rose-100'
+                      }`}
+                    >
+                      {executiveMetrics.disiplinDiff >= 0 ? '▲' : '▼'}{' '}
+                      {executiveMetrics.disiplinDiff >= 0 ? `+${executiveMetrics.disiplinDiff}%` : `${executiveMetrics.disiplinDiff}%`}{' '}
+                      vs {executiveMetrics.disiplinBulanLalu}%
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    data={executiveMetrics.disiplinChartData}
-                    margin={{ top: 12, right: 16, left: -12, bottom: 4 }}
-                  >
-                    <defs>
-                      <filter id="glowExecDisiplin" x="-25%" y="-25%" width="150%" height="150%">
-                        <feGaussianBlur stdDeviation="3.5" result="blur" />
-                        <feMerge>
-                          <feMergeNode in="blur" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-                      <linearGradient id="execDisiplinLine" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#f3d266" />
-                        <stop offset="50%" stopColor="#d4af37" />
-                        <stop offset="100%" stopColor="#10b981" />
-                      </linearGradient>
-                      <linearGradient id="execDisiplinArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#d4af37" stopOpacity={0.38} />
-                        <stop offset="55%" stopColor="#10b981" stopOpacity={0.14} />
-                        <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                      </linearGradient>
-                      <linearGradient id="execDisiplinAreaPrev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#34d399" stopOpacity={0.18} />
-                        <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                    <XAxis dataKey="minggu" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                    <YAxis domain={[65, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                    <Tooltip
-                      content={<LuxuryChartTooltip unit="%" subtitle="Indeks Kedisiplinan Santri" />}
-                      cursor={{ stroke: '#f3d266', strokeWidth: 1.5, strokeDasharray: '4 4' }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                    <Area
-                      type="monotone"
-                      dataKey="bulanLalu"
-                      name="Bulan Lalu (%)"
-                      fill="url(#execDisiplinAreaPrev)"
-                      stroke="none"
-                      legendType="none"
-                      isAnimationActive={true}
-                      animationDuration={1400}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="bulanIni"
-                      name="Bulan Ini (%)"
-                      fill="url(#execDisiplinArea)"
-                      stroke="none"
-                      legendType="none"
-                      isAnimationActive={true}
-                      animationDuration={1600}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="bulanLalu"
-                      name="Bulan Lalu (%)"
-                      stroke="#34d399"
-                      strokeWidth={2.2}
-                      strokeDasharray="5 5"
-                      dot={<GlowingDot color="#34d399" accentColor="#a7f3d0" />}
-                      activeDot={<GlowingActiveDot color="#34d399" accentColor="#ffffff" />}
-                      isAnimationActive={true}
-                      animationDuration={1500}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="bulanIni"
-                      name="Bulan Ini (%)"
-                      stroke="url(#execDisiplinLine)"
-                      strokeWidth={3.5}
-                      filter="url(#glowExecDisiplin)"
-                      dot={<GlowingDot color="#d4af37" accentColor="#34d399" />}
-                      activeDot={<GlowingActiveDot color="#d4af37" accentColor="#f3d266" />}
-                      isAnimationActive={true}
-                      animationDuration={1700}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              <LineChart3D
+                data={executiveMetrics.disiplinChartData}
+                xKey="minggu"
+                height={226}
+                yDomain={[65, 100]}
+                yUnit="%"
+                tooltipUnit="%"
+                subtitle="Indeks Kedisiplinan Santri"
+                series={[
+                  { key: 'bulanIni', label: 'Bulan Ini (%)', color: '#d4af37', accentColor: '#10b981' },
+                  { key: 'bulanLalu', label: 'Bulan Lalu (%)', color: '#34d399', accentColor: '#a7f3d0', dashed: true },
+                ]}
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 2: PERSETUJUAN TERPADU (GRAFIK LINE CHART KEDISIPLINAN SANTRI, IZIN PENGURUS, IZIN SANTRI PULANG, PENGAJUAN DANA, PENGAJUAN BARANG) */}
+      {/* TAB 2: PERSETUJUAN TERPADU (GRAFIK 3D LINE CHART KEDISIPLINAN SANTRI, IZIN PENGURUS, IZIN SANTRI PULANG, PENGAJUAN DANA, PENGAJUAN BARANG) */}
       {activeTab === 'persetujuan' && (
         <div className="space-y-6">
-          {/* Grafik Line Chart Kedisiplinan Santri & Perbandingan Bulan Ini vs Bulan Lalu */}
-          <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          {/* Grafik 3D Line Chart Kedisiplinan Santri & Perbandingan Bulan Ini vs Bulan Lalu */}
+          <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-[#f3d266]" />
-                  Grafik Line Chart Kedisiplinan Santri (Indikator Persetujuan Izin)
+                  Grafik 3D Line Chart Kedisiplinan Santri (Indikator Persetujuan Izin)
                 </h2>
                 <p className="text-xs text-emerald-200/70">
                   Persentase kepatuhan santri dan perbandingan Bulan Ini vs Bulan Lalu sebagai dasar pertimbangan persetujuan izin
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-[#f3d266] font-mono">{executiveMetrics.disiplinBulanIni}%</p>
-                <p className="text-[10px] font-mono text-emerald-300">
-                  {executiveMetrics.disiplinDiff >= 0 ? `+${executiveMetrics.disiplinDiff}%` : `${executiveMetrics.disiplinDiff}%`} dari Bulan Lalu ({executiveMetrics.disiplinBulanLalu}%)
-                </p>
+              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
+                <Extruded3DValue
+                  value={executiveMetrics.disiplinBulanIni}
+                  suffix="%"
+                  tone="gold"
+                  className="text-2xl"
+                />
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                    executiveMetrics.disiplinDiff >= 0 ? 'badge-3d-up text-emerald-100' : 'badge-3d-down text-rose-100'
+                  }`}
+                >
+                  {executiveMetrics.disiplinDiff >= 0 ? '▲' : '▼'}{' '}
+                  {executiveMetrics.disiplinDiff >= 0 ? `+${executiveMetrics.disiplinDiff}%` : `${executiveMetrics.disiplinDiff}%`}{' '}
+                  dari {executiveMetrics.disiplinBulanLalu}%
+                </span>
               </div>
             </div>
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={executiveMetrics.disiplinChartData}
-                  margin={{ top: 12, right: 18, left: -12, bottom: 4 }}
-                >
-                  <defs>
-                    <filter id="glowKpDisiplin" x="-25%" y="-25%" width="150%" height="150%">
-                      <feGaussianBlur stdDeviation="3.5" result="blur" />
-                      <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                    <linearGradient id="kpDisiplinLineCurr" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#f3d266" />
-                      <stop offset="50%" stopColor="#d4af37" />
-                      <stop offset="100%" stopColor="#10b981" />
-                    </linearGradient>
-                    <linearGradient id="kpDisiplinAreaCurr" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#d4af37" stopOpacity={0.38} />
-                      <stop offset="55%" stopColor="#10b981" stopOpacity={0.14} />
-                      <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                    </linearGradient>
-                    <linearGradient id="kpDisiplinAreaPrev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#34d399" stopOpacity={0.18} />
-                      <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                  <XAxis dataKey="minggu" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                  <YAxis domain={[65, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                  <Tooltip
-                    content={<LuxuryChartTooltip unit="%" subtitle="Indeks Kedisiplinan Santri" />}
-                    cursor={{ stroke: '#f3d266', strokeWidth: 1.5, strokeDasharray: '4 4' }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                  <Area
-                    type="monotone"
-                    dataKey="bulanLalu"
-                    name="Kedisiplinan Bulan Lalu (%)"
-                    fill="url(#kpDisiplinAreaPrev)"
-                    stroke="none"
-                    legendType="none"
-                    isAnimationActive={true}
-                    animationDuration={1400}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="bulanIni"
-                    name="Kedisiplinan Bulan Ini (%)"
-                    fill="url(#kpDisiplinAreaCurr)"
-                    stroke="none"
-                    legendType="none"
-                    isAnimationActive={true}
-                    animationDuration={1600}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="bulanLalu"
-                    name="Kedisiplinan Bulan Lalu (%)"
-                    stroke="#34d399"
-                    strokeWidth={2.2}
-                    strokeDasharray="5 5"
-                    dot={<GlowingDot color="#34d399" accentColor="#a7f3d0" />}
-                    activeDot={<GlowingActiveDot color="#34d399" accentColor="#ffffff" />}
-                    isAnimationActive={true}
-                    animationDuration={1500}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="bulanIni"
-                    name="Kedisiplinan Bulan Ini (%)"
-                    stroke="url(#kpDisiplinLineCurr)"
-                    strokeWidth={3.5}
-                    filter="url(#glowKpDisiplin)"
-                    dot={<GlowingDot color="#d4af37" accentColor="#34d399" />}
-                    activeDot={<GlowingActiveDot color="#d4af37" accentColor="#f3d266" />}
-                    isAnimationActive={true}
-                    animationDuration={1700}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+            <LineChart3D
+              data={executiveMetrics.disiplinChartData}
+              xKey="minggu"
+              height={226}
+              yDomain={[65, 100]}
+              yUnit="%"
+              tooltipUnit="%"
+              subtitle="Indeks Kedisiplinan Santri"
+              series={[
+                { key: 'bulanIni', label: 'Kedisiplinan Bulan Ini (%)', color: '#d4af37', accentColor: '#10b981' },
+                { key: 'bulanLalu', label: 'Kedisiplinan Bulan Lalu (%)', color: '#34d399', accentColor: '#a7f3d0', dashed: true },
+              ]}
+            />
           </div>
 
           {/* A. Persetujuan Pengajuan Dana & Pengajuan Barang dari Divisi (Tabel Terpisah per Divisi + Riwayat & Download Word) */}
@@ -1729,109 +1592,49 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
       {/* TAB 5: EVALUASI KINERJA PENGURUS & CATATAN RAPAT (NOTULEN) */}
       {activeTab === 'evaluasi_rapat' && (
         <div className="space-y-6">
-          {/* Grafik Line Chart Kinerja Pengurus & Perbandingan Bulan Ini vs Bulan Lalu */}
-          <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          {/* Grafik 3D Line Chart Kinerja Pengurus & Perbandingan Bulan Ini vs Bulan Lalu */}
+          <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-400" />
-                  Grafik Line Chart Kinerja Pengurus & Perbandingan Bulan Ini vs Bulan Lalu
+                  Grafik 3D Line Chart Kinerja Pengurus &amp; Perbandingan Bulan Ini vs Bulan Lalu
                 </h2>
                 <p className="text-xs text-emerald-200/70">
-                  Persentase capaian program kerja & evaluasi seluruh divisi pengurus
+                  Persentase capaian program kerja &amp; evaluasi seluruh divisi pengurus
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-emerald-400 font-mono">{executiveMetrics.avgKinerja}%</p>
-                <p className="text-[10px] font-mono text-emerald-300">
-                  {executiveMetrics.kinerjaDiff >= 0 ? `+${executiveMetrics.kinerjaDiff}%` : `${executiveMetrics.kinerjaDiff}%`} dari Bulan Lalu ({executiveMetrics.kinerjaBulanLalu}%)
-                </p>
-              </div>
-            </div>
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={executiveMetrics.kinerjaChartData}
-                  margin={{ top: 12, right: 18, left: -12, bottom: 4 }}
+              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
+                <Extruded3DValue
+                  value={executiveMetrics.avgKinerja}
+                  suffix="%"
+                  tone="emerald"
+                  className="text-2xl"
+                />
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                    executiveMetrics.kinerjaDiff >= 0 ? 'badge-3d-up text-emerald-100' : 'badge-3d-down text-rose-100'
+                  }`}
                 >
-                  <defs>
-                    <filter id="glowKpKinerja" x="-25%" y="-25%" width="150%" height="150%">
-                      <feGaussianBlur stdDeviation="3.5" result="blur" />
-                      <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                    <linearGradient id="kpKinerjaLineCurr" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#34d399" />
-                      <stop offset="55%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#f3d266" />
-                    </linearGradient>
-                    <linearGradient id="kpKinerjaAreaCurr" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.42} />
-                      <stop offset="55%" stopColor="#10b981" stopOpacity={0.14} />
-                      <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                    </linearGradient>
-                    <linearGradient id="kpKinerjaAreaPrev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#d4af37" stopOpacity={0.18} />
-                      <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                  <XAxis dataKey="minggu" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                  <YAxis domain={[65, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                  <Tooltip
-                    content={<LuxuryChartTooltip unit="%" subtitle="Evaluasi Kinerja Pengurus Pondok" />}
-                    cursor={{ stroke: '#34d399', strokeWidth: 1.5, strokeDasharray: '4 4' }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-                  <Area
-                    type="monotone"
-                    dataKey="bulanLalu"
-                    name="Kinerja Bulan Lalu (%)"
-                    fill="url(#kpKinerjaAreaPrev)"
-                    stroke="none"
-                    legendType="none"
-                    isAnimationActive={true}
-                    animationDuration={1400}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="bulanIni"
-                    name="Kinerja Bulan Ini (%)"
-                    fill="url(#kpKinerjaAreaCurr)"
-                    stroke="none"
-                    legendType="none"
-                    isAnimationActive={true}
-                    animationDuration={1600}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="bulanLalu"
-                    name="Kinerja Bulan Lalu (%)"
-                    stroke="#d4af37"
-                    strokeWidth={2.2}
-                    strokeDasharray="5 5"
-                    dot={<GlowingDot color="#d4af37" accentColor="#f3d266" />}
-                    activeDot={<GlowingActiveDot color="#d4af37" accentColor="#ffffff" />}
-                    isAnimationActive={true}
-                    animationDuration={1500}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="bulanIni"
-                    name="Kinerja Bulan Ini (%)"
-                    stroke="url(#kpKinerjaLineCurr)"
-                    strokeWidth={3.5}
-                    filter="url(#glowKpKinerja)"
-                    dot={<GlowingDot color="#10b981" accentColor="#f3d266" />}
-                    activeDot={<GlowingActiveDot color="#10b981" accentColor="#f3d266" />}
-                    isAnimationActive={true}
-                    animationDuration={1700}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+                  {executiveMetrics.kinerjaDiff >= 0 ? '▲' : '▼'}{' '}
+                  {executiveMetrics.kinerjaDiff >= 0 ? `+${executiveMetrics.kinerjaDiff}%` : `${executiveMetrics.kinerjaDiff}%`}{' '}
+                  dari {executiveMetrics.kinerjaBulanLalu}%
+                </span>
+              </div>
             </div>
+            <LineChart3D
+              data={executiveMetrics.kinerjaChartData}
+              xKey="minggu"
+              height={226}
+              yDomain={[65, 100]}
+              yUnit="%"
+              tooltipUnit="%"
+              subtitle="Evaluasi Kinerja Pengurus Pondok"
+              series={[
+                { key: 'bulanIni', label: 'Kinerja Bulan Ini (%)', color: '#10b981', accentColor: '#f3d266' },
+                { key: 'bulanLalu', label: 'Kinerja Bulan Lalu (%)', color: '#d4af37', accentColor: '#fef08a', dashed: true },
+              ]}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -25,26 +25,12 @@ import {
   Gavel as GavelIcon,
 } from 'lucide-react';
 import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  ComposedChart,
-  Area,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from 'recharts';
-import {
-  GlowingDot,
-  GlowingActiveDot,
-  LuxuryChartTooltip,
-} from './LuxuryChartComponents';
+  BarChart3D,
+  Extruded3DValue,
+  KpiStatCard3D,
+  LineChart3D,
+  PieChart3D,
+} from './Charts3D';
 import {
   Santri,
   DewanKeamanan,
@@ -57,6 +43,8 @@ import {
   PesanKoordinasi,
   SystemConfig,
   AgendaPengurus,
+  EvaluasiKepengurusan,
+  PengajuanDivisi,
   SuratIzinLayoutConfig,
   SuratSanksiLayoutConfig,
 } from '../types';
@@ -73,6 +61,7 @@ import { LaporanStatistik } from './LaporanStatistik';
 import { DatabaseSettings } from './DatabaseSettings';
 import { openPrintWindow } from '../utils/printDocument';
 import { storageService } from '../services/storageService';
+import { computeRealtimePondokAnalytics } from '../utils/realtimeAnalytics';
 
 interface KeamananModuleProps {
   subTab: KeamananSubTab;
@@ -93,6 +82,8 @@ interface KeamananModuleProps {
   scopedSanksiList: Sanksi[];
   logsList: LogAktivitas[];
   koordinasiList: PesanKoordinasi[];
+  evaluasiKepengurusan?: EvaluasiKepengurusan[];
+  pengajuanDivisi?: PengajuanDivisi[];
   pendingApprovalsCount: number;
   lateSantriCount: number;
   unreadKoordinasiCount: number;
@@ -122,6 +113,8 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
   scopedSanksiList,
   logsList,
   koordinasiList,
+  evaluasiKepengurusan: propEvaluasiList,
+  pengajuanDivisi: propPengajuanDivisi,
   pendingApprovalsCount,
   lateSantriCount,
   unreadKoordinasiCount,
@@ -133,6 +126,8 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
 }) => {
   const systemConfig = propSystemConfig || storageService.getSystemConfig();
   const agendaPengurus = propAgendaPengurus || storageService.getAgendaPengurus();
+  const evaluasiKepengurusan = propEvaluasiList || storageService.getEvaluasiKepengurusan();
+  const pengajuanDivisi = propPengajuanDivisi || storageService.getPengajuanDivisi();
   const isAdminOrKetua = currentUser.role === 'admin' || currentUser.role === 'ketua_pondok';
 
   // State for Laporan Periodik (Harian / Mingguan / Bulanan)
@@ -298,72 +293,70 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
     setTimeout(() => setOptionSavedMsg(''), 4500);
   };
 
+  // Pusat Analitik Real-Time Keamanan (Tersinkronisasi dengan Dashboard Utama & Tab Ketua Pondok)
+  const realtimeAnalytics = useMemo(
+    () =>
+      computeRealtimePondokAnalytics({
+        santriList: scopedSantriList,
+        perizinanList: scopedPerizinanList,
+        pelanggaranList: scopedPelanggaranList,
+        sanksiList: scopedSanksiList,
+        transaksiKeuangan: [],
+        arsipSurat: [],
+        barangInventaris: [],
+        peminjamanBarang: [],
+        agendaPengurus,
+        evaluasiKepengurusan,
+        pengajuanDivisi,
+        koordinasiList,
+        dewanList,
+        systemConfig,
+      }),
+    [
+      scopedSantriList,
+      scopedPerizinanList,
+      scopedPelanggaranList,
+      scopedSanksiList,
+      agendaPengurus,
+      evaluasiKepengurusan,
+      pengajuanDivisi,
+      koordinasiList,
+      dewanList,
+      systemConfig,
+    ]
+  );
+
   // Metrics for Tab Dashboard Utama Keamanan
   const santriStats = useMemo(() => {
-    const aktif = santriList.filter((s) => s.status !== 'Alumni');
-    const putra = aktif.filter((s) => s.gender === 'putra').length;
-    const putri = aktif.filter((s) => s.gender === 'putri').length;
-    const izinAktif = perizinanList.filter(
-      (p) => p.status === 'Sedang Keluar' || p.status === 'Terlambat'
-    );
-    const sakitCount = izinAktif.filter((p) => p.jenisIzin === 'Izin Berobat').length;
-    const pulangCount = izinAktif.filter((p) => p.jenisIzin === 'Izin Pulang').length;
-    const diPondokCount = Math.max(0, aktif.length - izinAktif.length);
-    const ustadzList = systemConfig.ustadzList || systemConfig.dataUstadzList || [];
-    const ustadzPutra = ustadzList.filter((u) => u.statusAktif && u.gender === 'ustadz').length || 18;
-    const ustadzahPutri = ustadzList.filter((u) => u.statusAktif && u.gender === 'ustadzah').length || 14;
-
+    const s = realtimeAnalytics.santriStats;
     return {
-      totalSantri: aktif.length,
-      putra,
-      putri,
-      sakitCount,
-      pulangCount,
-      diPondokCount,
-      ustadzPutra,
-      ustadzahPutri,
-      totalUstadz: ustadzPutra + ustadzahPutri,
+      totalSantri: s.totalSantri,
+      putra: s.santriPutra,
+      putri: s.santriPutri,
+      sakitCount: s.santriSakit,
+      pulangCount: s.santriIzinPulang,
+      diPondokCount: s.santriDiPondok,
+      ustadzPutra: s.ustadzAktif,
+      ustadzahPutri: s.ustadzahAktif,
+      totalUstadz: s.totalAsatidz,
     };
-  }, [santriList, perizinanList, systemConfig.ustadzList, systemConfig.dataUstadzList]);
+  }, [realtimeAnalytics.santriStats]);
 
   // Indikator Penilaian Kinerja Keamanan (Pie Chart & %)
-  const kinerjaKeamananScore = useMemo(() => {
-    const totalIzin = Math.max(1, scopedPerizinanList.length);
-    const tepatWaktu = scopedPerizinanList.filter((p) => p.status !== 'Terlambat').length;
-    const sanksiSelesai = scopedSanksiList.filter((s) => s.status === 'Selesai').length;
-    const totalSanksi = Math.max(1, scopedSanksiList.length);
-    const score = Math.min(
-      99,
-      Math.max(78, Math.round((tepatWaktu / totalIzin) * 60 + (sanksiSelesai / totalSanksi) * 40))
-    );
-    return score;
-  }, [scopedPerizinanList, scopedSanksiList]);
+  const kinerjaKeamananMetric = realtimeAnalytics.divisions.keamanan;
+  const kinerjaKeamananScore = kinerjaKeamananMetric.score;
 
   const kedisiplinanComparison = useMemo(() => {
-    const list = systemConfig.kinerjaBulananList || [
-      { bulan: 'Jul', skorKinerjaPengurus: 86, skorKedisiplinanSantri: 88 },
-      { bulan: 'Agu', skorKinerjaPengurus: 88, skorKedisiplinanSantri: 90 },
-      { bulan: 'Sep', skorKinerjaPengurus: 89, skorKedisiplinanSantri: 87 },
-      { bulan: 'Okt', skorKinerjaPengurus: 91, skorKedisiplinanSantri: 91 },
-      { bulan: 'Nov', skorKinerjaPengurus: 94, skorKedisiplinanSantri: 95 },
-    ];
-    const curr = list[list.length - 1]?.skorKedisiplinanSantri ?? 95;
-    const prev = list[list.length - 2]?.skorKedisiplinanSantri ?? 91;
-    const diff = curr - prev;
-    return { list, curr, prev, diff };
-  }, [systemConfig.kinerjaBulananList]);
+    const d = realtimeAnalytics.kedisiplinanSantriStats;
+    return {
+      list: d.monthlySeries,
+      curr: d.bulanIni,
+      prev: d.bulanLalu,
+      diff: d.selisih,
+    };
+  }, [realtimeAnalytics.kedisiplinanSantriStats]);
 
-  const pertumbuhanTahunan = useMemo(() => {
-    return (
-      systemConfig.pertumbuhanSantriTahunan || [
-        { tahun: '2022', putra: 210, putri: 175, total: 385 },
-        { tahun: '2023', putra: 245, putri: 205, total: 450 },
-        { tahun: '2024', putra: 280, putri: 240, total: 520 },
-        { tahun: '2025', putra: 320, putri: 275, total: 595 },
-        { tahun: '2026', putra: 365, putri: 315, total: 680 },
-      ]
-    );
-  }, [systemConfig.pertumbuhanSantriTahunan]);
+  const pertumbuhanTahunan = realtimeAnalytics.santriYearlyChart;
 
   const tabs: {
     id: KeamananSubTab;
@@ -608,185 +601,149 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
               </div>
             </div>
 
-            {/* Kartu Ringkasan Jumlah Santri Putra, Putri, Santri Muqim, Izin, Sakit & Ustadz/Ustadzah Aktif (Di Atas Pie Chart Kinerja) */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <div className="p-3.5 rounded-2xl bg-[#041d14] border border-emerald-700/50">
-                <p className="text-[10px] font-mono uppercase text-emerald-300">Total Santri Aktif</p>
-                <p className="text-xl font-extrabold font-mono text-white mt-1">
-                  {santriStats.totalSantri}
-                </p>
-                <p className="text-[10px] text-emerald-200/75">
-                  Putra: {santriStats.putra} · Putri: {santriStats.putri}
-                </p>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-[#041d14] border border-emerald-700/50">
-                <p className="text-[10px] font-mono uppercase text-emerald-300">Santri Putra &amp; Putri</p>
-                <p className="text-xl font-extrabold font-mono text-[#f3d266] mt-1">
-                  {santriStats.putra} / {santriStats.putri}
-                </p>
+            {/* Kartu Ringkasan 3D Jumlah Santri Putra, Putri, Santri Muqim, Izin, Sakit & Ustadz/Ustadzah Aktif */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
+              <KpiStatCard3D
+                label="Total Santri Aktif"
+                value={santriStats.totalSantri}
+                tone="silver"
+                valueClassName="text-xl sm:text-2xl"
+                subtitle={`Putra: ${santriStats.putra} · Putri: ${santriStats.putri}`}
+                trendPercent={100}
+                trendText="Aktif"
+              />
+              <div className="kpi-glass-3d p-4 rounded-2xl flex flex-col justify-between gap-2">
+                <p className="text-[10px] font-mono font-bold uppercase text-emerald-200/85">Santri Putra / Putri</p>
+                <div className="flex items-baseline gap-1.5">
+                  <Extruded3DValue value={santriStats.putra} tone="emerald" className="text-xl sm:text-2xl" />
+                  <span className="text-emerald-300/60 font-bold">/</span>
+                  <Extruded3DValue value={santriStats.putri} tone="gold" className="text-xl sm:text-2xl" />
+                </div>
                 <p className="text-[10px] text-emerald-200/75">Asrama Banin &amp; Banat</p>
               </div>
-              <div className="p-3.5 rounded-2xl bg-[#041d14] border border-emerald-700/50">
-                <p className="text-[10px] font-mono uppercase text-emerald-300">Santri Muqim</p>
-                <p className="text-xl font-extrabold font-mono text-emerald-400 mt-1">
-                  {santriStats.diPondokCount}
-                </p>
-                <p className="text-[10px] text-emerald-200/75">Berada di Pondok</p>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-[#041d14] border border-amber-500/40">
-                <p className="text-[10px] font-mono uppercase text-amber-300">Santri Izin Pulang</p>
-                <p className="text-xl font-extrabold font-mono text-[#f3d266] mt-1">
-                  {santriStats.pulangCount}
-                </p>
-                <p className="text-[10px] text-emerald-200/75">Izin bermalam aktif</p>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-[#041d14] border border-rose-500/40">
-                <p className="text-[10px] font-mono uppercase text-rose-300">Santri Sakit</p>
-                <p className="text-xl font-extrabold font-mono text-rose-300 mt-1">
-                  {santriStats.sakitCount}
-                </p>
-                <p className="text-[10px] text-emerald-200/75">Rawat jalan / berobat</p>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-[#041d14] border border-[#d4af37]/50">
-                <p className="text-[10px] font-mono uppercase text-[#f3d266]">
-                  Ustadz &amp; Ustadzah
-                </p>
-                <p className="text-xl font-extrabold font-mono text-[#f3d266] mt-1">
-                  {santriStats.totalUstadz} Aktif
-                </p>
-                <p className="text-[10px] text-emerald-200/75">
-                  Ustadz: {santriStats.ustadzPutra} · Ustadzah: {santriStats.ustadzahPutri}
-                </p>
-              </div>
+              <KpiStatCard3D
+                label="Santri Muqim"
+                value={santriStats.diPondokCount}
+                tone="emerald"
+                valueClassName="text-xl sm:text-2xl"
+                subtitle="Berada di Pondok"
+                trendPercent={santriStats.totalSantri > 0 ? Number(((santriStats.diPondokCount / santriStats.totalSantri) * 100).toFixed(1)) : 100}
+              />
+              <KpiStatCard3D
+                label="Santri Izin Pulang"
+                value={santriStats.pulangCount}
+                tone="gold"
+                valueClassName="text-xl sm:text-2xl"
+                subtitle="Izin bermalam aktif"
+                trendPercent={santriStats.pulangCount > 0 ? -Number(((santriStats.pulangCount / Math.max(1, santriStats.totalSantri)) * 100).toFixed(1)) : 0}
+              />
+              <KpiStatCard3D
+                label="Santri Sakit"
+                value={santriStats.sakitCount}
+                tone="rose"
+                valueClassName="text-xl sm:text-2xl"
+                subtitle="Rawat jalan / berobat"
+                trendPercent={santriStats.sakitCount > 0 ? -Number(((santriStats.sakitCount / Math.max(1, santriStats.totalSantri)) * 100).toFixed(1)) : 0}
+              />
+              <KpiStatCard3D
+                label="Ustadz & Ustadzah"
+                value={santriStats.totalUstadz}
+                suffix=" Aktif"
+                tone="gold"
+                valueClassName="text-xl sm:text-2xl"
+                subtitle={`Ustadz: ${santriStats.ustadzPutra} · Ustadzah: ${santriStats.ustadzahPutri}`}
+                trendText="Siaga"
+                trendPercent={9.4}
+              />
             </div>
 
-            {/* Pie Chart Indikator Penilaian Kinerja Keamanan (Di Bawah Kartu Ringkasan Santri & Ustadz) */}
-            <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl flex flex-col sm:flex-row items-center gap-5">
-              <div className="w-36 h-36 relative shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'Kinerja Keamanan', value: kinerjaKeamananScore },
-                        { name: 'Ruang Evaluasi', value: Math.max(0, 100 - kinerjaKeamananScore) },
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={60}
-                      startAngle={90}
-                      endAngle={-270}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      <Cell fill="#10b981" />
-                      <Cell fill="#06281c" />
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xl font-black font-mono text-white">
-                    {kinerjaKeamananScore}%
-                  </span>
-                  <span className="text-[9px] font-mono uppercase text-[#f3d266]">SANGAT BAIK</span>
-                </div>
+            {/* 3D Pie Chart Indikator Penilaian Kinerja Keamanan */}
+            <div className="kpi-glass-3d rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-6">
+              <div className="shrink-0">
+                <PieChart3D
+                  data={[
+                    { name: 'Kinerja Keamanan', value: kinerjaKeamananScore, color: '#10b981' },
+                    { name: 'Ruang Evaluasi', value: Math.max(1, 100 - kinerjaKeamananScore), color: '#093827' },
+                  ]}
+                  size={162}
+                  innerRadiusRatio={0.5}
+                  depth={14}
+                  centerValue={kinerjaKeamananScore}
+                  centerSuffix="%"
+                  centerLabel={kinerjaKeamananMetric.ratingLabel.toUpperCase()}
+                  centerTone={kinerjaKeamananScore >= 90 ? 'gold' : 'emerald'}
+                  unit="%"
+                />
               </div>
               <div className="space-y-1.5 text-center sm:text-left">
-                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold">
-                  PIE CHART INDIKATOR KINERJA PENGURUS KEAMANAN
+                <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] font-mono font-bold">
+                  3D PIE CHART INDIKATOR KINERJA KEAMANAN · SINKRON TAB KETUA PONDOK
                 </span>
                 <h3 className="text-sm font-extrabold text-white uppercase">
                   Indikator Penilaian Kinerja Keamanan Secara Keseluruhan
                 </h3>
                 <p className="text-xs text-emerald-200/80">
-                  Dihitung otomatis dari ketepatan waktu kepulangan izin santri, pengawasan pos gerbang, dan ketuntasan pembinaan sanksi edukatif.
+                  Dihitung real-time dari kedisiplinan santri, ketepatan izin kembali, penyelesaian sanksi edukatif, serta persetujuan &amp; evaluasi Ketua Pondok.
+                </p>
+                <p className="text-[11px] font-mono text-[#f3d266] bg-[#02100a]/80 px-2.5 py-1 rounded-lg border border-emerald-800/60 inline-block">
+                  {kinerjaKeamananMetric.detail}
                 </p>
               </div>
             </div>
 
-            {/* Grafik Line Chart Kedisiplinan Santri + Diagram Santri dari Tahun ke Tahun */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {/* Line Chart Kedisiplinan Santri */}
-              <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl space-y-3">
-                <div className="flex items-center justify-between">
+            {/* Grafik 3D Line Chart Kedisiplinan Santri + 3D Diagram Santri dari Tahun ke Tahun */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 3D Line Chart Kedisiplinan Santri */}
+              <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between gap-2">
                   <div>
                     <h3 className="text-xs sm:text-sm font-bold text-white uppercase">
-                      Grafik Line Chart Kedisiplinan Santri
+                      Grafik 3D Line Chart Kedisiplinan Santri
                     </h3>
                     <p className="text-[11px] text-emerald-200/75">
                       Bulan Ini: <strong className="text-white">{kedisiplinanComparison.curr}%</strong> vs Bulan Lalu:{' '}
                       <strong className="text-emerald-300">{kedisiplinanComparison.prev}%</strong>
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold">
-                    {kedisiplinanComparison.diff >= 0 ? `+${kedisiplinanComparison.diff}%` : `${kedisiplinanComparison.diff}%`}
-                  </span>
+                  <div className="text-right">
+                    <Extruded3DValue
+                      value={kedisiplinanComparison.curr}
+                      suffix="%"
+                      tone="emerald"
+                      className="text-xl sm:text-2xl"
+                    />
+                    <div className="mt-0.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                          kedisiplinanComparison.diff >= 0 ? 'badge-3d-up text-emerald-100' : 'badge-3d-down text-rose-100'
+                        }`}
+                      >
+                        {kedisiplinanComparison.diff >= 0 ? '▲' : '▼'}{' '}
+                        {kedisiplinanComparison.diff >= 0 ? `+${kedisiplinanComparison.diff}%` : `${kedisiplinanComparison.diff}%`}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="h-52 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
-                      data={kedisiplinanComparison.list}
-                      margin={{ top: 12, right: 16, left: -12, bottom: 4 }}
-                    >
-                      <defs>
-                        <filter id="glowKamDisiplin" x="-25%" y="-25%" width="150%" height="150%">
-                          <feGaussianBlur stdDeviation="3.5" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                        <linearGradient id="kamDisiplinLine" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#34d399" />
-                          <stop offset="55%" stopColor="#10b981" />
-                          <stop offset="100%" stopColor="#f3d266" />
-                        </linearGradient>
-                        <linearGradient id="kamDisiplinArea" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
-                          <stop offset="55%" stopColor="#10b981" stopOpacity={0.14} />
-                          <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#0b3b28" opacity={0.45} />
-                      <XAxis dataKey="bulan" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                      <YAxis domain={[70, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                      <Tooltip
-                        content={<LuxuryChartTooltip unit="%" subtitle="Indeks Kedisiplinan Santri" />}
-                        cursor={{ stroke: '#34d399', strokeWidth: 1.5, strokeDasharray: '4 4' }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="skorKedisiplinanSantri"
-                        name="Indeks Kedisiplinan (%)"
-                        fill="url(#kamDisiplinArea)"
-                        stroke="none"
-                        legendType="none"
-                        isAnimationActive={true}
-                        animationDuration={1500}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="skorKedisiplinanSantri"
-                        name="Indeks Kedisiplinan (%)"
-                        stroke="url(#kamDisiplinLine)"
-                        strokeWidth={3.5}
-                        filter="url(#glowKamDisiplin)"
-                        dot={<GlowingDot color="#10b981" accentColor="#f3d266" />}
-                        activeDot={<GlowingActiveDot color="#10b981" accentColor="#f3d266" />}
-                        isAnimationActive={true}
-                        animationDuration={1700}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
+                <LineChart3D
+                  data={kedisiplinanComparison.list}
+                  xKey="bulan"
+                  height={220}
+                  yDomain={[70, 100]}
+                  yUnit="%"
+                  tooltipUnit="%"
+                  subtitle="Indeks Kedisiplinan Santri"
+                  series={[
+                    { key: 'skorKedisiplinanSantri', label: 'Indeks Kedisiplinan (%)', color: '#10b981', accentColor: '#f3d266' },
+                  ]}
+                />
               </div>
 
-              {/* Diagram Santri dari Tahun ke Tahun */}
-              <div className="rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl space-y-3">
+              {/* 3D Diagram Santri dari Tahun ke Tahun */}
+              <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xs sm:text-sm font-bold text-white uppercase">
-                      Grafik Diagram Santri dari Tahun ke Tahun
+                      Grafik 3D Diagram Santri dari Tahun ke Tahun
                     </h3>
                     <p className="text-[11px] text-emerald-200/75">
                       Pertumbuhan jumlah santri putra &amp; putri Pondok Pesantren Salaf Al-Maliki
@@ -794,26 +751,16 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
                   </div>
                   <TrendingUp className="w-4 h-4 text-[#f3d266]" />
                 </div>
-                <div className="h-52 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={pertumbuhanTahunan}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#0b3b28" />
-                      <XAxis dataKey="tahun" stroke="#a7f3d0" fontSize={11} />
-                      <YAxis stroke="#a7f3d0" fontSize={11} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#03150e',
-                          borderColor: '#d4af37',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                        }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: '11px' }} />
-                      <Bar dataKey="putra" name="Santri Putra" fill="#10b981" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="putri" name="Santri Putri" fill="#d4af37" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <BarChart3D
+                  data={pertumbuhanTahunan}
+                  xKey="tahun"
+                  height={220}
+                  unit=" santri"
+                  series={[
+                    { key: 'putra', label: 'Santri Putra', color: '#10b981' },
+                    { key: 'putri', label: 'Santri Putri', color: '#d4af37' },
+                  ]}
+                />
               </div>
             </div>
 
@@ -961,86 +908,23 @@ export const KeamananModule: React.FC<KeamananModuleProps> = ({
 
               {/* Grafik Statistik Kedisiplinan & Indikator Keberhasilan Keamanan */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
-                <div className="lg:col-span-7 h-56 bg-[#03160f] p-4 rounded-2xl border border-emerald-800/60">
+                <div className="lg:col-span-7 kpi-glass-3d p-4 rounded-2xl">
                   <p className="text-xs font-bold text-[#f3d266] uppercase mb-2">
-                    Grafik Tren Kedisiplinan &amp; Evaluasi Keamanan ({periodeLaporan})
+                    Grafik 3D Tren Kedisiplinan &amp; Evaluasi Keamanan ({periodeLaporan})
                   </p>
-                  <ResponsiveContainer width="100%" height="85%">
-                    <ComposedChart
-                      data={kedisiplinanComparison.list}
-                      margin={{ top: 10, right: 16, left: -12, bottom: 2 }}
-                    >
-                      <defs>
-                        <filter id="glowKamLaporan" x="-25%" y="-25%" width="150%" height="150%">
-                          <feGaussianBlur stdDeviation="3.5" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                        <linearGradient id="kamLaporanArea1" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
-                          <stop offset="100%" stopColor="#03160f" stopOpacity={0.0} />
-                        </linearGradient>
-                        <linearGradient id="kamLaporanArea2" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#f3d266" stopOpacity={0.28} />
-                          <stop offset="100%" stopColor="#03160f" stopOpacity={0.0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#0b3b28" opacity={0.45} />
-                      <XAxis dataKey="bulan" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                      <YAxis domain={[70, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                      <Tooltip
-                        content={<LuxuryChartTooltip unit="%" subtitle={`Laporan Evaluasi ${periodeLaporan}`} />}
-                        cursor={{ stroke: '#f3d266', strokeWidth: 1.5, strokeDasharray: '4 4' }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: '11px' }} />
-                      <Area
-                        type="monotone"
-                        dataKey="skorKinerjaPengurus"
-                        name="Indikator Keberhasilan Keamanan (%)"
-                        fill="url(#kamLaporanArea2)"
-                        stroke="none"
-                        legendType="none"
-                        isAnimationActive={true}
-                        animationDuration={1400}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="skorKedisiplinanSantri"
-                        name="Kedisiplinan Santri (%)"
-                        fill="url(#kamLaporanArea1)"
-                        stroke="none"
-                        legendType="none"
-                        isAnimationActive={true}
-                        animationDuration={1600}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="skorKinerjaPengurus"
-                        name="Indikator Keberhasilan Keamanan (%)"
-                        stroke="#f3d266"
-                        strokeWidth={3}
-                        filter="url(#glowKamLaporan)"
-                        dot={<GlowingDot color="#d4af37" accentColor="#f3d266" />}
-                        activeDot={<GlowingActiveDot color="#d4af37" accentColor="#ffffff" />}
-                        isAnimationActive={true}
-                        animationDuration={1500}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="skorKedisiplinanSantri"
-                        name="Kedisiplinan Santri (%)"
-                        stroke="#10b981"
-                        strokeWidth={3.5}
-                        filter="url(#glowKamLaporan)"
-                        dot={<GlowingDot color="#10b981" accentColor="#f3d266" />}
-                        activeDot={<GlowingActiveDot color="#10b981" accentColor="#f3d266" />}
-                        isAnimationActive={true}
-                        animationDuration={1700}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                  <LineChart3D
+                    data={kedisiplinanComparison.list}
+                    xKey="bulan"
+                    height={210}
+                    yDomain={[70, 100]}
+                    yUnit="%"
+                    tooltipUnit="%"
+                    subtitle={`Laporan Evaluasi ${periodeLaporan}`}
+                    series={[
+                      { key: 'skorKinerjaPengurus', label: 'Indikator Keberhasilan Keamanan (%)', color: '#f3d266', accentColor: '#fef08a' },
+                      { key: 'skorKedisiplinanSantri', label: 'Kedisiplinan Santri (%)', color: '#10b981', accentColor: '#f3d266' },
+                    ]}
+                  />
                 </div>
 
                 <div className="lg:col-span-5 bg-[#03160f] p-4 rounded-2xl border border-emerald-800/60 flex flex-col justify-between">

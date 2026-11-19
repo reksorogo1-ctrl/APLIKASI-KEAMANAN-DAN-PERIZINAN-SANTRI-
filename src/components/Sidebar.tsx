@@ -768,15 +768,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Cyber-Emerald Glassmorphism Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 md:inset-y-auto md:relative top-0 md:top-auto right-0 md:right-auto md:left-0 z-50 md:z-30 h-[100dvh] md:h-auto md:min-h-full md:max-h-none w-72 sm:w-80 md:w-64 lg:w-72 bg-[#041A13]/95 md:bg-emerald-950/60 backdrop-blur-md border-l md:border-l-0 md:border-r border-emerald-500/25 shadow-[0_0_40px_rgba(0,0,0,0.85)] flex flex-col justify-between shrink-0 self-stretch transition-transform duration-300 ease-in-out font-sans ${
-          isOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
+        className={`fixed inset-y-0 left-0 z-50 md:inset-y-auto md:relative md:z-30 h-[100dvh] md:h-auto md:min-h-full md:max-h-none w-[min(85vw,20rem)] md:w-64 lg:w-72 bg-[#041A13]/95 md:bg-emerald-950/60 backdrop-blur-md border-r border-emerald-500/25 shadow-[0_0_40px_rgba(0,0,0,0.85)] flex flex-col justify-between shrink-0 self-stretch transition-transform duration-300 ease-in-out font-sans ${
+          isOpen ? 'translate-x-0 max-md:visible' : '-translate-x-full md:translate-x-0 max-md:invisible max-md:pointer-events-none'
         }`}
       >
         {/* Subtle Gold & Emerald Rim Light */}
         <div className="hidden md:block absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-[#D4AF37]/50 via-[#10B981]/30 to-[#D4AF37]/35 pointer-events-none" />
 
         {/* Editable Profile Photo, Name & Jabatan Card at Top of Sidebar */}
-        <div className="shrink-0 p-3.5 border-b border-emerald-500/25 bg-emerald-950/60 backdrop-blur-md space-y-2.5">
+        <div className="shrink-0 p-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] md:pt-3.5 border-b border-emerald-500/25 bg-emerald-950/60 backdrop-blur-md space-y-2.5">
           <div className="flex items-center justify-between gap-2.5">
             <div
               onClick={() => {
@@ -821,7 +821,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 playClickSound();
                 onClose();
               }}
-              className="md:hidden p-2 text-[#D4AF37] hover:text-white rounded-xl hover:bg-emerald-900/60 transition-colors cursor-pointer shrink-0 border border-emerald-500/30 touch-manipulation"
+              className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-[#D4AF37] hover:text-white rounded-xl hover:bg-emerald-900/60 transition-colors cursor-pointer shrink-0 border border-emerald-500/30 touch-manipulation"
               aria-label="Tutup Menu"
             >
               <X className="w-5 h-5" />
@@ -830,7 +830,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Scrollable Primary Navigation */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-3.5 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-3 py-3.5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:pb-3.5 space-y-4">
           <div>
             <div className="flex items-center justify-between px-3 mb-2">
               <p className="text-[10px] font-semibold tracking-wider text-[#D4AF37] uppercase">

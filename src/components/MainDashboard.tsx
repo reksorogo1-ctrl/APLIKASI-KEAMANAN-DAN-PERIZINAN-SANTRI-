@@ -31,45 +31,34 @@ import {
   MapPin
 } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ComposedChart,
-  Area,
-  Line,
-  Legend,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-import {
   Santri,
   Perizinan,
   Pelanggaran,
+  Sanksi,
   TransaksiKeuangan,
   ArsipSurat,
   BarangInventaris,
   PeminjamanBarang,
   AgendaPengurus,
+  EvaluasiKepengurusan,
   PengajuanDivisi,
   UserAccount,
   SystemConfig,
-  PesanKoordinasi
+  PesanKoordinasi,
+  DewanKeamanan
 } from '../types';
 import { ActiveMenu } from './Sidebar';
 import { storageService } from '../services/storageService';
 import { openPrintWindow } from '../utils/printDocument';
-import {
-  GlowingDot,
-  GlowingActiveDot,
-  LuxuryChartTooltip,
-} from './LuxuryChartComponents';
 import { D3CandlestickChart } from './D3CandlestickChart';
-import { computeFinanceAnalytics } from '../utils/financeCandlestick';
+import { computeRealtimePondokAnalytics } from '../utils/realtimeAnalytics';
+import {
+  BarChart3D,
+  Extruded3DValue,
+  KpiStatCard3D,
+  LineChart3D,
+  PieChart3D,
+} from './Charts3D';
 
 interface MainDashboardProps {
   currentUser: UserAccount;
@@ -77,13 +66,16 @@ interface MainDashboardProps {
   santriList: Santri[];
   perizinanList: Perizinan[];
   pelanggaranList: Pelanggaran[];
+  sanksiList?: Sanksi[];
   transaksiKeuangan: TransaksiKeuangan[];
   arsipSurat: ArsipSurat[];
   barangInventaris: BarangInventaris[];
   peminjamanBarang?: PeminjamanBarang[];
   agendaPengurus: AgendaPengurus[];
+  evaluasiKepengurusan?: EvaluasiKepengurusan[];
   pengajuanDivisi: PengajuanDivisi[];
   koordinasiList?: PesanKoordinasi[];
+  dewanList?: DewanKeamanan[];
   onNavigate: (menu: ActiveMenu, subTab?: string) => void;
 }
 
@@ -127,13 +119,16 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
   santriList,
   perizinanList,
   pelanggaranList,
+  sanksiList: propSanksiList,
   transaksiKeuangan,
   arsipSurat,
   barangInventaris,
   peminjamanBarang = [],
   agendaPengurus,
+  evaluasiKepengurusan: propEvaluasiList,
   pengajuanDivisi,
   koordinasiList: propKoordinasiList,
+  dewanList: propDewanList,
   onNavigate,
 }) => {
   const todayWibStr = useMemo(
@@ -145,212 +140,63 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
 
   const notifikasiList = storageService.getNotifications();
   const koordinasiList = propKoordinasiList || storageService.getKoordinasiList();
+  const sanksiList = propSanksiList || storageService.getSanksiList();
+  const evaluasiKepengurusan = propEvaluasiList || storageService.getEvaluasiKepengurusan();
+  const dewanList = propDewanList || storageService.getDewanKeamananList();
 
-  // 1. Statistik Real-Time Santri & Ustadz/Ustadzah
-  const stats = useMemo(() => {
-    const activeSantri = santriList.filter(s => s.status !== 'Alumni');
-    const totalSantri = activeSantri.length;
-    const santriPutra = activeSantri.filter(s => s.gender === 'putra').length;
-    const santriPutri = activeSantri.filter(s => s.gender === 'putri').length;
+  // Pusat Analitik Real-Time Terpadu (Tersinkronisasi 100% dengan Tab Ketua Pondok, Sekretaris, Bendahara, Perlengkapan, & Keamanan)
+  const realtimeAnalytics = useMemo(
+    () =>
+      computeRealtimePondokAnalytics({
+        santriList,
+        perizinanList,
+        pelanggaranList,
+        sanksiList,
+        transaksiKeuangan,
+        arsipSurat,
+        barangInventaris,
+        peminjamanBarang,
+        agendaPengurus,
+        evaluasiKepengurusan,
+        pengajuanDivisi,
+        koordinasiList,
+        dewanList,
+        systemConfig,
+      }),
+    [
+      santriList,
+      perizinanList,
+      pelanggaranList,
+      sanksiList,
+      transaksiKeuangan,
+      arsipSurat,
+      barangInventaris,
+      peminjamanBarang,
+      agendaPengurus,
+      evaluasiKepengurusan,
+      pengajuanDivisi,
+      koordinasiList,
+      dewanList,
+      systemConfig,
+    ]
+  );
 
-    const izinBerobatIds = new Set(
-      perizinanList
-        .filter(p => p.jenisIzin === 'Izin Berobat' && (p.status === 'Sedang Keluar' || p.status === 'Disetujui'))
-        .map(p => p.santriId)
-    );
-    const santriSakit = activeSantri.filter(
-      s => s.status === 'Sakit' || s.kondisiKesehatan === 'Sakit' || s.kondisiKesehatan === 'Rawat Jalan' || izinBerobatIds.has(s.id)
-    ).length;
+  const stats = realtimeAnalytics.santriStats;
+  const financeAnalytics = realtimeAnalytics.financeAnalytics;
+  const kinerjaPengurusStats = realtimeAnalytics.kinerjaPengurusStats;
+  const kedisiplinanSantriStats = realtimeAnalytics.kedisiplinanSantriStats;
+  const santriYearlyChart = realtimeAnalytics.santriYearlyChart;
+  const sekretarisStats = realtimeAnalytics.sekretarisStats;
+  const perlengkapanStats = realtimeAnalytics.perlengkapanStats;
 
-    const izinPulangIds = new Set(
-      perizinanList
-        .filter(
-          p =>
-            (p.status === 'Sedang Keluar' || p.status === 'Terlambat') &&
-            (p.jenisIzin === 'Izin Pulang' || p.jenisIzin === 'Izin Keperluan Keluarga')
-        )
-        .map(p => p.santriId)
-    );
-    const santriIzinPulang = izinPulangIds.size;
-
-    const sedangDiluarIds = new Set(
-      perizinanList
-        .filter(p => p.status === 'Sedang Keluar' || p.status === 'Terlambat')
-        .map(p => p.santriId)
-    );
-    const santriDiPondok = Math.max(0, totalSantri - sedangDiluarIds.size);
-
-    const ustadzList = systemConfig.ustadzList || [];
-    const ustadzAktif = ustadzList.filter(u => u.statusAktif && u.gender === 'ustadz').length;
-    const ustadzahAktif = ustadzList.filter(u => u.statusAktif && u.gender === 'ustadzah').length;
-
-    return {
-      totalSantri,
-      santriPutra,
-      santriPutri,
-      santriSakit,
-      santriIzinPulang,
-      santriDiPondok,
-      ustadzAktif,
-      ustadzahAktif,
-      totalAsatidz: ustadzAktif + ustadzahAktif,
-    };
-  }, [santriList, perizinanList, systemConfig.ustadzList]);
-
-  // 2. Analisis Keuangan, Candlestick OHLC & Indikator Penilaian Ekonomi (Terhubung Real-Time ke Bendahara)
-  const financeAnalytics = useMemo(() => {
-    return computeFinanceAnalytics(transaksiKeuangan, systemConfig.bendaharaConfig);
-  }, [transaksiKeuangan, systemConfig.bendaharaConfig]);
-
-  // 3. Grafik Line Chart Kinerja Pengurus & Perbandingan Bulan Ini vs Bulan Lalu
-  const kinerjaPengurusStats = useMemo(() => {
-    const proker = systemConfig.programKerjaList || [];
-    const avgProker = proker.length > 0
-      ? Math.round(proker.reduce((acc, p) => acc + p.progresPersen, 0) / proker.length)
-      : 90;
-    const bulanIni = Math.min(99, Math.max(78, avgProker));
-    const bulanLalu = 86;
-    const selisih = bulanIni - bulanLalu;
-
-    const chartData = [
-      { pekan: 'Minggu 1', bulanLalu: 82, bulanIni: 86 },
-      { pekan: 'Minggu 2', bulanLalu: 85, bulanIni: 89 },
-      { pekan: 'Minggu 3', bulanLalu: 87, bulanIni: 92 },
-      { pekan: 'Minggu 4', bulanLalu: bulanLalu, bulanIni: bulanIni },
-    ];
-
-    return { bulanIni, bulanLalu, selisih, chartData };
-  }, [systemConfig.programKerjaList]);
-
-  // 4. Grafik Line Chart Kedisiplinan Santri & Perbandingan Bulan Ini vs Bulan Lalu
-  const kedisiplinanSantriStats = useMemo(() => {
-    const totalSantri = Math.max(1, stats.totalSantri);
-    const pelanggaranCount = pelanggaranList.length;
-    const terlambatCount = perizinanList.filter(p => p.status === 'Terlambat').length;
-    const penalty = Math.min(25, (pelanggaranCount * 2) + (terlambatCount * 2));
-    const bulanIni = Math.max(75, 98 - penalty);
-    const bulanLalu = 89;
-    const selisih = bulanIni - bulanLalu;
-
-    const chartData = [
-      { pekan: 'Minggu 1', bulanLalu: 88, bulanIni: 92 },
-      { pekan: 'Minggu 2', bulanLalu: 87, bulanIni: 94 },
-      { pekan: 'Minggu 3', bulanLalu: 90, bulanIni: 91 },
-      { pekan: 'Minggu 4', bulanLalu: bulanLalu, bulanIni: bulanIni },
-    ];
-
-    return { bulanIni, bulanLalu, selisih, chartData, totalSantri };
-  }, [stats.totalSantri, pelanggaranList.length, perizinanList]);
-
-  // 5. Grafik Pertumbuhan Santri dari Tahun ke Tahun
-  const santriYearlyChart = useMemo(() => {
-    const yearMap: Record<string, { tahun: string; putra: number; putri: number; total: number }> = {
-      '2022': { tahun: '2022', putra: 45, putri: 38, total: 83 },
-      '2023': { tahun: '2023', putra: 68, putri: 59, total: 127 },
-      '2024': { tahun: '2024', putra: 94, putri: 82, total: 176 },
-      '2025': { tahun: '2025', putra: 120, putri: 108, total: 228 },
-      '2026': {
-        tahun: '2026',
-        putra: Math.max(135, stats.santriPutra * 25),
-        putri: Math.max(122, stats.santriPutri * 35),
-        total: Math.max(257, stats.totalSantri * 30),
-      },
-    };
-    return Object.values(yearMap);
-  }, [stats]);
-
-  // 6. Statistik Sekretaris & Perlengkapan
-  const sekretarisStats = useMemo(() => {
-    const totalArsip = arsipSurat.length;
-    const suratMasuk = arsipSurat.filter(s => s.arah === 'Masuk').length;
-    const suratKeluar = arsipSurat.filter(s => s.arah === 'Keluar').length;
-    const suratResmiTerbit = arsipSurat.filter(s => s.status === 'Resmi / Terbit').length;
-    return { totalArsip, suratMasuk, suratKeluar, suratResmiTerbit };
-  }, [arsipSurat]);
-
-  const perlengkapanStats = useMemo(() => {
-    const totalAset = barangInventaris.reduce((acc, b) => acc + b.jumlah, 0);
-    const jenisBarang = barangInventaris.length;
-    const kondisiBaik = barangInventaris.filter(b => b.kondisi === 'Baik').reduce((acc, b) => acc + b.jumlah, 0);
-    const kondisiRusak = barangInventaris.filter(b => b.kondisi !== 'Baik').reduce((acc, b) => acc + b.jumlah, 0);
-    const sedangDipinjam = peminjamanBarang
-      .filter(p => p.status === 'Dipinjam' || p.status === 'Terlambat')
-      .reduce((acc, p) => acc + p.jumlahPinjam, 0);
-    return { totalAset, jenisBarang, kondisiBaik, kondisiRusak, sedangDipinjam };
-  }, [barangInventaris, peminjamanBarang]);
-
-  // 7. Indikator Penilaian Kinerja Divisi dengan Grafik Pie Chart & Persentasenya
-  const divisionKpiPies = useMemo(() => {
-    const totalPengajuan = Math.max(1, pengajuanDivisi.length);
-    const diprosesPengajuan = pengajuanDivisi.filter(p => p.status !== 'Menunggu Persetujuan').length;
-    const skorKetua = Math.min(98, Math.max(85, Math.round((diprosesPengajuan / totalPengajuan) * 50 + (kinerjaPengurusStats.bulanIni * 0.5))));
-
-    const totalSurat = Math.max(1, sekretarisStats.totalArsip);
-    const skorSekretaris = Math.min(98, Math.max(84, Math.round((sekretarisStats.suratResmiTerbit / totalSurat) * 40 + 58)));
-
-    const skorBendahara = Math.min(98, Math.max(82, financeAnalytics.skorEkonomi));
-
-    const totalBarang = Math.max(1, perlengkapanStats.totalAset);
-    const skorPerlengkapan = Math.min(97, Math.max(80, Math.round((perlengkapanStats.kondisiBaik / totalBarang) * 100)));
-
-    const skorKeamanan = Math.min(98, Math.max(82, kedisiplinanSantriStats.bulanIni));
-
-    return [
-      {
-        key: 'ketua_pondok',
-        title: 'Kinerja Ketua Pondok',
-        subtitle: 'Koordinasi Pimpinan, SK & Persetujuan Divisi',
-        score: skorKetua,
-        color: '#d4af37',
-        targetMenu: 'ketua_pondok' as ActiveMenu,
-        detail: `${diprosesPengajuan}/${totalPengajuan} Pengajuan Disetujui · Proker ${kinerjaPengurusStats.bulanIni}%`,
-      },
-      {
-        key: 'sekretaris',
-        title: 'Kinerja Sekretaris',
-        subtitle: 'Tertib Administrasi, 15 Surat Resmi & Buku Induk',
-        score: skorSekretaris,
-        color: '#10b981',
-        targetMenu: 'sekretaris' as ActiveMenu,
-        detail: `${sekretarisStats.suratResmiTerbit} Surat Terbit · ${sekretarisStats.totalArsip} Arsip`,
-      },
-      {
-        key: 'bendahara',
-        title: 'Kinerja Bendahara',
-        subtitle: 'Akuntabilitas Kas, Syahriyah & Anggaran Pondok',
-        score: skorBendahara,
-        color: '#f59e0b',
-        targetMenu: 'bendahara' as ActiveMenu,
-        detail: `Surplus ${financeAnalytics.rasioSurplus}% · Skor Kas ${financeAnalytics.skorEkonomi}/100`,
-      },
-      {
-        key: 'perlengkapan',
-        title: 'Kinerja Perlengkapan',
-        subtitle: 'Kesiapan Inventaris, Sarpras & Fasilitas Asrama',
-        score: skorPerlengkapan,
-        color: '#34d399',
-        targetMenu: 'perlengkapan' as ActiveMenu,
-        detail: `${perlengkapanStats.kondisiBaik}/${perlengkapanStats.totalAset} Unit Kondisi Baik`,
-      },
-      {
-        key: 'keamanan',
-        title: 'Kinerja Keamanan',
-        subtitle: 'Kedisiplinan Qanun, Perizinan & Radar Kamtib',
-        score: skorKeamanan,
-        color: '#eab308',
-        targetMenu: 'keamanan' as ActiveMenu,
-        detail: `Indeks Disiplin ${kedisiplinanSantriStats.bulanIni}% · ${stats.santriDiPondok} Mukim`,
-      },
-    ];
-  }, [
-    pengajuanDivisi,
-    kinerjaPengurusStats.bulanIni,
-    sekretarisStats,
-    financeAnalytics,
-    perlengkapanStats,
-    kedisiplinanSantriStats.bulanIni,
-    stats.santriDiPondok,
-  ]);
+  const divisionKpiPies = useMemo(
+    () =>
+      realtimeAnalytics.divisionList.map((div) => ({
+        ...div,
+        targetMenu: div.key as ActiveMenu,
+      })),
+    [realtimeAnalytics.divisionList]
+  );
 
   // Filter Pie Charts based on active user role
   const visibleKpiPies = useMemo(() => {
@@ -579,10 +425,10 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
   return (
     <div className="space-y-6 pb-10">
       {/* 1. UCAPAN SELAMAT DATANG & NOTIFIKASI PERIZINAN / PERMINTAAN SURAT / PESAN DARI DIVISI LAIN */}
-      <div className="cyber-glass-card relative rounded-2xl overflow-hidden border border-emerald-500/25 bg-emerald-950/60 backdrop-blur-md p-5 sm:p-6 shadow-2xl space-y-5">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="flex items-start sm:items-center gap-4 sm:gap-5">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-[22%] bg-[#041A13] border-2 border-[#D4AF37]/80 p-0 shadow-[0_12px_35px_rgba(0,0,0,0.75),0_0_20px_rgba(212,175,55,0.22)] shrink-0 flex items-center justify-center overflow-hidden">
+      <div className="cyber-glass-card relative rounded-2xl overflow-hidden border border-emerald-500/25 bg-emerald-950/60 backdrop-blur-md p-4 sm:p-6 shadow-2xl space-y-5">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-5">
+          <div className="flex items-start sm:items-center gap-3 sm:gap-5 min-w-0">
+            <div className="w-16 h-16 sm:w-24 sm:h-24 lg:w-32 lg:h-32 rounded-[22%] bg-[#041A13] border-2 border-[#D4AF37]/80 p-0 shadow-[0_12px_35px_rgba(0,0,0,0.75),0_0_20px_rgba(212,175,55,0.22)] shrink-0 flex items-center justify-center overflow-hidden">
               <img
                 src={
                   !systemConfig.logoUrl ||
@@ -604,10 +450,10 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                 className="w-full h-full object-cover scale-[1.03]"
               />
             </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-mono uppercase tracking-widest mb-2">
-                <Sparkles className="w-3.5 h-3.5 text-[#10B981]" />
-                DASHBOARD UTAMA · {currentUser.jabatan.toUpperCase()}
+            <div className="min-w-0 flex-1">
+              <div className="inline-flex max-w-full items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/40 text-[#D4AF37] text-[10px] font-mono uppercase tracking-wider sm:tracking-widest mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
+                <span className="truncate">DASHBOARD UTAMA · {currentUser.jabatan.toUpperCase()}</span>
               </div>
               <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-[#FFFFFF] tracking-tight">
                 Ahlan wa Sahlan, {currentUser.nama}
@@ -984,97 +830,100 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
         </div>
       </div>
 
-      {/* 3. 8 KARTU RINGKASAN JUMLAH SANTRI PUTRA, PUTRI, USTADZ & USTADZAH, SANTRI IZIN, SAKIT, SERTA SANTRI MUQIM */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D1FAE5]">Total Santri</span>
-            <Users className="w-4 h-4 text-[#10B981]" />
-          </div>
-          <p className="text-2xl font-black text-[#FFFFFF] font-mono">{stats.totalSantri}</p>
-          <p className="text-[10px] text-[#D1FAE5] mt-1">Santri Aktif Terdaftar</p>
-        </div>
+      {/* 3. 8 KARTU RINGKASAN 3D FUTURISTIK: JUMLAH SANTRI PUTRA, PUTRI, USTADZ & USTADZAH, SANTRI IZIN, SAKIT, SERTA SANTRI MUQIM */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <KpiStatCard3D
+          label="Total Santri"
+          value={stats.totalSantri}
+          tone="silver"
+          subtitle="Santri Aktif Terdaftar"
+          trendText="100% Terdata"
+          trendPercent={12.4}
+          icon={<Users className="w-4 h-4 text-[#10B981]" />}
+        />
 
-        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D1FAE5]">Santri Putra</span>
-            <UserCheck className="w-4 h-4 text-[#10B981]" />
-          </div>
-          <p className="text-2xl font-black text-[#FFFFFF] font-mono">{stats.santriPutra}</p>
-          <p className="text-[10px] text-[#D1FAE5] mt-1">Asrama Banin</p>
-        </div>
+        <KpiStatCard3D
+          label="Santri Putra"
+          value={stats.santriPutra}
+          tone="emerald"
+          subtitle="Asrama Banin"
+          trendPercent={stats.totalSantri > 0 ? Number(((stats.santriPutra / stats.totalSantri) * 100).toFixed(1)) : 0}
+          icon={<UserCheck className="w-4 h-4 text-[#10B981]" />}
+        />
 
-        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37]">Santri Putri</span>
-            <UserCheck className="w-4 h-4 text-[#D4AF37]" />
-          </div>
-          <p className="text-2xl font-black text-[#D4AF37] font-mono">{stats.santriPutri}</p>
-          <p className="text-[10px] text-[#D1FAE5] mt-1">Asrama Banat</p>
-        </div>
+        <KpiStatCard3D
+          label="Santri Putri"
+          value={stats.santriPutri}
+          tone="gold"
+          subtitle="Asrama Banat"
+          trendPercent={stats.totalSantri > 0 ? Number(((stats.santriPutri / stats.totalSantri) * 100).toFixed(1)) : 0}
+          icon={<UserCheck className="w-4 h-4 text-[#D4AF37]" />}
+        />
 
-        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D1FAE5]">Santri Muqim</span>
-            <Building2 className="w-4 h-4 text-[#10B981]" />
-          </div>
-          <p className="text-2xl font-black text-[#10B981] font-mono">{stats.santriDiPondok}</p>
-          <p className="text-[10px] text-[#D1FAE5] mt-1">Berada di Pondok</p>
-        </div>
+        <KpiStatCard3D
+          label="Santri Muqim"
+          value={stats.santriDiPondok}
+          tone="emerald"
+          subtitle="Berada di Pondok"
+          trendPercent={stats.totalSantri > 0 ? Number(((stats.santriDiPondok / stats.totalSantri) * 100).toFixed(1)) : 0}
+          icon={<Building2 className="w-4 h-4 text-[#10B981]" />}
+        />
 
-        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37]">Izin Pulang</span>
-            <Home className="w-4 h-4 text-[#D4AF37]" />
-          </div>
-          <p className="text-2xl font-black text-[#D4AF37] font-mono">{stats.santriIzinPulang}</p>
-          <p className="text-[10px] text-[#D1FAE5] mt-1">Sedang Izin / Pulang</p>
-        </div>
+        <KpiStatCard3D
+          label="Izin Pulang"
+          value={stats.santriIzinPulang}
+          tone="gold"
+          subtitle="Sedang Izin / Pulang"
+          trendPercent={stats.santriIzinPulang > 0 ? -Number(((stats.santriIzinPulang / Math.max(1, stats.totalSantri)) * 100).toFixed(1)) : 0}
+          icon={<Home className="w-4 h-4 text-[#D4AF37]" />}
+        />
 
-        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-rose-300">Santri Sakit</span>
-            <HeartPulse className="w-4 h-4 text-rose-400" />
-          </div>
-          <p className="text-2xl font-black text-rose-400 font-mono">{stats.santriSakit}</p>
-          <p className="text-[10px] text-[#D1FAE5] mt-1">Poskestren / Berobat</p>
-        </div>
+        <KpiStatCard3D
+          label="Santri Sakit"
+          value={stats.santriSakit}
+          tone="rose"
+          subtitle="Poskestren / Berobat"
+          trendPercent={stats.santriSakit > 0 ? -Number(((stats.santriSakit / Math.max(1, stats.totalSantri)) * 100).toFixed(1)) : 0}
+          icon={<HeartPulse className="w-4 h-4 text-rose-400" />}
+        />
 
-        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37]">Ustadz Aktif</span>
-            <GraduationCap className="w-4 h-4 text-[#D4AF37]" />
-          </div>
-          <p className="text-2xl font-black text-[#FFFFFF] font-mono">{stats.ustadzAktif}</p>
-          <p className="text-[10px] text-[#D1FAE5] mt-1">Pengajar Putra</p>
-        </div>
+        <KpiStatCard3D
+          label="Ustadz Aktif"
+          value={stats.ustadzAktif}
+          tone="gold"
+          subtitle="Pengajar Putra"
+          trendText="Aktif"
+          trendPercent={8.5}
+          icon={<GraduationCap className="w-4 h-4 text-[#D4AF37]" />}
+        />
 
-        <div className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37]">Ustadzah Aktif</span>
-            <GraduationCap className="w-4 h-4 text-[#10B981]" />
-          </div>
-          <p className="text-2xl font-black text-[#FFFFFF] font-mono">{stats.ustadzahAktif}</p>
-          <p className="text-[10px] text-[#D1FAE5] mt-1">Pengajar Putri</p>
-        </div>
+        <KpiStatCard3D
+          label="Ustadzah Aktif"
+          value={stats.ustadzahAktif}
+          tone="emerald"
+          subtitle="Pengajar Putri"
+          trendText="Aktif"
+          trendPercent={9.2}
+          icon={<GraduationCap className="w-4 h-4 text-[#10B981]" />}
+        />
       </div>
 
-      {/* 4. INDIKATOR PENILAIAN KINERJA PENGURUS SECARA KESELURUHAN DENGAN GRAFIK PIE CHART DAN PERSENTASENYA (DI BAWAH KARTU RINGKASAN SANTRI & USTADZ) */}
+      {/* 4. INDIKATOR PENILAIAN KINERJA PENGURUS SECARA KESELURUHAN DENGAN GRAFIK 3D PIE CHART DAN PERSENTASENYA */}
       <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/25 pb-3">
           <div>
             <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
               <PieChartIcon className="w-4 h-4 text-[#D4AF37]" />
               {currentUser.role === 'admin' || currentUser.role === 'ketua_pondok'
-                ? 'Indikator Penilaian Kinerja Ketua Pondok, Sekretaris, Bendahara, Perlengkapan & Keamanan (Pie Chart & %)'
-                : `Indikator Penilaian Kinerja ${currentUser.jabatan} Secara Keseluruhan (Pie Chart & %)`}
+                ? 'Indikator Penilaian Kinerja Ketua Pondok, Sekretaris, Bendahara, Perlengkapan & Keamanan (3D Pie Chart & %)'
+                : `Indikator Penilaian Kinerja ${currentUser.jabatan} Secara Keseluruhan (3D Pie Chart & %)`}
             </h2>
             <p className="text-xs text-[#D1FAE5]">
               Evaluasi kuantitatif real-time berdasarkan penyelesaian program kerja, pelayanan persuratan, kesehatan kas, inventaris, dan kedisiplinan
             </p>
           </div>
           <span className="px-3 py-1 rounded-xl bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#D4AF37] font-mono text-xs font-bold self-start sm:self-auto">
-            INDIKATOR REAL-TIME
+            3D INDIKATOR REAL-TIME
           </span>
         </div>
 
@@ -1085,14 +934,14 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
         >
           {visibleKpiPies.map((kpi) => {
             const pieData = [
-              { name: 'Capaian Kinerja', value: kpi.score },
-              { name: 'Ruang Optimasi', value: Math.max(0, 100 - kpi.score) },
+              { name: 'Capaian Kinerja', value: kpi.score, color: kpi.color },
+              { name: 'Ruang Optimasi', value: Math.max(1, 100 - kpi.score), color: '#093827' },
             ];
             return (
               <div
                 key={kpi.key}
                 onClick={() => onNavigate(kpi.targetMenu)}
-                className="cyber-glass-card p-4 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900/60 backdrop-blur-md border border-emerald-500/25 hover:border-[#D4AF37] transition-all cursor-pointer flex flex-col items-center text-center justify-between shadow-lg group"
+                className="kpi-glass-3d p-4 rounded-2xl cursor-pointer flex flex-col items-center text-center justify-between group"
               >
                 <div className="w-full">
                   <span className="text-[10px] font-mono uppercase tracking-wider text-[#D4AF37] block">
@@ -1103,39 +952,19 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                   </h3>
                 </div>
 
-                {/* Pie Chart + Percentage Center */}
-                <div className="relative w-36 h-36 my-2 flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={42}
-                        outerRadius={60}
-                        startAngle={90}
-                        endAngle={-270}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        <Cell fill={kpi.color} />
-                        <Cell fill="#062e1f" />
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#06241B',
-                          borderColor: '#D4AF37',
-                          borderRadius: '10px',
-                          fontSize: '11px',
-                          color: '#fff',
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-xl font-black text-[#FFFFFF] font-mono">{kpi.score}%</span>
-                    <span className="text-[9px] font-mono text-[#10B981] uppercase">Sangat Baik</span>
-                  </div>
+                {/* 3D Tilted Pie Chart + Extruded Percentage Center */}
+                <div className="my-2 flex items-center justify-center">
+                  <PieChart3D
+                    data={pieData}
+                    size={156}
+                    innerRadiusRatio={0.5}
+                    depth={13}
+                    centerValue={kpi.score}
+                    centerSuffix="%"
+                    centerLabel={kpi.ratingLabel}
+                    centerTone={kpi.score >= 90 ? 'gold' : 'emerald'}
+                    unit="%"
+                  />
                 </div>
 
                 <div className="w-full space-y-1">
@@ -1268,23 +1097,38 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
               {/* Kiri (5 Cols): 3 Kartu Kas + Indikator Kesehatan Ekonomi Overall */}
               <div className="lg:col-span-5 space-y-4 flex flex-col justify-between">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3.5 rounded-2xl bg-emerald-950/60 border border-emerald-600/40">
+                  <div className="kpi-glass-3d p-3.5 rounded-2xl">
                     <p className="text-[10px] font-mono uppercase text-emerald-300">Total Pemasukan</p>
-                    <p className="text-xs sm:text-sm font-black text-emerald-400 font-mono mt-1">
-                      {formatRupiah(financeAnalytics.totalPemasukan)}
-                    </p>
+                    <div className="mt-1">
+                      <Extruded3DValue
+                        value={financeAnalytics.totalPemasukan}
+                        formatAsRupiah={true}
+                        tone="emerald"
+                        className="text-sm sm:text-base"
+                      />
+                    </div>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-rose-950/45 border border-rose-600/40">
+                  <div className="kpi-glass-3d p-3.5 rounded-2xl">
                     <p className="text-[10px] font-mono uppercase text-rose-300">Total Pengeluaran</p>
-                    <p className="text-xs sm:text-sm font-black text-rose-400 font-mono mt-1">
-                      {formatRupiah(financeAnalytics.totalPengeluaran)}
-                    </p>
+                    <div className="mt-1">
+                      <Extruded3DValue
+                        value={financeAnalytics.totalPengeluaran}
+                        formatAsRupiah={true}
+                        tone="rose"
+                        className="text-sm sm:text-base"
+                      />
+                    </div>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-[#072c1e] border border-[#d4af37]/60">
+                  <div className="kpi-glass-3d p-3.5 rounded-2xl">
                     <p className="text-[10px] font-mono uppercase text-[#f3d266]">Saldo &amp; Surplus Kas</p>
-                    <p className="text-xs sm:text-sm font-black text-[#f3d266] font-mono mt-1">
-                      {formatRupiah(financeAnalytics.saldoPondok)}
-                    </p>
+                    <div className="mt-1">
+                      <Extruded3DValue
+                        value={financeAnalytics.saldoPondok}
+                        formatAsRupiah={true}
+                        tone="gold"
+                        className="text-sm sm:text-base"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1370,317 +1214,133 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
         );
       })()}
 
-      {/* 6. GRAFIK LINE CHART KINERJA PENGURUS & KEDISIPLINAN SANTRI (PERBANDINGAN BULAN INI VS BULAN LALU) */}
-      <div className={`grid grid-cols-1 ${showKinerjaPengurusLine ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-6`}>
+      {/* 6. GRAFIK 3D LINE CHART KINERJA PENGURUS & KEDISIPLINAN SANTRI (PERBANDINGAN BULAN INI VS BULAN LALU) */}
+      <div className={`grid grid-cols-1 ${showKinerjaPengurusLine ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-6`}>
         {showKinerjaPengurusLine && (
-          <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
                   <Activity className="w-4 h-4 text-[#10B981]" />
-                  Grafik Line Chart Kinerja Pengurus
+                  Grafik 3D Line Chart Kinerja Pengurus
                 </h2>
                 <p className="text-xs text-[#D1FAE5]">
                   Perbandingan capaian program kerja & responsivitas pengurus Bulan Ini vs Bulan Lalu
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <p className="text-lg font-black text-[#10B981] font-mono">{kinerjaPengurusStats.bulanIni}%</p>
-                  <p className="text-[10px] font-mono text-[#D1FAE5]">
-                    {kinerjaPengurusStats.selisih >= 0 ? `+${kinerjaPengurusStats.selisih}%` : `${kinerjaPengurusStats.selisih}%`} dari bulan lalu ({kinerjaPengurusStats.bulanLalu}%)
-                  </p>
-                </div>
+              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
+                <Extruded3DValue
+                  value={kinerjaPengurusStats.bulanIni}
+                  suffix="%"
+                  tone="emerald"
+                  className="text-2xl"
+                />
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                    kinerjaPengurusStats.selisih >= 0 ? 'badge-3d-up text-emerald-100' : 'badge-3d-down text-rose-100'
+                  }`}
+                >
+                  {kinerjaPengurusStats.selisih >= 0 ? '▲' : '▼'}{' '}
+                  {kinerjaPengurusStats.selisih >= 0 ? `+${kinerjaPengurusStats.selisih}%` : `${kinerjaPengurusStats.selisih}%`}{' '}
+                  vs {kinerjaPengurusStats.bulanLalu}%
+                </span>
               </div>
             </div>
 
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={kinerjaPengurusStats.chartData}
-                  margin={{ top: 12, right: 18, left: -12, bottom: 4 }}
-                >
-                  <defs>
-                    {/* Soft Glow Effect Filter */}
-                    <filter id="glowKinerjaPengurus" x="-25%" y="-25%" width="150%" height="150%">
-                      <feGaussianBlur stdDeviation="3.5" result="blur" />
-                      <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                    {/* Gradient Line Stroke */}
-                    <linearGradient id="lineGradKinerjaCurr" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#34d399" />
-                      <stop offset="55%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#f3d266" />
-                    </linearGradient>
-                    <linearGradient id="lineGradKinerjaPrev" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#d4af37" stopOpacity={0.65} />
-                      <stop offset="100%" stopColor="#f3d266" stopOpacity={0.95} />
-                    </linearGradient>
-                    {/* Gradient Area Fill */}
-                    <linearGradient id="areaGradKinerjaCurr" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.42} />
-                      <stop offset="55%" stopColor="#10b981" stopOpacity={0.14} />
-                      <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                    </linearGradient>
-                    <linearGradient id="areaGradKinerjaPrev" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#d4af37" stopOpacity={0.18} />
-                      <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                    </linearGradient>
-                  </defs>
-
-                  <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                  <XAxis dataKey="pekan" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                  <YAxis domain={[60, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                  <Tooltip
-                    content={
-                      <LuxuryChartTooltip
-                        unit="%"
-                        subtitle="Perbandingan Indeks Kinerja Pengurus"
-                      />
-                    }
-                    cursor={{
-                      stroke: '#34d399',
-                      strokeWidth: 1.5,
-                      strokeDasharray: '4 4',
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-
-                  {/* Gradient Area Fills */}
-                  <Area
-                    type="monotone"
-                    dataKey="bulanLalu"
-                    name="Bulan Lalu (%)"
-                    fill="url(#areaGradKinerjaPrev)"
-                    stroke="none"
-                    legendType="none"
-                    isAnimationActive={true}
-                    animationDuration={1400}
-                    animationEasing="ease-out"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="bulanIni"
-                    name="Bulan Ini (%)"
-                    fill="url(#areaGradKinerjaCurr)"
-                    stroke="none"
-                    legendType="none"
-                    isAnimationActive={true}
-                    animationDuration={1600}
-                    animationEasing="ease-in-out"
-                  />
-
-                  {/* Glowing Smooth Lines */}
-                  <Line
-                    type="monotone"
-                    dataKey="bulanLalu"
-                    name="Bulan Lalu (%)"
-                    stroke="url(#lineGradKinerjaPrev)"
-                    strokeWidth={2.2}
-                    strokeDasharray="5 5"
-                    dot={<GlowingDot color="#d4af37" accentColor="#f3d266" />}
-                    activeDot={<GlowingActiveDot color="#d4af37" accentColor="#ffffff" />}
-                    isAnimationActive={true}
-                    animationDuration={1500}
-                    animationEasing="ease-in-out"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="bulanIni"
-                    name="Bulan Ini (%)"
-                    stroke="url(#lineGradKinerjaCurr)"
-                    strokeWidth={3.5}
-                    filter="url(#glowKinerjaPengurus)"
-                    dot={<GlowingDot color="#10b981" accentColor="#f3d266" />}
-                    activeDot={<GlowingActiveDot color="#10b981" accentColor="#f3d266" />}
-                    isAnimationActive={true}
-                    animationDuration={1700}
-                    animationEasing="ease-in-out"
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+            <LineChart3D
+              data={kinerjaPengurusStats.chartData}
+              xKey="pekan"
+              height={228}
+              yDomain={[60, 100]}
+              yUnit="%"
+              tooltipUnit="%"
+              subtitle="Perbandingan Indeks Kinerja Pengurus"
+              series={[
+                { key: 'bulanIni', label: 'Bulan Ini (%)', color: '#10b981', accentColor: '#f3d266' },
+                { key: 'bulanLalu', label: 'Bulan Lalu (%)', color: '#d4af37', accentColor: '#fef08a', dashed: true },
+              ]}
+            />
           </div>
         )}
 
-        {/* Line Chart Kedisiplinan Santri (Tampil di Semua Role) */}
-        <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+        {/* 3D Line Chart Kedisiplinan Santri (Tampil di Semua Role) */}
+        <div className="kpi-glass-3d rounded-2xl p-5 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
-                Grafik Line Chart Kedisiplinan Santri
+                Grafik 3D Line Chart Kedisiplinan Santri
               </h2>
               <p className="text-xs text-[#D1FAE5]">
                 Indeks kepatuhan qanun, jamaah, &amp; ketepatan izin kembali Bulan Ini vs Bulan Lalu
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="text-right">
-                <p className="text-lg font-black text-[#D4AF37] font-mono">{kedisiplinanSantriStats.bulanIni}%</p>
-                <p className="text-[10px] font-mono text-[#D1FAE5]">
-                  {kedisiplinanSantriStats.selisih >= 0 ? `+${kedisiplinanSantriStats.selisih}%` : `${kedisiplinanSantriStats.selisih}%`} dari bulan lalu ({kedisiplinanSantriStats.bulanLalu}%)
-                </p>
-              </div>
+            <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
+              <Extruded3DValue
+                value={kedisiplinanSantriStats.bulanIni}
+                suffix="%"
+                tone="gold"
+                className="text-2xl"
+              />
+              <span
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-mono font-extrabold tabular-nums ${
+                  kedisiplinanSantriStats.selisih >= 0 ? 'badge-3d-up text-emerald-100' : 'badge-3d-down text-rose-100'
+                }`}
+              >
+                {kedisiplinanSantriStats.selisih >= 0 ? '▲' : '▼'}{' '}
+                {kedisiplinanSantriStats.selisih >= 0 ? `+${kedisiplinanSantriStats.selisih}%` : `${kedisiplinanSantriStats.selisih}%`}{' '}
+                vs {kedisiplinanSantriStats.bulanLalu}%
+              </span>
             </div>
           </div>
 
-          <div className="h-56 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={kedisiplinanSantriStats.chartData}
-                margin={{ top: 12, right: 18, left: -12, bottom: 4 }}
-              >
-                <defs>
-                  {/* Soft Glow Effect Filter */}
-                  <filter id="glowKedisiplinanSantri" x="-25%" y="-25%" width="150%" height="150%">
-                    <feGaussianBlur stdDeviation="3.5" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                  {/* Gradient Line Strokes */}
-                  <linearGradient id="lineGradDisiplinCurr" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#f3d266" />
-                    <stop offset="50%" stopColor="#d4af37" />
-                    <stop offset="100%" stopColor="#10b981" />
-                  </linearGradient>
-                  <linearGradient id="lineGradDisiplinPrev" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.65} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0.95} />
-                  </linearGradient>
-                  {/* Gradient Area Fills */}
-                  <linearGradient id="areaGradDisiplinCurr" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#d4af37" stopOpacity={0.38} />
-                    <stop offset="55%" stopColor="#10b981" stopOpacity={0.14} />
-                    <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                  </linearGradient>
-                  <linearGradient id="areaGradDisiplinPrev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.18} />
-                    <stop offset="100%" stopColor="#041d14" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-
-                <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                <XAxis dataKey="pekan" stroke="#a7f3d0" fontSize={11} tickLine={false} />
-                <YAxis domain={[60, 100]} stroke="#a7f3d0" fontSize={11} unit="%" tickLine={false} />
-                <Tooltip
-                  content={
-                    <LuxuryChartTooltip
-                      unit="%"
-                      subtitle="Evaluasi Indeks Kedisiplinan Santri"
-                    />
-                  }
-                  cursor={{
-                    stroke: '#f3d266',
-                    strokeWidth: 1.5,
-                    strokeDasharray: '4 4',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
-
-                {/* Gradient Area Fills */}
-                <Area
-                  type="monotone"
-                  dataKey="bulanLalu"
-                  name="Kedisiplinan Bulan Lalu (%)"
-                  fill="url(#areaGradDisiplinPrev)"
-                  stroke="none"
-                  legendType="none"
-                  isAnimationActive={true}
-                  animationDuration={1400}
-                  animationEasing="ease-out"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="bulanIni"
-                  name="Kedisiplinan Bulan Ini (%)"
-                  fill="url(#areaGradDisiplinCurr)"
-                  stroke="none"
-                  legendType="none"
-                  isAnimationActive={true}
-                  animationDuration={1600}
-                  animationEasing="ease-in-out"
-                />
-
-                {/* Glowing Smooth Lines */}
-                <Line
-                  type="monotone"
-                  dataKey="bulanLalu"
-                  name="Kedisiplinan Bulan Lalu (%)"
-                  stroke="url(#lineGradDisiplinPrev)"
-                  strokeWidth={2.2}
-                  strokeDasharray="5 5"
-                  dot={<GlowingDot color="#34d399" accentColor="#a7f3d0" />}
-                  activeDot={<GlowingActiveDot color="#34d399" accentColor="#ffffff" />}
-                  isAnimationActive={true}
-                  animationDuration={1500}
-                  animationEasing="ease-in-out"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="bulanIni"
-                  name="Kedisiplinan Bulan Ini (%)"
-                  stroke="url(#lineGradDisiplinCurr)"
-                  strokeWidth={3.5}
-                  filter="url(#glowKedisiplinanSantri)"
-                  dot={<GlowingDot color="#d4af37" accentColor="#34d399" />}
-                  activeDot={<GlowingActiveDot color="#d4af37" accentColor="#f3d266" />}
-                  isAnimationActive={true}
-                  animationDuration={1700}
-                  animationEasing="ease-in-out"
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          <LineChart3D
+            data={kedisiplinanSantriStats.chartData}
+            xKey="pekan"
+            height={228}
+            yDomain={[60, 100]}
+            yUnit="%"
+            tooltipUnit="%"
+            subtitle="Evaluasi Indeks Kedisiplinan Santri"
+            series={[
+              { key: 'bulanIni', label: 'Kedisiplinan Bulan Ini (%)', color: '#d4af37', accentColor: '#34d399' },
+              { key: 'bulanLalu', label: 'Kedisiplinan Bulan Lalu (%)', color: '#34d399', accentColor: '#a7f3d0', dashed: true },
+            ]}
+          />
         </div>
       </div>
 
-      {/* 7. GRAFIK DIAGRAM SANTRI DARI TAHUN KE TAHUN & RINGKASAN SEKRETARIS + PERLENGKAPAN */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className={showSekretarisCard || showPerlengkapanCard ? 'lg:col-span-6' : 'lg:col-span-12'}>
-          <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl h-full">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-[#10B981]" />
-                  Grafik Diagram Santri dari Tahun ke Tahun
-                </h2>
-                <p className="text-xs text-[#D1FAE5]">Pertumbuhan jumlah santri putra (Banin) & putri (Banat) 2022–2026</p>
-              </div>
-            </div>
-
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={santriYearlyChart} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.35} />
-                  <XAxis dataKey="tahun" stroke="#D1FAE5" fontSize={11} />
-                  <YAxis stroke="#D1FAE5" fontSize={11} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#06241B',
-                      borderColor: '#D4AF37',
-                      borderRadius: '12px',
-                      color: '#fff',
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="putra" name="Santri Putra" fill="#10B981" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="putri" name="Santri Putri" fill="#D4AF37" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+      {/* 7. GRAFIK 3D DIAGRAM SANTRI DARI TAHUN KE TAHUN & RINGKASAN SEKRETARIS + PERLENGKAPAN */}
+      <div className={`grid grid-cols-1 ${showSekretarisCard || showPerlengkapanCard ? 'md:grid-cols-2' : 'md:grid-cols-1'} gap-6`}>
+        <div className="kpi-glass-3d rounded-2xl p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-[#10B981]" />
+                Grafik 3D Diagram Santri dari Tahun ke Tahun
+              </h2>
+              <p className="text-xs text-[#D1FAE5]">
+                Data real-time santri putra ({stats.santriPutra}) &amp; putri ({stats.santriPutri}) — Total {stats.totalSantri} Santri Aktif ({santriYearlyChart[0]?.tahun || '2022'}–{santriYearlyChart[santriYearlyChart.length - 1]?.tahun || '2026'})
+              </p>
             </div>
           </div>
+
+          <BarChart3D
+            data={santriYearlyChart}
+            xKey="tahun"
+            height={252}
+            unit=" santri"
+            series={[
+              { key: 'putra', label: 'Santri Putra', color: '#10b981' },
+              { key: 'putri', label: 'Santri Putri', color: '#d4af37' },
+            ]}
+          />
         </div>
 
         {(showSekretarisCard || showPerlengkapanCard) && (
-          <div className={`lg:col-span-6 grid grid-cols-1 ${showSekretarisCard && showPerlengkapanCard ? 'sm:grid-cols-2' : 'sm:grid-cols-1'} gap-4`}>
+          <div className={`grid grid-cols-1 ${showSekretarisCard && showPerlengkapanCard ? 'sm:grid-cols-2' : 'sm:grid-cols-1'} gap-4`}>
             {showSekretarisCard && (
-              <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl flex flex-col justify-between">
+              <div className="kpi-glass-3d rounded-2xl p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <div className="p-2.5 rounded-xl bg-[#10B981]/15 border border-[#10B981]/30 text-[#10B981]">
@@ -1690,25 +1350,25 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                       DIVISI SEKRETARIS
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold text-[#FFFFFF]">Statistik & Aktivitas Sekretaris</h3>
-                  <p className="text-[11px] text-[#D1FAE5] mt-0.5">Rekapitulasi persuratan resmi & buku induk</p>
+                  <h3 className="text-sm font-bold text-[#FFFFFF]">Statistik &amp; Aktivitas Sekretaris</h3>
+                  <p className="text-[11px] text-[#D1FAE5] mt-0.5">Rekapitulasi persuratan resmi &amp; buku induk</p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4">
-                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
-                      <p className="text-[10px] font-mono text-[#D1FAE5]">Total Arsip Surat</p>
-                      <p className="text-xl font-black text-[#FFFFFF] font-mono mt-0.5">{sekretarisStats.totalArsip}</p>
+                  <div className="grid grid-cols-2 gap-2.5 mt-4">
+                    <div className="kpi-glass-3d p-3 rounded-xl">
+                      <p className="text-[10px] font-mono text-[#D1FAE5]">Total Arsip</p>
+                      <Extruded3DValue value={sekretarisStats.totalArsip} tone="silver" className="text-xl mt-0.5" />
                     </div>
-                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-[#D4AF37]/40">
+                    <div className="kpi-glass-3d p-3 rounded-xl">
                       <p className="text-[10px] font-mono text-[#D4AF37]">Resmi Terbit</p>
-                      <p className="text-xl font-black text-[#D4AF37] font-mono mt-0.5">{sekretarisStats.suratResmiTerbit}</p>
+                      <Extruded3DValue value={sekretarisStats.suratResmiTerbit} tone="gold" className="text-xl mt-0.5" />
                     </div>
-                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
+                    <div className="kpi-glass-3d p-3 rounded-xl">
                       <p className="text-[10px] font-mono text-[#D1FAE5]">Surat Keluar</p>
-                      <p className="text-lg font-bold text-[#10B981] font-mono mt-0.5">{sekretarisStats.suratKeluar}</p>
+                      <Extruded3DValue value={sekretarisStats.suratKeluar} tone="emerald" className="text-lg mt-0.5" />
                     </div>
-                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
+                    <div className="kpi-glass-3d p-3 rounded-xl">
                       <p className="text-[10px] font-mono text-[#D1FAE5]">Surat Masuk</p>
-                      <p className="text-lg font-bold text-[#D4AF37] font-mono mt-0.5">{sekretarisStats.suratMasuk}</p>
+                      <Extruded3DValue value={sekretarisStats.suratMasuk} tone="gold" className="text-lg mt-0.5" />
                     </div>
                   </div>
                 </div>
@@ -1723,7 +1383,7 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
             )}
 
             {showPerlengkapanCard && (
-              <div className="cyber-glass-card rounded-2xl bg-emerald-950/60 backdrop-blur-md border border-emerald-500/25 p-5 shadow-xl flex flex-col justify-between">
+              <div className="kpi-glass-3d rounded-2xl p-5 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <div className="p-2.5 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[#D4AF37]">
@@ -1733,25 +1393,25 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
                       DIVISI PERLENGKAPAN
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold text-[#FFFFFF]">Statistik & Aktivitas Perlengkapan</h3>
-                  <p className="text-[11px] text-[#D1FAE5] mt-0.5">Kondisi aset sarpras & peminjaman aktif</p>
+                  <h3 className="text-sm font-bold text-[#FFFFFF]">Statistik &amp; Aktivitas Perlengkapan</h3>
+                  <p className="text-[11px] text-[#D1FAE5] mt-0.5">Kondisi aset sarpras &amp; peminjaman aktif</p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-4">
-                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-emerald-500/25">
-                      <p className="text-[10px] font-mono text-[#D1FAE5]">Total Unit Aset</p>
-                      <p className="text-xl font-black text-[#FFFFFF] font-mono mt-0.5">{perlengkapanStats.totalAset}</p>
+                  <div className="grid grid-cols-2 gap-2.5 mt-4">
+                    <div className="kpi-glass-3d p-3 rounded-xl">
+                      <p className="text-[10px] font-mono text-[#D1FAE5]">Total Aset</p>
+                      <Extruded3DValue value={perlengkapanStats.totalAset} tone="silver" className="text-xl mt-0.5" />
                     </div>
-                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-[#10B981]/40">
+                    <div className="kpi-glass-3d p-3 rounded-xl">
                       <p className="text-[10px] font-mono text-[#10B981]">Kondisi Baik</p>
-                      <p className="text-xl font-black text-[#10B981] font-mono mt-0.5">{perlengkapanStats.kondisiBaik}</p>
+                      <Extruded3DValue value={perlengkapanStats.kondisiBaik} tone="emerald" className="text-xl mt-0.5" />
                     </div>
-                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-rose-500/40">
+                    <div className="kpi-glass-3d p-3 rounded-xl">
                       <p className="text-[10px] font-mono text-rose-300">Kondisi Rusak</p>
-                      <p className="text-lg font-bold text-rose-400 font-mono mt-0.5">{perlengkapanStats.kondisiRusak}</p>
+                      <Extruded3DValue value={perlengkapanStats.kondisiRusak} tone="rose" className="text-lg mt-0.5" />
                     </div>
-                    <div className="p-3 rounded-xl bg-[#041A13]/75 border border-[#D4AF37]/40">
-                      <p className="text-[10px] font-mono text-[#D4AF37]">Sedang Dipinjam</p>
-                      <p className="text-lg font-bold text-[#D4AF37] font-mono mt-0.5">{perlengkapanStats.sedangDipinjam}</p>
+                    <div className="kpi-glass-3d p-3 rounded-xl">
+                      <p className="text-[10px] font-mono text-[#D4AF37]">Dipinjam</p>
+                      <Extruded3DValue value={perlengkapanStats.sedangDipinjam} tone="gold" className="text-lg mt-0.5" />
                     </div>
                   </div>
                 </div>

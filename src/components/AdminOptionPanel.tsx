@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { syncPWAIdentity } from '../services/pwaSyncService';
-import { INITIAL_PUSAT_INFORMASI_LIST, INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
+import { INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
 import {
   SystemConfig,
   UserAccount,
@@ -88,7 +88,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
   // Pusat Informasi (Pengumuman & Undangan Masuk) Admin-Only CRUD state
   const todayWibIso = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
   const pusatInformasiList: PusatInformasiItem[] =
-    systemConfig.pusatInformasiList || INITIAL_PUSAT_INFORMASI_LIST;
+    Array.isArray(systemConfig.pusatInformasiList) ? systemConfig.pusatInformasiList : [];
   const [editingInfoId, setEditingInfoId] = useState<string | null>(null);
   const [infoForm, setInfoForm] = useState<Partial<PusatInformasiItem>>({
     kategori: 'Pengumuman',
@@ -2872,7 +2872,7 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
                 Pulihkan Basis Data dari Master JSON
               </h3>
               <p className="text-xs text-emerald-200/75 leading-relaxed font-mono">
-                Memulihkan konfigurasi sistem, data santri, data ustadzah, dan akun RBAC dari arsip JSON cadangan ke Firestore &amp; localStorage.
+                Memulihkan konfigurasi sistem, data santri, data ustadzah, dan akun RBAC dari arsip JSON cadangan langsung ke Cloud Firestore Real-Time.
               </p>
               <label className="tactile-interactive w-full py-3 px-4 rounded-2xl bg-[#041d13]/90 hover:bg-[#072c1e] border border-emerald-800/80 text-white font-bold font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xl hover-rainbow-edge">
                 <Upload className="w-4 h-4 text-emerald-400" />
