@@ -22,7 +22,8 @@ import {
   X,
   ExternalLink,
   CornerDownRight,
-  Sparkles
+  Sparkles,
+  Upload
 } from 'lucide-react';
 import { 
   PesanKoordinasi, 
@@ -33,6 +34,7 @@ import {
   UserAccount 
 } from '../types';
 import { storageService } from '../services/storageService';
+import { uploadFileToSupabaseStorage } from '../services/supabase';
 
 interface KoordinasiListProps {
   currentUser: UserAccount;
@@ -68,6 +70,7 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
   const [replyAttachmentNama, setReplyAttachmentNama] = useState<string>('');
 
   // Compose Form Data
+  const [isUploadingComposeFile, setIsUploadingComposeFile] = useState<boolean>(false);
   const [composeData, setComposeData] = useState({
     judul: '',
     kategori: (isAdmin ? 'Instruksi Admin' : 'Laporan Keamanan') as KategoriKoordinasi,
@@ -77,6 +80,25 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
     lampiranUrl: '',
     lampiranTipe: 'dokumen' as 'dokumen' | 'foto' | 'link',
   });
+
+  const handleUploadComposeAttachment = async (file: File) => {
+    setIsUploadingComposeFile(true);
+    try {
+      const uploaded = await uploadFileToSupabaseStorage(
+        file,
+        'lampiran-koordinasi',
+        file.name.replace(/\.[^.]+$/, '') || 'lampiran'
+      );
+      setComposeData((prev) => ({
+        ...prev,
+        lampiranNama: file.name,
+        lampiranUrl: uploaded.publicUrl,
+        lampiranTipe: file.type.startsWith('image/') ? 'foto' : 'dokumen',
+      }));
+    } finally {
+      setIsUploadingComposeFile(false);
+    }
+  };
 
   // Automatically mark as read when selecting ticket
   useEffect(() => {
@@ -737,15 +759,32 @@ export const KoordinasiList: React.FC<KoordinasiListProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">
-                    Nama Lampiran Dokumen / Foto (Opsional)
+                    Nama / Upload Lampiran PDF / Foto (Storage almaliki-dokumen)
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Misal: Foto_CCTV_Rusak.jpg atau Berita_Acara.pdf"
-                    value={composeData.lampiranNama}
-                    onChange={(e) => setComposeData({ ...composeData, lampiranNama: e.target.value })}
-                    className="w-full px-3.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Misal: Foto_CCTV_Rusak.jpg atau Berita_Acara.pdf"
+                      value={composeData.lampiranNama}
+                      onChange={(e) => setComposeData({ ...composeData, lampiranNama: e.target.value })}
+                      className="flex-1 min-w-0 px-3.5 py-2 bg-[#041d13]/90 border border-emerald-800/80 rounded-xl text-white focus:outline-none focus:border-amber-400"
+                    />
+                    <label className="px-3 py-2 rounded-xl bg-emerald-950/90 hover:bg-emerald-900 border border-amber-400/40 text-amber-300 font-bold inline-flex items-center gap-1 cursor-pointer shrink-0">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isUploadingComposeFile ? '...' : 'Upload'}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,image/*"
+                        disabled={isUploadingComposeFile}
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          e.target.value = '';
+                          if (f) void handleUploadComposeAttachment(f);
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-emerald-100/90 font-bold uppercase text-[10px] tracking-wider mb-1">

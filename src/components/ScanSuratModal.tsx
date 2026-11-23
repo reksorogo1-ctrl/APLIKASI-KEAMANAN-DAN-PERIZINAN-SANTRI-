@@ -9,13 +9,21 @@ import {
   Sparkles,
   Image as ImageIcon,
   RotateCcw,
+  FileText,
+  CheckCircle2,
 } from 'lucide-react';
 import { LaserScanLine, METALLIC_EASE } from './MotionPrimitives';
+import { uploadFileToSupabaseStorage } from '../services/supabase';
+
+export interface ScanSuratAttachment {
+  fileLampiranUrl: string;
+  fileLampiranNama: string;
+}
 
 interface ScanSuratModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTranscribed: (text: string) => void;
+  onTranscribed: (text: string, attachment?: ScanSuratAttachment) => void;
   initialPreviewUrl?: string | null;
 }
 
@@ -31,6 +39,8 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [pureBase64, setPureBase64] = useState<string>('');
   const [imageMeta, setImageMeta] = useState<string>('');
+  const [pdfAttachment, setPdfAttachment] = useState<ScanSuratAttachment | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
   const [isCompressing, setIsCompressing] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -40,6 +50,8 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
       setPreviewDataUrl(null);
       setPureBase64('');
       setImageMeta('');
+      setPdfAttachment(null);
+      setSelectedFileName('');
       setIsCompressing(false);
       setIsExtracting(false);
       setErrorMsg('');
@@ -61,9 +73,41 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
     }
   }, [isOpen, initialPreviewUrl]);
 
-  const handleCompressImageFile = useCallback((file: File) => {
+  const handlePdfFileUpload = useCallback(async (file: File) => {
     setIsCompressing(true);
     setErrorMsg('');
+    setPreviewDataUrl(null);
+    setPureBase64('');
+    try {
+      const kb = Math.max(1, Math.round(file.size / 1024));
+      const uploaded = await uploadFileToSupabaseStorage(file, 'scan-surat', file.name.replace(/\.pdf$/i, '') || 'scan-pdf');
+      setPdfAttachment({
+        fileLampiranUrl: uploaded.publicUrl,
+        fileLampiranNama: file.name,
+      });
+      setSelectedFileName(file.name);
+      setImageMeta(
+        uploaded.uploadedToBucket
+          ? `PDF • ${kb} KB • Tersimpan di Storage almaliki-dokumen`
+          : `PDF • ${kb} KB`
+      );
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsCompressing(false);
+    }
+  }, []);
+
+  const handleCompressImageFile = useCallback((file: File) => {
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      void handlePdfFileUpload(file);
+      return;
+    }
+
+    setIsCompressing(true);
+    setErrorMsg('');
+    setPdfAttachment(null);
+    setSelectedFileName(file.name || 'scan-surat.jpg');
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -108,7 +152,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
 
       img.onerror = () => {
         setIsCompressing(false);
-        setErrorMsg('Gagal memuat file gambar. Pastikan file berupa foto JPG, PNG, atau WEBP.');
+        setErrorMsg('Gagal memuat file gambar. Pastikan file berupa foto JPG, PNG, WEBP, atau PDF.');
       };
 
       img.src = String(reader.result || '');
@@ -120,7 +164,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
     };
 
     reader.readAsDataURL(file);
-  }, []);
+  }, [handlePdfFileUpload]);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -149,22 +193,39 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
   }, [isOpen, handleCompressImageFile]);
 
   const handleExtractText = async () => {
+    if (pdfAttachment) {
+      onTranscribed(
+        `Lampiran Scan PDF Surat Masuk: ${pdfAttachment.fileLampiranNama}\nSilakan lengkapi ringkasan perihal/isi surat atau buka file PDF terlampir.`,
+        pdfAttachment
+      );
+      return;
+    }
+
     if (!pureBase64 || isExtracting) return;
 
     setIsExtracting(true);
     setErrorMsg('');
 
     try {
-      const response = await fetch('/api/scan-surat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageBase64: pureBase64,
-          mimeType: 'image/jpeg',
+      const [uploadRes, response] = await Promise.all([
+        previewDataUrl
+          ? uploadFileToSupabaseStorage(
+              previewDataUrl,
+              'scan-surat',
+              selectedFileName.replace(/\.[^.]+$/, '') || 'scan-surat'
+            )
+          : Promise.resolve(null),
+        fetch('/api/scan-surat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            imageBase64: pureBase64,
+            mimeType: 'image/jpeg',
+          }),
         }),
-      });
+      ]);
 
       const rawText = await response.text();
       let payload: { text?: string; error?: string } = {};
@@ -186,7 +247,15 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
         throw new Error(`Hasil ekstraksi kosong: ${JSON.stringify(payload)}`);
       }
 
-      onTranscribed(payload.text.trim());
+      onTranscribed(
+        payload.text.trim(),
+        uploadRes
+          ? {
+              fileLampiranUrl: uploadRes.publicUrl,
+              fileLampiranNama: selectedFileName || uploadRes.fileName,
+            }
+          : undefined
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : JSON.stringify(err);
       setErrorMsg(message);
@@ -199,6 +268,8 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
     setPreviewDataUrl(null);
     setPureBase64('');
     setImageMeta('');
+    setPdfAttachment(null);
+    setSelectedFileName('');
     setErrorMsg('');
   };
 
@@ -213,7 +284,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
       onDrop={(e) => {
         e.preventDefault();
         const file = e.dataTransfer.files?.[0];
-        if (file && file.type.startsWith('image/')) {
+        if (file && (file.type.startsWith('image/') || file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
           handleCompressImageFile(file);
         }
       }}
@@ -255,7 +326,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
           transition={{ duration: 0.24, ease: METALLIC_EASE }}
           className="w-full max-w-2xl space-y-4"
         >
-          {!previewDataUrl ? (
+          {!previewDataUrl && !pdfAttachment ? (
             <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-emerald-400/35 bg-[#06241B]/95 backdrop-blur-xl p-6 sm:p-10 text-center space-y-5 shadow-2xl">
               {/* Reticle corners + moving green laser line inside scanner dropzone */}
               <div className="pointer-events-none absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-[#10B981]/70 rounded-tl-lg" />
@@ -275,20 +346,20 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
               <div className="relative z-10 space-y-1.5">
                 <h4 className="text-base sm:text-lg font-extrabold text-white">
                   {isCompressing
-                    ? 'Mengompresi Foto Surat...'
-                    : 'Pilih atau Jepret Foto Surat Masuk'}
+                    ? 'Memproses & Mengunggah File Surat...'
+                    : 'Pilih Foto / Scan PDF Surat Masuk'}
                 </h4>
                 <p className="text-xs sm:text-sm text-[#D1FAE5] max-w-md mx-auto leading-relaxed">
-                  Tekan tombol di bawah untuk membuka kamera HP atau memilih gambar surat dari galeri/komputer. Gambar otomatis dikompresi agar pemindaian cepat dan akurat.
+                  Tekan tombol di bawah untuk membuka kamera HP, memilih foto galeri, atau mengunggah berkas PDF scan surat ke bucket Supabase Storage <span className="font-mono text-[#D4AF37]">almaliki-dokumen</span>.
                 </p>
               </div>
 
               <label className="relative z-10 w-full sm:w-auto px-7 py-4 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#b58922] text-[#041A13] font-extrabold text-sm sm:text-base inline-flex items-center justify-center gap-3 shadow-[0_8px_28px_rgba(212,175,55,0.35)] cursor-pointer hover:brightness-105 transition">
                 <Camera className="w-5 h-5" />
-                <span>Ambil Foto / Pilih Gambar Surat</span>
+                <span>Ambil Foto / Pilih Gambar atau PDF</span>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,application/pdf"
                   disabled={isCompressing}
                   onChange={handleFileInputChange}
                   className="sr-only"
@@ -296,8 +367,67 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
               </label>
 
               <p className="relative z-10 text-[11px] text-[#D1FAE5]/85">
-                Mendukung kamera iPhone Safari, Chrome Android, upload file komputer, drag &amp; drop, atau tempel gambar (Ctrl+V).
+                Mendukung kamera iPhone Safari, Chrome Android, upload file gambar/PDF komputer, drag &amp; drop, atau tempel gambar (Ctrl+V).
               </p>
+            </div>
+          ) : pdfAttachment ? (
+            <div className="rounded-2xl border border-emerald-400/30 bg-[#06241B]/95 backdrop-blur-xl p-5 sm:p-6 space-y-4 shadow-2xl">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#D4AF37]">
+                  Lampiran Scan PDF Siap Disimpan
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-[#041A13] border border-emerald-500/30 text-[11px] font-mono text-[#D1FAE5]">
+                  {imageMeta}
+                </span>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-[#041A13] border border-emerald-500/35 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-center shrink-0">
+                  <FileText className="w-6 h-6 text-emerald-300" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-white truncate">{pdfAttachment.fileLampiranNama}</p>
+                  <p className="text-xs text-emerald-300/80 flex items-center gap-1 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>File PDF berhasil diproses dan siap ditautkan ke arsip Surat Masuk.</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
+                <div className="flex items-center gap-2">
+                  <label className="flex-1 sm:flex-none px-4 py-3 rounded-xl bg-emerald-950/80 hover:bg-emerald-900/80 text-[#D4AF37] border border-[#D4AF37]/40 font-bold text-xs inline-flex items-center justify-center gap-2 cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    <span>Ganti File</span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      disabled={isCompressing}
+                      onChange={handleFileInputChange}
+                      className="sr-only"
+                    />
+                  </label>
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleResetPhoto}
+                    className="px-3.5 py-3 rounded-xl bg-[#041A13]/80 hover:bg-[#041A13] text-[#D1FAE5] border border-emerald-500/30 font-bold text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    <span>Reset</span>
+                  </motion.button>
+                </div>
+
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={handleExtractText}
+                  className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#D4AF37] to-[#b58922] text-[#041A13] font-extrabold text-sm inline-flex items-center justify-center gap-2 shadow-[0_6px_22px_rgba(212,175,55,0.4)] cursor-pointer hover:brightness-105"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Gunakan Lampiran PDF di Surat Masuk</span>
+                </motion.button>
+              </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-emerald-400/30 bg-[#06241B]/95 backdrop-blur-xl p-4 sm:p-5 space-y-4 shadow-2xl">
@@ -312,7 +442,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
 
               <div className="relative rounded-2xl overflow-hidden border-2 border-[#10B981]/50 bg-[#041A13] flex items-center justify-center max-h-[55dvh]">
                 <img
-                  src={previewDataUrl}
+                  src={previewDataUrl || ''}
                   alt="Pratinjau Foto Surat Masuk"
                   className="max-w-full max-h-[55dvh] object-contain"
                 />
@@ -326,7 +456,7 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
                   <div className="absolute inset-0 bg-[#041A13]/75 backdrop-blur-xs flex flex-col items-center justify-center gap-3 p-4 text-center z-30">
                     <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
                     <p className="text-sm font-extrabold text-white">
-                      Sedang mengekstrak teks Latin &amp; Arab...
+                      Sedang mengekstrak teks &amp; mengunggah ke Storage...
                     </p>
                   </div>
                 )}
@@ -336,10 +466,10 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
                 <div className="flex items-center gap-2">
                   <label className="flex-1 sm:flex-none px-4 py-3 rounded-xl bg-emerald-950/80 hover:bg-emerald-900/80 text-[#D4AF37] border border-[#D4AF37]/40 font-bold text-xs inline-flex items-center justify-center gap-2 cursor-pointer">
                     <Upload className="w-4 h-4" />
-                    <span>Ganti Gambar</span>
+                    <span>Ganti File</span>
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,application/pdf"
                       disabled={isExtracting || isCompressing}
                       onChange={handleFileInputChange}
                       className="sr-only"
@@ -368,12 +498,12 @@ export const ScanSuratModal: React.FC<ScanSuratModalProps> = ({
                   {isExtracting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Mengekstrak Teks...</span>
+                      <span>Mengekstrak &amp; Mengunggah...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Ekstrak Teks Surat</span>
+                      <span>Ekstrak Teks &amp; Simpan Scan</span>
                     </>
                   )}
                 </motion.button>

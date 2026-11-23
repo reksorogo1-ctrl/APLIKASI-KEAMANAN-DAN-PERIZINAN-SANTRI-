@@ -55,6 +55,10 @@ import {
   resyncFirestoreNetwork,
   isFirestoreQuotaError,
   isFirestorePermissionError,
+  isFirestoreQuotaPaused,
+  pauseFirestoreNetworkForQuota,
+  resumeFirestoreNetworkFromQuota,
+  subscribeFirestoreQuotaPause,
   testFirestoreConnection,
   extractFirebaseErrorMessage,
   FIRESTORE_DATABASE_ID,
@@ -74,6 +78,41 @@ import {
   getDocFromCache,
   Unsubscribe,
 } from 'firebase/firestore';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import {
+  extractSupabaseErrorMessage,
+  getSupabaseClient,
+  getSupabaseProjectHost,
+  isSupabaseConfigured,
+} from './supabase';
+import {
+  fromSupabaseRow,
+  SupabaseJsonRow,
+  toAbsensiPjRow,
+  toAbsensiSantriRow,
+  toDewanKeamananRow,
+  toEvaluasiKepengurusanRow,
+  toFasilitasGedungRow,
+  toJadwalAgendaFromPengurus,
+  toJadwalAgendaFromPerbaikan,
+  toKeuanganTransaksiRow,
+  toKoordinasiRow,
+  toLogsRow,
+  toNotifikasiRow,
+  toPelanggaranRow,
+  toPengajuanDivisiRow,
+  toPerizinanRow,
+  toPerlengkapanInventarisRow,
+  toPerlengkapanPeminjamanRow,
+  toSanksiRow,
+  toSantriRow,
+  toStrukturOrganisasiRow,
+  toSuratMenyuratRow,
+  toSystemConfigRow,
+  toTataTertibRow,
+  toUserRow,
+  toUstadzRow,
+} from './supabaseMappers';
 
 const SESSION_KEYS = {
   CURRENT_USER: 'sim_kamtib_active_session_v2',
@@ -265,6 +304,8 @@ function sanitizeForFirestore<T>(obj: T): T {
 }
 
 export interface CloudSyncTelemetry {
+  provider: 'supabase' | 'firebase';
+  supabaseConfigured: boolean;
   status: 'connected' | 'syncing' | 'offline' | 'error';
   lastSyncTime: string;
   cloudConnected: boolean;
@@ -280,6 +321,8 @@ export interface CloudSyncTelemetry {
 class StorageService {
   private listeners: (() => void)[] = [];
   private unsubscribers: Unsubscribe[] = [];
+  private supabaseChannels: RealtimeChannel[] = [];
+  private supabaseRefetchTimers: Record<string, ReturnType<typeof setTimeout>> = {};
   private cloudConnected: boolean = false;
   private serverConfirmed: boolean = false;
   private cloudError: string | null = null;
@@ -293,6 +336,7 @@ class StorageService {
   private migrationDone: boolean = false;
   private migrationInProgress: boolean = false;
   private migrationNotification: string | null = null;
+  private detectedAgendaNotifKeys = new Set<string>();
 
   // In-memory live snapshot mirror of Firestore Cloud Database
   private cache = {
@@ -329,8 +373,9 @@ class StorageService {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', () => {
         this.isNavigatorOnline = true;
-        this.resyncOnResume(true).catch(() => {});
-        void this.verifyCloudConnectionAndMigrate();
+        if (!this.quotaExceeded && !isFirestoreQuotaPaused()) {
+          this.resyncOnResume(false).catch(() => {});
+        }
       });
       window.addEventListener('offline', () => {
         this.isNavigatorOnline = false;
@@ -341,11 +386,22 @@ class StorageService {
       });
     }
 
-    // 3. Hubungkan langsung 100% Real-Time Firestore Cloud Listeners (tanpa seed sample otomatis)
-    this.initRealtimeCloudSync();
+    if (!isSupabaseConfigured() && isFirestoreQuotaPaused()) {
+      this.quotaExceeded = true;
+      this.cloudConnected = false;
+      this.serverConfirmed = false;
+      this.cloudError = 'Kuota harian Firestore penuh (reset besok). Mode cache aktif.';
+      this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
+    }
 
-    // 4. Verifikasi koneksi server Firestore & jalankan migrasi cerdas localStorage -> Cloud (agar data lokal lama aman)
-    void this.verifyCloudConnectionAndMigrate();
+    subscribeFirestoreQuotaPause((paused) => {
+      if (paused && !this.quotaExceeded) {
+        this.enterQuotaCacheMode('Kuota harian Firestore penuh (reset besok). Mode cache aktif.');
+      }
+    });
+
+    // 3. Hydrate cache lokal terlebih dahulu lalu verifikasi kuota/koneksi server sebelum membuka 19 listener onSnapshot
+    void this.bootstrapCloudSync();
   }
 
   private purgeLegacyLocalStorage() {
@@ -398,16 +454,179 @@ class StorageService {
     }
   }
 
-  private async verifyCloudConnectionAndMigrate(): Promise<void> {
+  private async bootstrapCloudSync(): Promise<void> {
+    await this.hydrateAllFromLocalCache();
+
+    if (isSupabaseConfigured()) {
+      const ok = await this.reloadFromSupabase();
+      this.initSupabaseRealtime();
+      if (ok) {
+        this.cloudConnected = true;
+        this.serverConfirmed = true;
+        this.quotaExceeded = false;
+        this.cloudError = null;
+        this.lastSyncTime =
+          new Date().toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }) + ' WIB';
+        this.notify();
+      }
+      return;
+    }
+
+    if (this.isFirestorePaused()) {
+      this.enterQuotaCacheMode('Kuota harian Firestore penuh (reset besok). Mode cache aktif.');
+      return;
+    }
+
     const conn = await testFirestoreConnection();
+    if (conn.quotaExceeded) {
+      this.enterQuotaCacheMode(conn.errorMessage);
+      return;
+    }
+
+    if (conn.permissionDenied) {
+      this.cloudConnected = false;
+      this.serverConfirmed = false;
+      this.cloudError = conn.errorMessage || 'Akses Firebase ditolak security rules.';
+      this.lastSyncTime = 'Akses Firebase Ditolak Rules';
+      this.notify();
+      return;
+    }
+
+    this.initRealtimeCloudSync();
+
     if (!conn.ok) {
       this.cloudConnected = false;
       this.serverConfirmed = false;
-      this.quotaExceeded = Boolean(conn.quotaExceeded);
       this.cloudError = conn.errorMessage || 'Gagal terhubung ke server Firebase.';
-      this.lastSyncTime = conn.quotaExceeded
-        ? 'Kuota Harian Firestore Penuh'
-        : 'Gagal Koneksi Firebase';
+      this.lastSyncTime = 'Gagal Koneksi Firebase';
+      this.notify();
+      return;
+    }
+
+    this.cloudConnected = true;
+    this.serverConfirmed = true;
+    this.quotaExceeded = false;
+    this.cloudError = null;
+    this.lastSyncTime = new Date().toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }) + ' WIB';
+    this.notify();
+
+    await this.migrateLocalDataToCloudIfNeeded();
+  }
+
+  private enterQuotaCacheMode(rawMessage?: string): void {
+    this.unsubscribers.forEach(unsub => {
+      try { unsub(); } catch { /* ignore */ }
+    });
+    this.unsubscribers = [];
+    this.quotaExceeded = true;
+    this.cloudConnected = false;
+    this.serverConfirmed = false;
+    this.cloudError = rawMessage || 'Kuota harian Firestore penuh. Kuota akan reset otomatis besok.';
+    this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
+    void pauseFirestoreNetworkForQuota();
+    this.notify();
+  }
+
+  private async hydrateAllFromLocalCache(): Promise<void> {
+    const readCacheCol = async <T extends { id: string }>(colName: string): Promise<T[] | null> => {
+      try {
+        const snap = await getDocsFromCache(collection(db, colName));
+        if (snap.empty) return [];
+        return snap.docs.map(d => ({ ...d.data(), id: d.id } as T));
+      } catch {
+        return null;
+      }
+    };
+
+    try {
+      const [
+        cfgSnap,
+        santri,
+        dewan,
+        perizinan,
+        pelanggaran,
+        sanksi,
+        tataTertib,
+        users,
+        logs,
+        notifikasi,
+        koordinasi,
+        strukturOrganisasi,
+        agendaPengurus,
+        evaluasiKepengurusan,
+        pengajuanDivisi,
+        arsipSurat,
+        transaksiKeuangan,
+        barangInventaris,
+        peminjamanBarang,
+      ] = await Promise.all([
+        getDocFromCache(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main')).catch(() => null),
+        readCacheCol<Santri>(CLOUD_COLLECTIONS.SANTRI),
+        readCacheCol<DewanKeamanan>(CLOUD_COLLECTIONS.DEWAN_KEAMANAN),
+        readCacheCol<Perizinan>(CLOUD_COLLECTIONS.PERIZINAN),
+        readCacheCol<Pelanggaran>(CLOUD_COLLECTIONS.PELANGGARAN),
+        readCacheCol<Sanksi>(CLOUD_COLLECTIONS.SANKSI),
+        readCacheCol<TataTertib>(CLOUD_COLLECTIONS.TATA_TERTIB),
+        readCacheCol<UserAccount>(CLOUD_COLLECTIONS.USERS),
+        readCacheCol<LogAktivitas>(CLOUD_COLLECTIONS.LOGS),
+        readCacheCol<NotifikasiApp>(CLOUD_COLLECTIONS.NOTIFIKASI),
+        readCacheCol<PesanKoordinasi>(CLOUD_COLLECTIONS.KOORDINASI),
+        readCacheCol<StrukturOrganisasiNode>(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI),
+        readCacheCol<AgendaPengurus>(CLOUD_COLLECTIONS.AGENDA_PENGURUS),
+        readCacheCol<EvaluasiKepengurusan>(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN),
+        readCacheCol<PengajuanDivisi>(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI),
+        readCacheCol<ArsipSurat>(CLOUD_COLLECTIONS.SURAT_MENYURAT),
+        readCacheCol<TransaksiKeuangan>(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI),
+        readCacheCol<BarangInventaris>(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS),
+        readCacheCol<PeminjamanBarang>(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN),
+      ]);
+
+      if (cfgSnap && cfgSnap.exists()) {
+        this.cache.systemConfig = buildCleanSystemConfig(cfgSnap.data() as Partial<SystemConfig>);
+      }
+      if (santri) this.cache.santri = santri;
+      if (dewan) this.cache.dewan = dewan;
+      if (perizinan) this.cache.perizinan = perizinan.sort((a, b) => (b.id > a.id ? 1 : -1));
+      if (pelanggaran) this.cache.pelanggaran = pelanggaran.sort((a, b) => (b.id > a.id ? 1 : -1));
+      if (sanksi) this.cache.sanksi = sanksi.sort((a, b) => (b.id > a.id ? 1 : -1));
+      if (tataTertib) this.cache.tataTertib = tataTertib;
+      if (users && users.length > 0) this.cache.users = users;
+      if (logs) this.cache.logs = logs.sort((a, b) => ((b.timestamp || 0) > (a.timestamp || 0) ? 1 : -1)).slice(0, 300);
+      if (notifikasi) this.cache.notifikasi = notifikasi.sort((a, b) => (b.id > a.id ? 1 : -1)).slice(0, 50);
+      if (koordinasi) this.cache.koordinasi = koordinasi.sort((a, b) => (b.id > a.id ? 1 : -1));
+      if (strukturOrganisasi) this.cache.strukturOrganisasi = strukturOrganisasi.sort((a, b) => (a.level - b.level) || (a.urutan - b.urutan));
+      if (agendaPengurus) this.cache.agendaPengurus = agendaPengurus.sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+      if (evaluasiKepengurusan) this.cache.evaluasiKepengurusan = evaluasiKepengurusan.sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+      if (pengajuanDivisi) this.cache.pengajuanDivisi = pengajuanDivisi.sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+      if (arsipSurat) this.cache.arsipSurat = arsipSurat.sort((a, b) => (b.tanggalSurat > a.tanggalSurat ? 1 : -1));
+      if (transaksiKeuangan) this.cache.transaksiKeuangan = transaksiKeuangan.sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+      if (barangInventaris) this.cache.barangInventaris = barangInventaris.sort((a, b) => (a.kodeBarang > b.kodeBarang ? 1 : -1));
+      if (peminjamanBarang) this.cache.peminjamanBarang = peminjamanBarang.sort((a, b) => (b.tanggalPinjam > a.tanggalPinjam ? 1 : -1));
+      this.notify();
+    } catch {
+      // ignore initial cache errors
+    }
+  }
+
+  private async verifyCloudConnectionAndMigrate(): Promise<void> {
+    const conn = await testFirestoreConnection();
+    if (!conn.ok) {
+      if (conn.quotaExceeded) {
+        this.enterQuotaCacheMode(conn.errorMessage);
+        return;
+      }
+      this.cloudConnected = false;
+      this.serverConfirmed = false;
+      this.cloudError = conn.errorMessage || 'Gagal terhubung ke server Firebase.';
+      this.lastSyncTime = 'Gagal Koneksi Firebase';
       this.notify();
       return;
     }
@@ -667,10 +886,39 @@ class StorageService {
     }
   }
 
+  private isFirestorePaused(): boolean {
+    return this.quotaExceeded || isFirestoreQuotaPaused();
+  }
+
+  private fireFirestoreSetDoc(
+    colName: string,
+    id: string,
+    data: Record<string, unknown>,
+    operationType: OperationType = OperationType.WRITE,
+    merge = true
+  ): void {
+    if (this.isFirestorePaused()) return;
+    this.trackCloudWrite(
+      setDoc(doc(db, colName, id), sanitizeForFirestore(data), { merge }),
+      operationType,
+      `${colName}/${id}`
+    );
+  }
+
+  private fireFirestoreDeleteDoc(colName: string, id: string): void {
+    if (this.isFirestorePaused()) return;
+    this.trackCloudWrite(
+      deleteDoc(doc(db, colName, id)),
+      OperationType.DELETE,
+      `${colName}/${id}`
+    );
+  }
+
   private trackCloudWrite(promise: Promise<void>, operationType: OperationType, path: string): void {
+    if (this.isFirestorePaused()) return;
     promise
       .then(() => {
-        if (this.cloudError && this.isNavigatorOnline) {
+        if (this.cloudError && this.isNavigatorOnline && !this.quotaExceeded) {
           this.cloudError = null;
           this.cloudConnected = true;
           this.serverConfirmed = true;
@@ -678,15 +926,13 @@ class StorageService {
         }
       })
       .catch(err => {
-        handleFirestoreError(err, operationType, path);
         const msg = extractFirebaseErrorMessage(err);
         if (isFirestoreQuotaError(err)) {
-          this.quotaExceeded = true;
-          this.cloudConnected = false;
-          this.cloudError = msg;
-          this.lastSyncTime = 'Kuota Harian Firestore Penuh';
-          this.notify();
-        } else if (isFirestorePermissionError(err) || !this.isNavigatorOnline) {
+          this.enterQuotaCacheMode(msg);
+          return;
+        }
+        handleFirestoreError(err, operationType, path);
+        if (isFirestorePermissionError(err) || !this.isNavigatorOnline) {
           this.cloudConnected = false;
           this.serverConfirmed = false;
           this.cloudError = msg;
@@ -723,6 +969,10 @@ class StorageService {
     });
     this.unsubscribers = [];
 
+    if (this.isFirestorePaused()) {
+      return;
+    }
+
     const handleSyncUpdate = (fromCache = false) => {
       if (!fromCache && this.isNavigatorOnline) {
         this.serverConfirmed = true;
@@ -747,11 +997,7 @@ class StorageService {
     const handleSnapshotError = (error: unknown, path: string) => {
       const rawMessage = extractFirebaseErrorMessage(error);
       if (isFirestoreQuotaError(error)) {
-        this.quotaExceeded = true;
-        this.cloudConnected = false;
-        this.cloudError = rawMessage;
-        this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
-        this.notify();
+        this.enterQuotaCacheMode(rawMessage);
         return;
       }
       handleFirestoreError(error, OperationType.GET, path);
@@ -977,17 +1223,657 @@ class StorageService {
     );
   }
 
+  private async supabaseUpsertRow(table: string, row: Record<string, unknown>): Promise<void> {
+    const client = getSupabaseClient();
+    if (!client) return;
+    try {
+      const { error } = await client.from(table).upsert(row, { onConflict: 'id' });
+      if (error) throw error;
+      if (this.cloudError && this.isNavigatorOnline) {
+        this.cloudError = null;
+        this.cloudConnected = true;
+        this.serverConfirmed = true;
+        this.notify();
+      }
+    } catch (err) {
+      const msg = extractSupabaseErrorMessage(err);
+      console.warn(`Supabase upsert [${table}] warning:`, msg);
+      this.cloudError = msg;
+      this.notify();
+    }
+  }
+
+  private async supabaseDeleteRow(table: string, id: string): Promise<void> {
+    const client = getSupabaseClient();
+    if (!client) return;
+    try {
+      const { error } = await client.from(table).delete().eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      const msg = extractSupabaseErrorMessage(err);
+      console.warn(`Supabase delete [${table}/${id}] warning:`, msg);
+      this.cloudError = msg;
+      this.notify();
+    }
+  }
+
+  private async syncNormalizedTableDiff<T extends { id: string }>(
+    table: string,
+    prevItems: T[],
+    nextItems: T[],
+    toRow: (item: T) => Record<string, unknown>,
+    idPrefix = ''
+  ): Promise<void> {
+    const client = getSupabaseClient();
+    if (!client) return;
+    try {
+      const nextIds = new Set(nextItems.map((i) => `${idPrefix}${i.id}`));
+      const removedIds = prevItems
+        .map((i) => `${idPrefix}${i.id}`)
+        .filter((fullId) => !nextIds.has(fullId));
+
+      if (removedIds.length > 0) {
+        const { error: delErr } = await client.from(table).delete().in('id', removedIds);
+        if (delErr) throw delErr;
+      }
+
+      if (nextItems.length > 0) {
+        const rows = nextItems.map(toRow);
+        const { error: upErr } = await client.from(table).upsert(rows, { onConflict: 'id' });
+        if (upErr) throw upErr;
+      }
+    } catch (err) {
+      console.warn(`Supabase normalized diff sync [${table}] warning:`, extractSupabaseErrorMessage(err));
+    }
+  }
+
+  private async fetchSupabaseTableRows(table: string): Promise<SupabaseJsonRow[] | null> {
+    const client = getSupabaseClient();
+    if (!client) return null;
+    const { data, error } = await client.from(table).select('*');
+    if (error) {
+      throw new Error(`[${table}] ${extractSupabaseErrorMessage(error)}`);
+    }
+    return (data || []) as SupabaseJsonRow[];
+  }
+
+  private applySupabaseTableRows(table: string, rows: SupabaseJsonRow[]): void {
+    switch (table) {
+      case 'santri':
+        this.cache.santri = rows
+          .map((r) => fromSupabaseRow<Santri>(r))
+          .map((s) => ({
+            ...s,
+            foto: s.foto && s.foto.includes('unsplash.com') ? '' : (s.foto || ''),
+          }));
+        break;
+      case 'dewan_keamanan':
+        this.cache.dewan = rows
+          .map((r) => fromSupabaseRow<DewanKeamanan>(r))
+          .map((d) => ({
+            ...d,
+            foto: d.foto && d.foto.includes('unsplash.com') ? '' : (d.foto || ''),
+          }));
+        break;
+      case 'perizinan':
+        this.cache.perizinan = rows
+          .map((r) => fromSupabaseRow<Perizinan>(r))
+          .sort((a, b) => (b.id > a.id ? 1 : -1));
+        break;
+      case 'pelanggaran':
+        this.cache.pelanggaran = rows
+          .map((r) => fromSupabaseRow<Pelanggaran>(r))
+          .sort((a, b) => (b.id > a.id ? 1 : -1));
+        break;
+      case 'sanksi':
+        this.cache.sanksi = rows
+          .map((r) => fromSupabaseRow<Sanksi>(r))
+          .sort((a, b) => (b.id > a.id ? 1 : -1));
+        break;
+      case 'tata_tertib':
+        this.cache.tataTertib = rows.map((r) => fromSupabaseRow<TataTertib>(r));
+        break;
+      case 'users': {
+        const list = rows.map((r) => {
+          const raw = fromSupabaseRow<UserAccount>(r);
+          return {
+            ...raw,
+            avatar: raw.avatar && raw.avatar.includes('unsplash.com') ? '' : (raw.avatar || ''),
+          };
+        });
+        this.cache.users = list;
+        const active = this.getCurrentUser();
+        if (active && list.length > 0) {
+          const fresh = list.find((u) => u.id === active.id);
+          if (fresh) {
+            this.activeSessionUser = fresh;
+            try {
+              sessionStorage.setItem(SESSION_KEYS.CURRENT_USER, JSON.stringify(fresh));
+            } catch {
+              // ignore
+            }
+          }
+        }
+        break;
+      }
+      case 'system_config': {
+        const mainRow = rows.find((r) => r.id === 'main') || rows[0];
+        if (mainRow) {
+          const prevCfg = this.cache.systemConfig;
+          const nextCfg = buildCleanSystemConfig(
+            fromSupabaseRow<SystemConfig & { id: string }>(mainRow)
+          );
+          if ((!nextCfg.ustadzList || nextCfg.ustadzList.length === 0) && prevCfg.ustadzList?.length) {
+            nextCfg.ustadzList = prevCfg.ustadzList;
+            nextCfg.dataUstadzList = prevCfg.ustadzList;
+          }
+          if ((!nextCfg.fasilitasGedungList || nextCfg.fasilitasGedungList.length === 0) && prevCfg.fasilitasGedungList?.length) {
+            nextCfg.fasilitasGedungList = prevCfg.fasilitasGedungList;
+          }
+          if ((!nextCfg.jadwalPerbaikanList || nextCfg.jadwalPerbaikanList.length === 0) && prevCfg.jadwalPerbaikanList?.length) {
+            nextCfg.jadwalPerbaikanList = prevCfg.jadwalPerbaikanList;
+          }
+          if ((!nextCfg.murotilAbsensiSantriList || nextCfg.murotilAbsensiSantriList.length === 0) && prevCfg.murotilAbsensiSantriList?.length) {
+            nextCfg.murotilAbsensiSantriList = prevCfg.murotilAbsensiSantriList;
+          }
+          if ((!nextCfg.murotilAbsensiPjList || nextCfg.murotilAbsensiPjList.length === 0) && prevCfg.murotilAbsensiPjList?.length) {
+            nextCfg.murotilAbsensiPjList = prevCfg.murotilAbsensiPjList;
+          }
+          this.cache.systemConfig = nextCfg;
+        }
+        break;
+      }
+      case 'ustadz': {
+        if (rows.length > 0) {
+          const list = rows.map((r) => fromSupabaseRow<DataUstadz>(r));
+          this.cache.systemConfig = {
+            ...this.cache.systemConfig,
+            ustadzList: list,
+            dataUstadzList: list,
+          };
+        }
+        break;
+      }
+      case 'fasilitas_gedung': {
+        if (rows.length > 0) {
+          const list = rows.map((r) =>
+            fromSupabaseRow<NonNullable<SystemConfig['fasilitasGedungList']>[number]>(r)
+          );
+          this.cache.systemConfig = {
+            ...this.cache.systemConfig,
+            fasilitasGedungList: list,
+          };
+        }
+        break;
+      }
+      case 'jadwal_agenda': {
+        const agendaItems: AgendaPengurus[] = [];
+        const perbaikanItems: NonNullable<SystemConfig['jadwalPerbaikanList']> = [];
+        for (const r of rows) {
+          if (r.sumber === 'perbaikan_aset' || String(r.id).startsWith('perbaikan__')) {
+            const parsed = fromSupabaseRow<
+              NonNullable<SystemConfig['jadwalPerbaikanList']>[number]
+            >(r);
+            const realId = String((r.data as { id?: string } | undefined)?.id || parsed.id).replace(
+              /^perbaikan__/,
+              ''
+            );
+            perbaikanItems.push({ ...parsed, id: realId });
+          } else {
+            agendaItems.push(fromSupabaseRow<AgendaPengurus>(r));
+          }
+        }
+        this.cache.agendaPengurus = agendaItems.sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+        if (perbaikanItems.length > 0) {
+          this.cache.systemConfig = {
+            ...this.cache.systemConfig,
+            jadwalPerbaikanList: perbaikanItems,
+          };
+        }
+        setTimeout(() => this.checkAndDetectTodayAgendas(), 50);
+        break;
+      }
+      case 'absensi_murotil': {
+        const absSantri: NonNullable<SystemConfig['murotilAbsensiSantriList']> = [];
+        const absPj: NonNullable<SystemConfig['murotilAbsensiPjList']> = [];
+        for (const r of rows) {
+          if (r.jenis === 'pj' || String(r.id).startsWith('abs_pj__')) {
+            const parsed = fromSupabaseRow<
+              NonNullable<SystemConfig['murotilAbsensiPjList']>[number]
+            >(r);
+            const realId = String((r.data as { id?: string } | undefined)?.id || parsed.id).replace(
+              /^abs_pj__/,
+              ''
+            );
+            absPj.push({ ...parsed, id: realId });
+          } else {
+            const parsed = fromSupabaseRow<
+              NonNullable<SystemConfig['murotilAbsensiSantriList']>[number]
+            >(r);
+            const realId = String((r.data as { id?: string } | undefined)?.id || parsed.id).replace(
+              /^abs_s__/,
+              ''
+            );
+            absSantri.push({ ...parsed, id: realId });
+          }
+        }
+        if (absSantri.length > 0 || absPj.length > 0) {
+          this.cache.systemConfig = {
+            ...this.cache.systemConfig,
+            ...(absSantri.length > 0 ? { murotilAbsensiSantriList: absSantri } : {}),
+            ...(absPj.length > 0 ? { murotilAbsensiPjList: absPj } : {}),
+          };
+        }
+        break;
+      }
+      case 'logs':
+        this.cache.logs = rows
+          .map((r) => fromSupabaseRow<LogAktivitas>(r))
+          .sort((a, b) => ((b.timestamp || 0) > (a.timestamp || 0) ? 1 : -1))
+          .slice(0, 300);
+        break;
+      case 'notifikasi':
+        this.cache.notifikasi = rows
+          .map((r) => fromSupabaseRow<NotifikasiApp>(r))
+          .sort((a, b) => (b.id > a.id ? 1 : -1))
+          .slice(0, 50);
+        break;
+      case 'koordinasi':
+        this.cache.koordinasi = rows
+          .map((r) => fromSupabaseRow<PesanKoordinasi>(r))
+          .sort((a, b) => (b.id > a.id ? 1 : -1));
+        break;
+      case 'struktur_organisasi':
+        this.cache.strukturOrganisasi = rows
+          .map((r) => fromSupabaseRow<StrukturOrganisasiNode>(r))
+          .sort((a, b) => (a.level - b.level) || (a.urutan - b.urutan));
+        break;
+      case 'evaluasi_kepengurusan':
+        this.cache.evaluasiKepengurusan = rows
+          .map((r) => fromSupabaseRow<EvaluasiKepengurusan>(r))
+          .sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+        break;
+      case 'pengajuan_divisi':
+        this.cache.pengajuanDivisi = rows
+          .map((r) => fromSupabaseRow<PengajuanDivisi>(r))
+          .sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+        break;
+      case 'surat_menyurat':
+        this.cache.arsipSurat = rows
+          .map((r) => fromSupabaseRow<ArsipSurat>(r))
+          .sort((a, b) => (b.tanggalSurat > a.tanggalSurat ? 1 : -1));
+        break;
+      case 'keuangan_transaksi':
+        this.cache.transaksiKeuangan = rows
+          .map((r) => fromSupabaseRow<TransaksiKeuangan>(r))
+          .sort((a, b) => (b.tanggal > a.tanggal ? 1 : -1));
+        break;
+      case 'perlengkapan_inventaris':
+        this.cache.barangInventaris = rows
+          .map((r) => fromSupabaseRow<BarangInventaris>(r))
+          .sort((a, b) => (a.kodeBarang > b.kodeBarang ? 1 : -1));
+        break;
+      case 'perlengkapan_peminjaman':
+        this.cache.peminjamanBarang = rows
+          .map((r) => fromSupabaseRow<PeminjamanBarang>(r))
+          .sort((a, b) => (b.tanggalPinjam > a.tanggalPinjam ? 1 : -1));
+        break;
+      default:
+        break;
+    }
+  }
+
+  public async reloadFromSupabase(): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client || !isSupabaseConfigured()) return false;
+
+    const coreTables = [
+      'system_config',
+      'santri',
+      'ustadz',
+      'fasilitas_gedung',
+      'dewan_keamanan',
+      'perizinan',
+      'pelanggaran',
+      'sanksi',
+      'tata_tertib',
+      'users',
+      'logs',
+      'notifikasi',
+      'koordinasi',
+      'struktur_organisasi',
+      'jadwal_agenda',
+      'absensi_murotil',
+      'evaluasi_kepengurusan',
+      'pengajuan_divisi',
+      'surat_menyurat',
+      'keuangan_transaksi',
+      'perlengkapan_inventaris',
+      'perlengkapan_peminjaman',
+    ] as const;
+
+    try {
+      const results = await Promise.all(
+        coreTables.map(async (tbl) => ({
+          table: tbl,
+          rows: await this.fetchSupabaseTableRows(tbl),
+        }))
+      );
+
+      for (const { table, rows } of results) {
+        if (rows) {
+          this.applySupabaseTableRows(table, rows);
+        }
+      }
+
+      this.quotaExceeded = false;
+      this.cloudError = null;
+      this.cloudConnected = true;
+      this.serverConfirmed = true;
+      this.lastSyncTime =
+        new Date().toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }) + ' WIB';
+      this.notify();
+      return true;
+    } catch (err) {
+      const msg = extractSupabaseErrorMessage(err);
+      console.warn('Reload from Supabase error:', msg);
+      this.cloudConnected = false;
+      this.serverConfirmed = false;
+      this.cloudError = msg;
+      this.lastSyncTime = 'Gagal Koneksi Supabase';
+      this.notify();
+      return false;
+    }
+  }
+
+  public initSupabaseRealtime(): void {
+    const client = getSupabaseClient();
+    if (!client || !isSupabaseConfigured()) return;
+
+    this.supabaseChannels.forEach((ch) => {
+      try {
+        void client.removeChannel(ch);
+      } catch {
+        // ignore
+      }
+    });
+    this.supabaseChannels = [];
+
+    const watchedTables = [
+      'system_config',
+      'santri',
+      'ustadz',
+      'fasilitas_gedung',
+      'dewan_keamanan',
+      'perizinan',
+      'pelanggaran',
+      'sanksi',
+      'tata_tertib',
+      'users',
+      'logs',
+      'notifikasi',
+      'koordinasi',
+      'struktur_organisasi',
+      'jadwal_agenda',
+      'absensi_murotil',
+      'evaluasi_kepengurusan',
+      'pengajuan_divisi',
+      'surat_menyurat',
+      'keuangan_transaksi',
+      'perlengkapan_inventaris',
+      'perlengkapan_peminjaman',
+    ];
+
+    const scheduleTableRefresh = (tableName: string) => {
+      if (this.supabaseRefetchTimers[tableName]) {
+        clearTimeout(this.supabaseRefetchTimers[tableName]);
+      }
+      this.supabaseRefetchTimers[tableName] = setTimeout(async () => {
+        try {
+          const rows = await this.fetchSupabaseTableRows(tableName);
+          if (rows) {
+            this.applySupabaseTableRows(tableName, rows);
+            this.cloudConnected = true;
+            this.serverConfirmed = true;
+            this.cloudError = null;
+            this.lastSyncTime =
+              new Date().toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              }) + ' WIB';
+            this.notify();
+          }
+        } catch (err) {
+          this.cloudError = extractSupabaseErrorMessage(err);
+          this.notify();
+        }
+      }, 120);
+    };
+
+    const channel = client.channel('almaliki-core-realtime');
+    for (const tbl of watchedTables) {
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: tbl },
+        () => {
+          scheduleTableRefresh(tbl);
+        }
+      );
+    }
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        this.cloudConnected = true;
+        this.serverConfirmed = true;
+        this.cloudError = null;
+        this.notify();
+      }
+    });
+
+    this.supabaseChannels.push(channel);
+  }
+
+  /**
+   * Mengumpulkan seluruh data yang ada (dari cache in-memory saat ini, IndexedDB Firestore cache,
+   * atau server Firestore jika kuota belum penuh + localStorage) untuk tombol migrasi satu klik ke Supabase.
+   */
+  public async getLegacySnapshotForMigration() {
+    const pickMergedArray = <T extends { id: string }>(...sources: T[][]): T[] => {
+      const map = new Map<string, T>();
+      for (const src of sources) {
+        if (!Array.isArray(src)) continue;
+        for (const item of src) {
+          if (item && item.id) {
+            map.set(item.id, item);
+          }
+        }
+      }
+      return Array.from(map.values());
+    };
+
+    const readFirestoreCacheOrServer = async <T extends { id: string }>(colName: string): Promise<T[]> => {
+      try {
+        const cacheSnap = await getDocsFromCache(collection(db, colName));
+        if (!cacheSnap.empty) {
+          return cacheSnap.docs.map((d) => ({ ...d.data(), id: d.id } as T));
+        }
+      } catch {
+        // ignore cache miss
+      }
+      if (!isFirestoreQuotaPaused() && !this.quotaExceeded) {
+        try {
+          const srvSnap = await getDocs(collection(db, colName));
+          if (!srvSnap.empty) {
+            return srvSnap.docs.map((d) => ({ ...d.data(), id: d.id } as T));
+          }
+        } catch {
+          // ignore if quota exceeded
+        }
+      }
+      return [];
+    };
+
+    let fsConfig: Partial<SystemConfig> = {};
+    try {
+      const cacheCfg = await getDocFromCache(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'));
+      if (cacheCfg.exists()) fsConfig = cacheCfg.data() as Partial<SystemConfig>;
+    } catch {
+      // ignore
+    }
+    if (!fsConfig || Object.keys(fsConfig).length === 0) {
+      if (!isFirestoreQuotaPaused() && !this.quotaExceeded) {
+        try {
+          const srvCfg = await getDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'));
+          if (srvCfg.exists()) fsConfig = srvCfg.data() as Partial<SystemConfig>;
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    const [
+      fsSantri,
+      fsDewan,
+      fsPerizinan,
+      fsTataTertib,
+      fsPelanggaran,
+      fsSanksi,
+      fsUsers,
+      fsLogs,
+      fsNotif,
+      fsKoordinasi,
+      fsStruktur,
+      fsAgenda,
+      fsEvaluasi,
+      fsPengajuan,
+      fsSurat,
+      fsKeuangan,
+      fsInventaris,
+      fsPeminjaman,
+    ] = await Promise.all([
+      readFirestoreCacheOrServer<Santri>(CLOUD_COLLECTIONS.SANTRI),
+      readFirestoreCacheOrServer<DewanKeamanan>(CLOUD_COLLECTIONS.DEWAN_KEAMANAN),
+      readFirestoreCacheOrServer<Perizinan>(CLOUD_COLLECTIONS.PERIZINAN),
+      readFirestoreCacheOrServer<TataTertib>(CLOUD_COLLECTIONS.TATA_TERTIB),
+      readFirestoreCacheOrServer<Pelanggaran>(CLOUD_COLLECTIONS.PELANGGARAN),
+      readFirestoreCacheOrServer<Sanksi>(CLOUD_COLLECTIONS.SANKSI),
+      readFirestoreCacheOrServer<UserAccount>(CLOUD_COLLECTIONS.USERS),
+      readFirestoreCacheOrServer<LogAktivitas>(CLOUD_COLLECTIONS.LOGS),
+      readFirestoreCacheOrServer<NotifikasiApp>(CLOUD_COLLECTIONS.NOTIFIKASI),
+      readFirestoreCacheOrServer<PesanKoordinasi>(CLOUD_COLLECTIONS.KOORDINASI),
+      readFirestoreCacheOrServer<StrukturOrganisasiNode>(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI),
+      readFirestoreCacheOrServer<AgendaPengurus>(CLOUD_COLLECTIONS.AGENDA_PENGURUS),
+      readFirestoreCacheOrServer<EvaluasiKepengurusan>(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN),
+      readFirestoreCacheOrServer<PengajuanDivisi>(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI),
+      readFirestoreCacheOrServer<ArsipSurat>(CLOUD_COLLECTIONS.SURAT_MENYURAT),
+      readFirestoreCacheOrServer<TransaksiKeuangan>(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI),
+      readFirestoreCacheOrServer<BarangInventaris>(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS),
+      readFirestoreCacheOrServer<PeminjamanBarang>(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN),
+    ]);
+
+    const localSantriDirect = this.readLocalJsonArray<Santri>('almaliki_data_santri');
+    const localSantriLegacy = this.readLocalJsonArray<Santri>('sim_kamtib_santri_v2');
+    const localUstadzDirect = this.readLocalJsonArray<DataUstadz>('almaliki_data_ustadzah');
+    const localCfgLegacy = this.readLocalJsonObject<SystemConfig>('sim_kamtib_system_config_v2');
+
+    const currentCfg = this.getSystemConfig();
+    const mergedCfg = buildCleanSystemConfig({
+      ...fsConfig,
+      ...(localCfgLegacy || {}),
+      ...currentCfg,
+    });
+
+    const ustadzList = pickMergedArray<DataUstadz>(
+      currentCfg.ustadzList || [],
+      currentCfg.dataUstadzList || [],
+      fsConfig.ustadzList || [],
+      fsConfig.dataUstadzList || [],
+      localCfgLegacy?.ustadzList || [],
+      localCfgLegacy?.dataUstadzList || [],
+      localUstadzDirect
+    );
+
+    const fasilitasGedungList = pickMergedArray(
+      currentCfg.fasilitasGedungList || [],
+      fsConfig.fasilitasGedungList || [],
+      localCfgLegacy?.fasilitasGedungList || []
+    );
+
+    const jadwalPerbaikanList = pickMergedArray(
+      currentCfg.jadwalPerbaikanList || [],
+      fsConfig.jadwalPerbaikanList || [],
+      localCfgLegacy?.jadwalPerbaikanList || []
+    );
+
+    const murotilAbsensiSantriList = pickMergedArray(
+      currentCfg.murotilAbsensiSantriList || [],
+      fsConfig.murotilAbsensiSantriList || [],
+      localCfgLegacy?.murotilAbsensiSantriList || []
+    );
+
+    const murotilAbsensiPjList = pickMergedArray(
+      currentCfg.murotilAbsensiPjList || [],
+      fsConfig.murotilAbsensiPjList || [],
+      localCfgLegacy?.murotilAbsensiPjList || []
+    );
+
+    mergedCfg.ustadzList = ustadzList;
+    mergedCfg.dataUstadzList = ustadzList;
+    mergedCfg.fasilitasGedungList = fasilitasGedungList;
+    mergedCfg.jadwalPerbaikanList = jadwalPerbaikanList;
+    mergedCfg.murotilAbsensiSantriList = murotilAbsensiSantriList;
+    mergedCfg.murotilAbsensiPjList = murotilAbsensiPjList;
+
+    return {
+      systemConfig: mergedCfg,
+      ustadzList,
+      fasilitasGedungList,
+      jadwalPerbaikanList,
+      murotilAbsensiSantriList,
+      murotilAbsensiPjList,
+      santri: pickMergedArray(this.cache.santri, fsSantri, localSantriDirect, localSantriLegacy),
+      dewan: pickMergedArray(this.cache.dewan, fsDewan, this.readLocalJsonArray<DewanKeamanan>('sim_kamtib_dewan_keamanan_v2')),
+      perizinan: pickMergedArray(this.cache.perizinan, fsPerizinan, this.readLocalJsonArray<Perizinan>('sim_kamtib_perizinan_v2')),
+      tataTertib: pickMergedArray(this.cache.tataTertib, fsTataTertib, this.readLocalJsonArray<TataTertib>('sim_kamtib_tata_tertib_v2')),
+      pelanggaran: pickMergedArray(this.cache.pelanggaran, fsPelanggaran, this.readLocalJsonArray<Pelanggaran>('sim_kamtib_pelanggaran_v2')),
+      sanksi: pickMergedArray(this.cache.sanksi, fsSanksi, this.readLocalJsonArray<Sanksi>('sim_kamtib_sanksi_v2')),
+      users: pickMergedArray(this.cache.users, fsUsers, this.readLocalJsonArray<UserAccount>('sim_kamtib_rbac_users_v2'), INITIAL_USERS),
+      logs: pickMergedArray(this.cache.logs, fsLogs, this.readLocalJsonArray<LogAktivitas>('sim_kamtib_logs_v2')),
+      notifikasi: pickMergedArray(this.cache.notifikasi, fsNotif, this.readLocalJsonArray<NotifikasiApp>('sim_kamtib_notifikasi_v2')),
+      koordinasi: pickMergedArray(this.cache.koordinasi, fsKoordinasi, this.readLocalJsonArray<PesanKoordinasi>('sim_kamtib_koordinasi_v2')),
+      strukturOrganisasi: pickMergedArray(this.cache.strukturOrganisasi, fsStruktur, this.readLocalJsonArray<StrukturOrganisasiNode>('sim_maliki_struktur_v1')),
+      agendaPengurus: pickMergedArray(this.cache.agendaPengurus, fsAgenda, this.readLocalJsonArray<AgendaPengurus>('sim_maliki_agenda_v1')),
+      evaluasiKepengurusan: pickMergedArray(this.cache.evaluasiKepengurusan, fsEvaluasi, this.readLocalJsonArray<EvaluasiKepengurusan>('sim_maliki_evaluasi_v1')),
+      pengajuanDivisi: pickMergedArray(this.cache.pengajuanDivisi, fsPengajuan, this.readLocalJsonArray<PengajuanDivisi>('sim_maliki_pengajuan_v1')),
+      arsipSurat: pickMergedArray(this.cache.arsipSurat, fsSurat, this.readLocalJsonArray<ArsipSurat>('sim_maliki_surat_v1')),
+      transaksiKeuangan: pickMergedArray(this.cache.transaksiKeuangan, fsKeuangan, this.readLocalJsonArray<TransaksiKeuangan>('sim_maliki_keuangan_v1')),
+      barangInventaris: pickMergedArray(this.cache.barangInventaris, fsInventaris, this.readLocalJsonArray<BarangInventaris>('sim_maliki_inventaris_v1')),
+      peminjamanBarang: pickMergedArray(this.cache.peminjamanBarang, fsPeminjaman, this.readLocalJsonArray<PeminjamanBarang>('sim_maliki_peminjaman_v1')),
+    };
+  }
+
   private async uploadCollectionBatch<T extends { id: string }>(collectionName: string, items: T[]) {
+    if (this.isFirestorePaused()) return;
     try {
       for (const item of items) {
         await setDoc(doc(db, collectionName, item.id), sanitizeForFirestore(item), { merge: true });
       }
     } catch (err) {
+      if (isFirestoreQuotaError(err)) {
+        this.enterQuotaCacheMode(extractFirebaseErrorMessage(err));
+        return;
+      }
       console.warn(`Batch upload ${collectionName} warning:`, err);
     }
   }
 
   private async replaceCollectionInCloud<T extends { id: string }>(collectionName: string, items: T[]) {
+    if (this.isFirestorePaused()) return;
     try {
       const existingSnap = await getDocs(collection(db, collectionName));
       const newIds = new Set(items.map(i => i.id));
@@ -998,11 +1884,52 @@ class StorageService {
       }
       await this.uploadCollectionBatch(collectionName, items);
     } catch (err) {
+      if (isFirestoreQuotaError(err)) {
+        this.enterQuotaCacheMode(extractFirebaseErrorMessage(err));
+        return;
+      }
       console.warn(`Replace collection ${collectionName} warning:`, err);
     }
   }
 
+  private async replaceSupabaseTable(
+    table: string,
+    rows: Array<{ id: string } & Record<string, unknown>>,
+    matchFilter?: { column: string; value: string }
+  ): Promise<void> {
+    const client = getSupabaseClient();
+    if (!client) return;
+    try {
+      let query = client.from(table).select('id');
+      if (matchFilter) {
+        query = query.eq(matchFilter.column, matchFilter.value);
+      }
+      const { data: existingRows, error: fetchErr } = await query;
+      if (fetchErr) throw fetchErr;
+
+      const newIds = new Set(rows.map((r) => r.id));
+      const toDelete = (existingRows || [])
+        .map((r) => String((r as { id: string }).id))
+        .filter((id) => !newIds.has(id));
+
+      for (let i = 0; i < toDelete.length; i += 200) {
+        const chunk = toDelete.slice(i, i + 200);
+        const { error: delErr } = await client.from(table).delete().in('id', chunk);
+        if (delErr) throw delErr;
+      }
+
+      for (let i = 0; i < rows.length; i += 200) {
+        const chunk = rows.slice(i, i + 200);
+        const { error: upErr } = await client.from(table).upsert(chunk, { onConflict: 'id' });
+        if (upErr) throw upErr;
+      }
+    } catch (err) {
+      console.warn(`Replace Supabase table ${table} warning:`, extractSupabaseErrorMessage(err));
+    }
+  }
+
   public getCloudSyncStatus(): CloudSyncTelemetry {
+    const supabaseActive = isSupabaseConfigured();
     const total =
       this.cache.santri.length +
       this.cache.dewan.length +
@@ -1024,7 +1951,7 @@ class StorageService {
     let status: CloudSyncTelemetry['status'] = 'syncing';
     if (!this.isNavigatorOnline) {
       status = 'offline';
-    } else if (this.cloudError || this.quotaExceeded) {
+    } else if (this.cloudError || (!supabaseActive && this.quotaExceeded)) {
       status = 'error';
     } else if (this.serverConfirmed) {
       status = 'connected';
@@ -1035,46 +1962,79 @@ class StorageService {
       : this.cloudError || undefined;
 
     return {
+      provider: supabaseActive ? 'supabase' : 'firebase',
+      supabaseConfigured: supabaseActive,
       status,
       lastSyncTime: this.lastSyncTime,
       cloudConnected: status === 'connected',
-      quotaExceeded: this.quotaExceeded,
+      quotaExceeded: supabaseActive ? false : this.quotaExceeded,
       errorMessage,
       migrationNotification: this.migrationNotification,
-      databaseId: FIRESTORE_DATABASE_ID,
-      projectId: FIREBASE_PROJECT_ID,
-      activeListenersCount: this.unsubscribers.length,
+      databaseId: supabaseActive ? 'supabase-postgres-realtime' : FIRESTORE_DATABASE_ID,
+      projectId: supabaseActive ? getSupabaseProjectHost() : FIREBASE_PROJECT_ID,
+      activeListenersCount: supabaseActive
+        ? Math.max(1, this.supabaseChannels.length * 22)
+        : this.unsubscribers.length,
       totalSyncedItems: total,
     };
   }
 
   /**
-   * Automatically wakes up Firestore network so active onSnapshot listeners sync delta changes
-   * without re-reading every collection from the server (protects Firestore free daily read quota).
+   * Automatically wakes up Supabase or Firestore network so active realtime listeners stay fresh.
    */
   public async resyncOnResume(force = false): Promise<void> {
+    if (isSupabaseConfigured()) {
+      const now = Date.now();
+      if (!force && now - this.lastResumeSyncAt < 15_000) return;
+      this.lastResumeSyncAt = now;
+      await this.reloadFromSupabase();
+      if (this.supabaseChannels.length === 0) {
+        this.initSupabaseRealtime();
+      }
+      return;
+    }
+
+    if (!force && (this.quotaExceeded || isFirestoreQuotaPaused())) {
+      return;
+    }
+
     const now = Date.now();
     if (!force && now - this.lastResumeSyncAt < 15_000) {
       return;
     }
     this.lastResumeSyncAt = now;
 
+    if (force) {
+      await resumeFirestoreNetworkFromQuota();
+      this.quotaExceeded = false;
+      await this.verifyCloudConnectionAndMigrate();
+      if (!this.quotaExceeded && this.unsubscribers.length === 0) {
+        this.initRealtimeCloudSync();
+      }
+      return;
+    }
+
     if (this.unsubscribers.length === 0) {
       this.initRealtimeCloudSync();
     }
 
     await resyncFirestoreNetwork();
-    if (force) {
-      await this.verifyCloudConnectionAndMigrate();
-    }
   }
 
   /**
    * Manual pull triggered explicitly by user settings button.
-   * Falls back seamlessly to Firestore IndexedDB cache if daily free read quota is reached.
+   * Reads directly from Supabase when configured, otherwise falls back to Firestore.
    */
   public async forcePullFromCloud(): Promise<boolean> {
+    if (isSupabaseConfigured()) {
+      const ok = await this.reloadFromSupabase();
+      if (ok && this.supabaseChannels.length === 0) {
+        this.initSupabaseRealtime();
+      }
+      return ok;
+    }
     try {
+      await resumeFirestoreNetworkFromQuota();
       let hitQuota = false;
       let permissionErrorMsg: string | null = null;
       let networkErrorMsg: string | null = null;
@@ -1091,7 +2051,6 @@ class StorageService {
         } catch (err) {
           if (isFirestoreQuotaError(err)) {
             hitQuota = true;
-            this.quotaExceeded = true;
           } else if (isFirestorePermissionError(err)) {
             permissionErrorMsg = extractFirebaseErrorMessage(err);
           } else if (!networkErrorMsg) {
@@ -1120,7 +2079,6 @@ class StorageService {
         } catch (err) {
           if (isFirestoreQuotaError(err)) {
             hitQuota = true;
-            this.quotaExceeded = true;
           } else if (isFirestorePermissionError(err)) {
             permissionErrorMsg = extractFirebaseErrorMessage(err);
           } else if (!networkErrorMsg) {
@@ -1194,10 +2152,14 @@ class StorageService {
       }
 
       if (hitQuota) {
-        this.cloudConnected = false;
-        this.cloudError = 'Kuota baca harian Firestore tercapai.';
-        this.lastSyncTime = 'Kuota Harian Firestore Penuh (Mode Cache Aktif)';
-        this.notify();
+        if (santri.length) this.cache.santri = santri;
+        if (perizinan.length) this.cache.perizinan = perizinan.sort((a, b) => (b.id > a.id ? 1 : -1));
+        if (pelanggaran.length) this.cache.pelanggaran = pelanggaran.sort((a, b) => (b.id > a.id ? 1 : -1));
+        if (sanksi.length) this.cache.sanksi = sanksi.sort((a, b) => (b.id > a.id ? 1 : -1));
+        if (tataTertib.length) this.cache.tataTertib = tataTertib;
+        if (dewan.length) this.cache.dewan = dewan;
+        if (users.length) this.cache.users = users;
+        this.enterQuotaCacheMode('Kuota baca harian Firestore tercapai (reset besok). Mode cache aktif.');
         return false;
       }
 
@@ -1213,6 +2175,9 @@ class StorageService {
       this.quotaExceeded = false;
       this.cloudError = null;
       this.serverConfirmed = true;
+      if (this.unsubscribers.length === 0) {
+        this.initRealtimeCloudSync();
+      }
       this.cache.santri = santri;
       this.cache.perizinan = perizinan.sort((a, b) => (b.id > a.id ? 1 : -1));
       this.cache.pelanggaran = pelanggaran.sort((a, b) => (b.id > a.id ? 1 : -1));
@@ -1295,12 +2260,12 @@ class StorageService {
 
     this.notify();
 
-    // Async sync to central Firestore database
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.USERS, user.id), sanitizeForFirestore(user), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.USERS}/${user.id}`
-    );
+    // Async sync to central database (Supabase or Firestore)
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('users', toUserRow(user));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.USERS, user.id, user as unknown as Record<string, unknown>);
+    }
   }
 
   public deleteUser(userId: string) {
@@ -1309,12 +2274,11 @@ class StorageService {
     this.addLog('Hapus Akun RBAC', `Menonaktifkan / menghapus akun ID: ${userId}`, 'admin');
     this.notify();
 
-    // Async delete from central Firestore database
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.USERS, userId)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.USERS}/${userId}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('users', userId);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.USERS, userId);
+    }
   }
 
   // Authentication via 6-Digit PIN (iPhone Lock Screen Style)
@@ -1430,12 +2394,56 @@ class StorageService {
     this.addLog('Konfigurasi Sistem', 'Admin memperbarui parameter pengaturan manual di Option Panel.', 'admin');
     this.notify();
 
-    // Partial merge write so concurrent updates across devices on different fields never overwrite each other
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(patchPayload), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('system_config', toSystemConfigRow(updated));
+      if (config.ustadzList !== undefined || config.dataUstadzList !== undefined) {
+        const prevUstadz = current.ustadzList || current.dataUstadzList || [];
+        const nextUstadz = updated.ustadzList || [];
+        void this.syncNormalizedTableDiff('ustadz', prevUstadz, nextUstadz, toUstadzRow);
+      }
+      if (config.fasilitasGedungList !== undefined) {
+        void this.syncNormalizedTableDiff(
+          'fasilitas_gedung',
+          current.fasilitasGedungList || [],
+          updated.fasilitasGedungList || [],
+          toFasilitasGedungRow
+        );
+      }
+      if (config.jadwalPerbaikanList !== undefined) {
+        void this.syncNormalizedTableDiff(
+          'jadwal_agenda',
+          current.jadwalPerbaikanList || [],
+          updated.jadwalPerbaikanList || [],
+          toJadwalAgendaFromPerbaikan,
+          'perbaikan__'
+        );
+      }
+      if (config.murotilAbsensiSantriList !== undefined) {
+        void this.syncNormalizedTableDiff(
+          'absensi_murotil',
+          current.murotilAbsensiSantriList || [],
+          updated.murotilAbsensiSantriList || [],
+          toAbsensiSantriRow,
+          'abs_s__'
+        );
+      }
+      if (config.murotilAbsensiPjList !== undefined) {
+        void this.syncNormalizedTableDiff(
+          'absensi_murotil',
+          current.murotilAbsensiPjList || [],
+          updated.murotilAbsensiPjList || [],
+          toAbsensiPjRow,
+          'abs_pj__'
+        );
+      }
+    } else {
+      // Partial merge write so concurrent updates across devices on different fields never overwrite each other
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.SYSTEM_CONFIG,
+        'main',
+        patchPayload as unknown as Record<string, unknown>
+      );
+    }
   }
 
   // ==========================================
@@ -1533,12 +2541,11 @@ class StorageService {
     this.cache.santri = list;
     this.notify();
 
-    // Realtime write to central Firestore database
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('santri', toSantriRow(santri));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.SANTRI, santri.id, santri as unknown as Record<string, unknown>);
+    }
   }
 
   public deleteSantri(id: string) {
@@ -1551,12 +2558,11 @@ class StorageService {
     }
     this.notify();
 
-    // Realtime delete from central Firestore database
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.SANTRI}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('santri', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.SANTRI, id);
+    }
   }
 
   public suspendSantri(santriId: string, suspendUntilDate: string, alasan: string) {
@@ -1573,12 +2579,11 @@ class StorageService {
       );
       this.notify();
 
-      // Write to central Firestore
-      this.trackCloudWrite(
-        setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true }),
-        OperationType.WRITE,
-        `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`
-      );
+      if (isSupabaseConfigured()) {
+        void this.supabaseUpsertRow('santri', toSantriRow(santri));
+      } else {
+        this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.SANTRI, santri.id, santri as unknown as Record<string, unknown>);
+      }
     }
   }
 
@@ -1596,11 +2601,11 @@ class StorageService {
       );
       this.notify();
 
-      this.trackCloudWrite(
-        setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true }),
-        OperationType.WRITE,
-        `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`
-      );
+      if (isSupabaseConfigured()) {
+        void this.supabaseUpsertRow('santri', toSantriRow(santri));
+      } else {
+        this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.SANTRI, santri.id, santri as unknown as Record<string, unknown>);
+      }
     }
   }
 
@@ -1622,12 +2627,11 @@ class StorageService {
     this.cache.dewan = list;
     this.notify();
 
-    // Central Firestore sync
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, pengurus.id), sanitizeForFirestore(pengurus), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.DEWAN_KEAMANAN}/${pengurus.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('dewan_keamanan', toDewanKeamananRow(pengurus));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, pengurus.id, pengurus as unknown as Record<string, unknown>);
+    }
   }
 
   public deleteDewanKeamanan(id: string) {
@@ -1635,11 +2639,11 @@ class StorageService {
     this.cache.dewan = list;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.DEWAN_KEAMANAN}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('dewan_keamanan', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, id);
+    }
   }
 
   // ==========================================
@@ -1727,12 +2731,11 @@ class StorageService {
     this.cache.perizinan = list;
     this.notify();
 
-    // Realtime write to central Firestore database
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, izin.id), sanitizeForFirestore(izin), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.PERIZINAN}/${izin.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('perizinan', toPerizinanRow(izin));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.PERIZINAN, izin.id, izin as unknown as Record<string, unknown>);
+    }
   }
 
   public deletePerizinan(id: string, alasan?: string) {
@@ -1758,15 +2761,16 @@ class StorageService {
     this.cache.perizinan = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.PERIZINAN}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('perizinan', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.PERIZINAN, id);
+    }
   }
 
   // Automated Tardiness Detection
   public checkAndDetectLatePermits(): number {
+    if ((!isSupabaseConfigured() && this.isFirestorePaused()) || !this.isNavigatorOnline) return 0;
     const list = this.getPerizinanList();
     if (list.length === 0) return 0;
     const now = new Date();
@@ -1785,8 +2789,11 @@ class StorageService {
               status: 'Terlambat' as const,
               menitKeterlambatan: diffMinutes,
             };
-            setDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, updated.id), sanitizeForFirestore(updated), { merge: true })
-              .catch(() => {});
+            if (isSupabaseConfigured()) {
+              void this.supabaseUpsertRow('perizinan', toPerizinanRow(updated));
+            } else {
+              this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.PERIZINAN, updated.id, updated as unknown as Record<string, unknown>);
+            }
             return updated;
           }
         }
@@ -1795,13 +2802,16 @@ class StorageService {
         const deadline = new Date(deadlineStr);
         if (!isNaN(deadline.getTime())) {
           const diffMinutes = Math.floor((now.getTime() - deadline.getTime()) / 60000);
-          if (diffMinutes > 0 && diffMinutes !== izin.menitKeterlambatan) {
+          if (diffMinutes > 0 && Math.abs(diffMinutes - (izin.menitKeterlambatan || 0)) >= 15) {
             const updated = {
               ...izin,
               menitKeterlambatan: diffMinutes,
             };
-            setDoc(doc(db, CLOUD_COLLECTIONS.PERIZINAN, updated.id), sanitizeForFirestore(updated), { merge: true })
-              .catch(() => {});
+            if (isSupabaseConfigured()) {
+              void this.supabaseUpsertRow('perizinan', toPerizinanRow(updated));
+            } else {
+              this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.PERIZINAN, updated.id, updated as unknown as Record<string, unknown>);
+            }
             return updated;
           }
         }
@@ -1834,11 +2844,11 @@ class StorageService {
     this.cache.tataTertib = list;
     this.notify();
 
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.TATA_TERTIB, tt.id), sanitizeForFirestore(tt), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.TATA_TERTIB}/${tt.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('tata_tertib', toTataTertibRow(tt));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.TATA_TERTIB, tt.id, tt as unknown as Record<string, unknown>);
+    }
   }
 
   public deleteTataTertib(id: string) {
@@ -1846,11 +2856,11 @@ class StorageService {
     this.cache.tataTertib = list;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.TATA_TERTIB, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.TATA_TERTIB}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('tata_tertib', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.TATA_TERTIB, id);
+    }
   }
 
   // ==========================================
@@ -1910,12 +2920,11 @@ class StorageService {
     this.cache.pelanggaran = list;
     this.notify();
 
-    // Central Firestore sync
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.PELANGGARAN, pel.id), sanitizeForFirestore(pel), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.PELANGGARAN}/${pel.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('pelanggaran', toPelanggaranRow(pel));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.PELANGGARAN, pel.id, pel as unknown as Record<string, unknown>);
+    }
   }
 
   public deletePelanggaran(id: string, alasan?: string) {
@@ -1940,11 +2949,11 @@ class StorageService {
     this.cache.pelanggaran = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.PELANGGARAN, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.PELANGGARAN}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('pelanggaran', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.PELANGGARAN, id);
+    }
   }
 
   private updateSantriPoin(santriId: string, poinDelta: number) {
@@ -1953,11 +2962,11 @@ class StorageService {
     if (santri) {
       santri.poinPelanggaran = Math.max(0, (santri.poinPelanggaran || 0) + poinDelta);
       this.cache.santri = santriList;
-      this.trackCloudWrite(
-        setDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, santri.id), sanitizeForFirestore(santri), { merge: true }),
-        OperationType.WRITE,
-        `${CLOUD_COLLECTIONS.SANTRI}/${santri.id}`
-      );
+      if (isSupabaseConfigured()) {
+        void this.supabaseUpsertRow('santri', toSantriRow(santri));
+      } else {
+        this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.SANTRI, santri.id, santri as unknown as Record<string, unknown>);
+      }
     }
   }
 
@@ -2031,12 +3040,11 @@ class StorageService {
     this.cache.sanksi = list;
     this.notify();
 
-    // Central Firestore sync
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.SANKSI, preparedSanksi.id), sanitizeForFirestore(preparedSanksi), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.SANKSI}/${preparedSanksi.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('sanksi', toSanksiRow(preparedSanksi));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.SANKSI, preparedSanksi.id, preparedSanksi as unknown as Record<string, unknown>);
+    }
   }
 
   public deleteSanksi(id: string, alasan?: string) {
@@ -2062,11 +3070,11 @@ class StorageService {
     this.cache.sanksi = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.SANKSI, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.SANKSI}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('sanksi', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.SANKSI, id);
+    }
   }
 
   // Audit Hash & Immutable Log Engine
@@ -2116,9 +3124,15 @@ class StorageService {
     this.cache.logs = logs;
     this.notify();
 
-    // Central Firestore sync
-    setDoc(doc(db, CLOUD_COLLECTIONS.LOGS, newLog.id), sanitizeForFirestore(newLog), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.LOGS}/${newLog.id}`));
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('logs', toLogsRow(newLog));
+    } else if (!this.quotaExceeded && !isFirestoreQuotaPaused()) {
+      this.trackCloudWrite(
+        setDoc(doc(db, CLOUD_COLLECTIONS.LOGS, newLog.id), sanitizeForFirestore(newLog), { merge: true }),
+        OperationType.WRITE,
+        `${CLOUD_COLLECTIONS.LOGS}/${newLog.id}`
+      );
+    }
 
     return newLog;
   }
@@ -2145,8 +3159,11 @@ class StorageService {
     this.cache.notifikasi = current;
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, newNotif.id), sanitizeForFirestore(newNotif), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.NOTIFIKASI}/${newNotif.id}`));
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('notifikasi', toNotifikasiRow(newNotif));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.NOTIFIKASI, newNotif.id, newNotif as unknown as Record<string, unknown>);
+    }
   }
 
   public markAllNotificationsRead() {
@@ -2154,8 +3171,14 @@ class StorageService {
     this.cache.notifikasi = current;
     this.notify();
 
-    for (const notif of current) {
-      setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, notif.id), { dibaca: true }, { merge: true }).catch(() => {});
+    if (isSupabaseConfigured()) {
+      for (const notif of current) {
+        void this.supabaseUpsertRow('notifikasi', toNotifikasiRow(notif));
+      }
+    } else if (!this.isFirestorePaused()) {
+      for (const notif of current) {
+        this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.NOTIFIKASI, notif.id, { dibaca: true });
+      }
     }
   }
 
@@ -2164,7 +3187,12 @@ class StorageService {
     this.cache.notifikasi = current;
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, id), { dibaca: true }, { merge: true }).catch(() => {});
+    if (isSupabaseConfigured()) {
+      const target = current.find(n => n.id === id);
+      if (target) void this.supabaseUpsertRow('notifikasi', toNotifikasiRow(target));
+    } else {
+      this.fireFirestoreSetDoc(CLOUD_COLLECTIONS.NOTIFIKASI, id, { dibaca: true });
+    }
   }
 
   public deleteNotification(id: string) {
@@ -2172,7 +3200,11 @@ class StorageService {
     this.cache.notifikasi = current;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, id)).catch(() => {});
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('notifikasi', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.NOTIFIKASI, id);
+    }
   }
 
   // ==========================================
@@ -2217,8 +3249,15 @@ class StorageService {
     this.cache.koordinasi = list;
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, normalizedPesan.id), sanitizeForFirestore(normalizedPesan), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.KOORDINASI}/${normalizedPesan.id}`));
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('koordinasi', toKoordinasiRow(normalizedPesan));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.KOORDINASI,
+        normalizedPesan.id,
+        normalizedPesan as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public markKoordinasiAsRead(pesanId: string, userId: string) {
@@ -2246,8 +3285,15 @@ class StorageService {
         this.cache.koordinasi = list;
         this.notify();
 
-        setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(updated), { merge: true })
-          .catch(() => {});
+        if (isSupabaseConfigured()) {
+          void this.supabaseUpsertRow('koordinasi', toKoordinasiRow(updated));
+        } else {
+          this.fireFirestoreSetDoc(
+            CLOUD_COLLECTIONS.KOORDINASI,
+            pesanId,
+            updated as unknown as Record<string, unknown>
+          );
+        }
       }
     }
   }
@@ -2292,8 +3338,15 @@ class StorageService {
       this.cache.koordinasi = list;
       this.notify();
 
-      setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(updated), { merge: true })
-        .catch(() => {});
+      if (isSupabaseConfigured()) {
+        void this.supabaseUpsertRow('koordinasi', toKoordinasiRow(updated));
+      } else {
+        this.fireFirestoreSetDoc(
+          CLOUD_COLLECTIONS.KOORDINASI,
+          pesanId,
+          updated as unknown as Record<string, unknown>
+        );
+      }
     }
   }
 
@@ -2319,8 +3372,15 @@ class StorageService {
       this.cache.koordinasi = list;
       this.notify();
 
-      setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(item), { merge: true })
-        .catch(() => {});
+      if (isSupabaseConfigured()) {
+        void this.supabaseUpsertRow('koordinasi', toKoordinasiRow(item));
+      } else {
+        this.fireFirestoreSetDoc(
+          CLOUD_COLLECTIONS.KOORDINASI,
+          pesanId,
+          item as unknown as Record<string, unknown>
+        );
+      }
     }
   }
 
@@ -2360,8 +3420,15 @@ class StorageService {
     );
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId), sanitizeForFirestore(updated), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.KOORDINASI}/${pesanId}`));
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('koordinasi', toKoordinasiRow(updated));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.KOORDINASI,
+        pesanId,
+        updated as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public deleteKoordinasi(pesanId: string) {
@@ -2369,8 +3436,11 @@ class StorageService {
     this.cache.koordinasi = list;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, pesanId))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.KOORDINASI}/${pesanId}`));
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('koordinasi', pesanId);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.KOORDINASI, pesanId);
+    }
   }
 
   public deleteAllKoordinasi() {
@@ -2379,9 +3449,14 @@ class StorageService {
     this.addLog('Hapus Semua Pesan Masuk', `Ketua Pondok menghapus seluruh ${existingIds.length} pesan koordinasi masuk.`, 'admin');
     this.notify();
 
-    for (const id of existingIds) {
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.KOORDINASI, id))
-        .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.KOORDINASI}/${id}`));
+    if (isSupabaseConfigured()) {
+      for (const id of existingIds) {
+        void this.supabaseDeleteRow('koordinasi', id);
+      }
+    } else if (!this.isFirestorePaused()) {
+      for (const id of existingIds) {
+        this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.KOORDINASI, id);
+      }
     }
   }
 
@@ -2413,8 +3488,15 @@ class StorageService {
     this.addLog('Struktur Organisasi', `Memperbarui jabatan struktur: ${node.jabatan} (${node.namaPengurus})`, 'admin');
     this.notify();
 
-    setDoc(doc(db, CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, node.id), sanitizeForFirestore(node), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI}/${node.id}`));
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('struktur_organisasi', toStrukturOrganisasiRow(node));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI,
+        node.id,
+        node as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public deleteStrukturNode(id: string) {
@@ -2422,8 +3504,11 @@ class StorageService {
     this.cache.strukturOrganisasi = updated;
     this.notify();
 
-    deleteDoc(doc(db, CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, id))
-      .catch(err => handleFirestoreError(err, OperationType.DELETE, `${CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI}/${id}`));
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('struktur_organisasi', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, id);
+    }
   }
 
   // ==========================================
@@ -2434,6 +3519,7 @@ class StorageService {
   }
 
   public checkAndDetectTodayAgendas(): number {
+    if ((!isSupabaseConfigured() && this.isFirestorePaused()) || !this.isNavigatorOnline) return 0;
     const todayWib = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
     const agendas = this.getAgendaPengurus();
     const todayAgendas = agendas.filter((a) => a.tanggal === todayWib && a.status !== 'Selesai');
@@ -2446,6 +3532,9 @@ class StorageService {
       const detId = `notif_agenda_${agd.id}_${todayWib}`;
       const judul = `Agenda Hari Ini: ${agd.judul}`;
       const pesan = `Jadwal hari ini (${todayWib}) pukul ${agd.waktu || '08:00'} WIB di ${agd.tempat || 'Aula Pondok'} · Divisi: ${agd.divisiTerkait || 'Semua Pengurus'}.`;
+      const contentKey = `${detId}::${judul}::${pesan}`;
+      if (this.detectedAgendaNotifKeys.has(contentKey)) continue;
+
       const existingIdx = currentNotifs.findIndex((n) => n.id === detId);
 
       if (existingIdx === -1) {
@@ -2460,7 +3549,16 @@ class StorageService {
         };
         currentNotifs = [newNotif, ...currentNotifs].slice(0, 60);
         addedCount++;
-        setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, detId), sanitizeForFirestore(newNotif), { merge: true }).catch(() => {});
+        this.detectedAgendaNotifKeys.add(contentKey);
+        if (isSupabaseConfigured()) {
+          void this.supabaseUpsertRow('notifikasi', toNotifikasiRow(newNotif));
+        } else {
+          this.fireFirestoreSetDoc(
+            CLOUD_COLLECTIONS.NOTIFIKASI,
+            detId,
+            newNotif as unknown as Record<string, unknown>
+          );
+        }
       } else if (currentNotifs[existingIdx].judul !== judul || currentNotifs[existingIdx].pesan !== pesan) {
         const updatedNotif: NotifikasiApp = {
           ...currentNotifs[existingIdx],
@@ -2471,7 +3569,18 @@ class StorageService {
         };
         currentNotifs[existingIdx] = updatedNotif;
         addedCount++;
-        setDoc(doc(db, CLOUD_COLLECTIONS.NOTIFIKASI, detId), sanitizeForFirestore(updatedNotif), { merge: true }).catch(() => {});
+        this.detectedAgendaNotifKeys.add(contentKey);
+        if (isSupabaseConfigured()) {
+          void this.supabaseUpsertRow('notifikasi', toNotifikasiRow(updatedNotif));
+        } else {
+          this.fireFirestoreSetDoc(
+            CLOUD_COLLECTIONS.NOTIFIKASI,
+            detId,
+            updatedNotif as unknown as Record<string, unknown>
+          );
+        }
+      } else {
+        this.detectedAgendaNotifKeys.add(contentKey);
       }
     }
 
@@ -2491,11 +3600,15 @@ class StorageService {
     this.addLog('Agenda Pengurus', `Menyimpan agenda kepengurusan: ${agenda.judul} (${agenda.tanggal})`, 'admin');
     this.notify();
 
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, agenda.id), sanitizeForFirestore(agenda), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${agenda.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('jadwal_agenda', toJadwalAgendaFromPengurus(agenda));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.AGENDA_PENGURUS,
+        agenda.id,
+        agenda as unknown as Record<string, unknown>
+      );
+    }
 
     this.checkAndDetectTodayAgendas();
   }
@@ -2505,11 +3618,11 @@ class StorageService {
     this.cache.agendaPengurus = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.AGENDA_PENGURUS, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.AGENDA_PENGURUS}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('jadwal_agenda', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.AGENDA_PENGURUS, id);
+    }
   }
 
   public getEvaluasiKepengurusan(): EvaluasiKepengurusan[] {
@@ -2525,11 +3638,15 @@ class StorageService {
     this.addLog('Evaluasi Kepengurusan', `Ketua Pondok mencatat evaluasi divisi ${evaluasi.divisi}: ${evaluasi.judul}`, 'admin');
     this.notify();
 
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, evaluasi.id), sanitizeForFirestore(evaluasi), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN}/${evaluasi.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('evaluasi_kepengurusan', toEvaluasiKepengurusanRow(evaluasi));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN,
+        evaluasi.id,
+        evaluasi as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public deleteEvaluasiKepengurusan(id: string) {
@@ -2537,11 +3654,11 @@ class StorageService {
     this.cache.evaluasiKepengurusan = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('evaluasi_kepengurusan', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, id);
+    }
   }
 
   public getPengajuanDivisi(): PengajuanDivisi[] {
@@ -2565,11 +3682,15 @@ class StorageService {
     this.addLog('Pengajuan Divisi', `Update pengajuan ${pengajuan.nomorPengajuan} (${pengajuan.status}): ${pengajuan.judul}`, 'admin');
     this.notify();
 
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, pengajuan.id), sanitizeForFirestore(pengajuan), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.PENGAJUAN_DIVISI}/${pengajuan.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('pengajuan_divisi', toPengajuanDivisiRow(pengajuan));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.PENGAJUAN_DIVISI,
+        pengajuan.id,
+        pengajuan as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public deletePengajuanDivisi(id: string) {
@@ -2577,11 +3698,11 @@ class StorageService {
     this.cache.pengajuanDivisi = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.PENGAJUAN_DIVISI}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('pengajuan_divisi', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, id);
+    }
   }
 
   // ==========================================
@@ -2600,11 +3721,15 @@ class StorageService {
     this.addLog('Administrasi Persuratan', `Menyimpan Surat ${surat.arah} (${surat.kodeJenis}) No. ${surat.nomorSurat}`, 'admin');
     this.notify();
 
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.SURAT_MENYURAT, surat.id), sanitizeForFirestore(surat), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.SURAT_MENYURAT}/${surat.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('surat_menyurat', toSuratMenyuratRow(surat));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.SURAT_MENYURAT,
+        surat.id,
+        surat as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public deleteArsipSurat(id: string) {
@@ -2612,11 +3737,11 @@ class StorageService {
     this.cache.arsipSurat = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.SURAT_MENYURAT, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.SURAT_MENYURAT}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('surat_menyurat', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.SURAT_MENYURAT, id);
+    }
   }
 
   // ==========================================
@@ -2635,11 +3760,15 @@ class StorageService {
     this.addLog('Transaksi Keuangan', `${trx.tipe} Rp ${trx.nominal.toLocaleString('id-ID')} (${trx.kategori}) - ${trx.kodeTransaksi}`, 'admin');
     this.notify();
 
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, trx.id), sanitizeForFirestore(trx), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI}/${trx.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('keuangan_transaksi', toKeuanganTransaksiRow(trx));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI,
+        trx.id,
+        trx as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public deleteTransaksiKeuangan(id: string) {
@@ -2647,11 +3776,11 @@ class StorageService {
     this.cache.transaksiKeuangan = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('keuangan_transaksi', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, id);
+    }
   }
 
   // ==========================================
@@ -2670,11 +3799,15 @@ class StorageService {
     this.addLog('Inventaris Sarpras', `Memperbarui aset ${barang.kodeBarang}: ${barang.namaBarang} (${barang.jumlah} ${barang.satuan})`, 'admin');
     this.notify();
 
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, barang.id), sanitizeForFirestore(barang), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS}/${barang.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('perlengkapan_inventaris', toPerlengkapanInventarisRow(barang));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS,
+        barang.id,
+        barang as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public deleteBarangInventaris(id: string) {
@@ -2682,11 +3815,11 @@ class StorageService {
     this.cache.barangInventaris = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('perlengkapan_inventaris', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, id);
+    }
   }
 
   public getPeminjamanBarang(): PeminjamanBarang[] {
@@ -2702,11 +3835,15 @@ class StorageService {
     this.addLog('Peminjaman Perlengkapan', `${pjm.kodePeminjaman}: ${pjm.namaBarang} oleh ${pjm.peminjamNama} (${pjm.status})`, 'admin');
     this.notify();
 
-    this.trackCloudWrite(
-      setDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, pjm.id), sanitizeForFirestore(pjm), { merge: true }),
-      OperationType.WRITE,
-      `${CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN}/${pjm.id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseUpsertRow('perlengkapan_peminjaman', toPerlengkapanPeminjamanRow(pjm));
+    } else {
+      this.fireFirestoreSetDoc(
+        CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN,
+        pjm.id,
+        pjm as unknown as Record<string, unknown>
+      );
+    }
   }
 
   public deletePeminjamanBarang(id: string) {
@@ -2714,11 +3851,11 @@ class StorageService {
     this.cache.peminjamanBarang = updated;
     this.notify();
 
-    this.trackCloudWrite(
-      deleteDoc(doc(db, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, id)),
-      OperationType.DELETE,
-      `${CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN}/${id}`
-    );
+    if (isSupabaseConfigured()) {
+      void this.supabaseDeleteRow('perlengkapan_peminjaman', id);
+    } else {
+      this.fireFirestoreDeleteDoc(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, id);
+    }
   }
 
   // ==========================================
@@ -2741,10 +3878,38 @@ class StorageService {
     const keptUstadz = prevUstadz.filter(u => !sampleUstadzIds.has(u.id));
     const removedUstadzCount = prevUstadz.length - keptUstadz.length;
 
+    const useSupabase = isSupabaseConfigured();
+    const deleteIdsInCloud = async (supabaseTable: string, firestoreCol: string, ids: string[]) => {
+      if (ids.length === 0) return;
+      if (useSupabase) {
+        const client = getSupabaseClient();
+        if (!client) return;
+        try {
+          const { error } = await client.from(supabaseTable).delete().in('id', ids);
+          if (error) throw error;
+        } catch (err) {
+          console.warn(`Supabase delete sample [${supabaseTable}] warning:`, extractSupabaseErrorMessage(err));
+        }
+        return;
+      }
+      if (this.isFirestorePaused()) return;
+      for (const id of ids) {
+        try {
+          await deleteDoc(doc(db, firestoreCol, id));
+        } catch (err) {
+          if (isFirestoreQuotaError(err)) {
+            this.enterQuotaCacheMode(extractFirebaseErrorMessage(err));
+            return;
+          }
+        }
+      }
+    };
+
     let removedLainnya = 0;
     const filterSampleCol = async <T extends { id: string }>(
       current: T[],
       sampleItems: T[],
+      supabaseTable: string,
       colName: string,
       assign: (items: T[]) => void
     ) => {
@@ -2753,37 +3918,29 @@ class StorageService {
       const removed = current.filter(i => sampleIds.has(i.id));
       removedLainnya += removed.length;
       assign(kept);
-      for (const item of removed) {
-        try {
-          await deleteDoc(doc(db, colName, item.id));
-        } catch {
-          // ignore
-        }
-      }
+      await deleteIdsInCloud(supabaseTable, colName, removed.map(i => i.id));
     };
 
-    for (const s of removedSantriList) {
-      try {
-        await deleteDoc(doc(db, CLOUD_COLLECTIONS.SANTRI, s.id));
-      } catch {
-        // ignore
-      }
+    await deleteIdsInCloud('santri', CLOUD_COLLECTIONS.SANTRI, removedSantriList.map(s => s.id));
+    if (useSupabase) {
+      const removedUstadzIds = prevUstadz.filter(u => sampleUstadzIds.has(u.id)).map(u => u.id);
+      await deleteIdsInCloud('ustadz', '', removedUstadzIds);
     }
 
     await Promise.all([
-      filterSampleCol(this.cache.dewan, INITIAL_DEWAN_KEAMANAN, CLOUD_COLLECTIONS.DEWAN_KEAMANAN, l => { this.cache.dewan = l; }),
-      filterSampleCol(this.cache.perizinan, INITIAL_PERIZINAN, CLOUD_COLLECTIONS.PERIZINAN, l => { this.cache.perizinan = l; }),
-      filterSampleCol(this.cache.pelanggaran, INITIAL_PELANGGARAN, CLOUD_COLLECTIONS.PELANGGARAN, l => { this.cache.pelanggaran = l; }),
-      filterSampleCol(this.cache.sanksi, INITIAL_SANKSI, CLOUD_COLLECTIONS.SANKSI, l => { this.cache.sanksi = l; }),
-      filterSampleCol(this.cache.logs, INITIAL_LOGS, CLOUD_COLLECTIONS.LOGS, l => { this.cache.logs = l; }),
-      filterSampleCol(this.cache.koordinasi, INITIAL_KOORDINASI, CLOUD_COLLECTIONS.KOORDINASI, l => { this.cache.koordinasi = l; }),
-      filterSampleCol(this.cache.agendaPengurus, INITIAL_AGENDA_PENGURUS, CLOUD_COLLECTIONS.AGENDA_PENGURUS, l => { this.cache.agendaPengurus = l; }),
-      filterSampleCol(this.cache.evaluasiKepengurusan, INITIAL_EVALUASI_KEPENGURUSAN, CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, l => { this.cache.evaluasiKepengurusan = l; }),
-      filterSampleCol(this.cache.pengajuanDivisi, INITIAL_PENGAJUAN_DIVISI, CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, l => { this.cache.pengajuanDivisi = l; }),
-      filterSampleCol(this.cache.arsipSurat, INITIAL_ARSIP_SURAT, CLOUD_COLLECTIONS.SURAT_MENYURAT, l => { this.cache.arsipSurat = l; }),
-      filterSampleCol(this.cache.transaksiKeuangan, INITIAL_TRANSAKSI_KEUANGAN, CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, l => { this.cache.transaksiKeuangan = l; }),
-      filterSampleCol(this.cache.barangInventaris, INITIAL_BARANG_INVENTARIS, CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, l => { this.cache.barangInventaris = l; }),
-      filterSampleCol(this.cache.peminjamanBarang, INITIAL_PEMINJAMAN_BARANG, CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, l => { this.cache.peminjamanBarang = l; }),
+      filterSampleCol(this.cache.dewan, INITIAL_DEWAN_KEAMANAN, 'dewan_keamanan', CLOUD_COLLECTIONS.DEWAN_KEAMANAN, l => { this.cache.dewan = l; }),
+      filterSampleCol(this.cache.perizinan, INITIAL_PERIZINAN, 'perizinan', CLOUD_COLLECTIONS.PERIZINAN, l => { this.cache.perizinan = l; }),
+      filterSampleCol(this.cache.pelanggaran, INITIAL_PELANGGARAN, 'pelanggaran', CLOUD_COLLECTIONS.PELANGGARAN, l => { this.cache.pelanggaran = l; }),
+      filterSampleCol(this.cache.sanksi, INITIAL_SANKSI, 'sanksi', CLOUD_COLLECTIONS.SANKSI, l => { this.cache.sanksi = l; }),
+      filterSampleCol(this.cache.logs, INITIAL_LOGS, 'logs', CLOUD_COLLECTIONS.LOGS, l => { this.cache.logs = l; }),
+      filterSampleCol(this.cache.koordinasi, INITIAL_KOORDINASI, 'koordinasi', CLOUD_COLLECTIONS.KOORDINASI, l => { this.cache.koordinasi = l; }),
+      filterSampleCol(this.cache.agendaPengurus, INITIAL_AGENDA_PENGURUS, 'jadwal_agenda', CLOUD_COLLECTIONS.AGENDA_PENGURUS, l => { this.cache.agendaPengurus = l; }),
+      filterSampleCol(this.cache.evaluasiKepengurusan, INITIAL_EVALUASI_KEPENGURUSAN, 'evaluasi_kepengurusan', CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, l => { this.cache.evaluasiKepengurusan = l; }),
+      filterSampleCol(this.cache.pengajuanDivisi, INITIAL_PENGAJUAN_DIVISI, 'pengajuan_divisi', CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, l => { this.cache.pengajuanDivisi = l; }),
+      filterSampleCol(this.cache.arsipSurat, INITIAL_ARSIP_SURAT, 'surat_menyurat', CLOUD_COLLECTIONS.SURAT_MENYURAT, l => { this.cache.arsipSurat = l; }),
+      filterSampleCol(this.cache.transaksiKeuangan, INITIAL_TRANSAKSI_KEUANGAN, 'keuangan_transaksi', CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, l => { this.cache.transaksiKeuangan = l; }),
+      filterSampleCol(this.cache.barangInventaris, INITIAL_BARANG_INVENTARIS, 'perlengkapan_inventaris', CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, l => { this.cache.barangInventaris = l; }),
+      filterSampleCol(this.cache.peminjamanBarang, INITIAL_PEMINJAMAN_BARANG, 'perlengkapan_peminjaman', CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, l => { this.cache.peminjamanBarang = l; }),
     ]);
 
     const stripBySample = <T extends { id: string }>(arr: T[] | undefined, seedArr: T[] | undefined): T[] => {
@@ -2817,8 +3974,33 @@ class StorageService {
 
     this.cache.systemConfig = updatedCfg;
 
-    await setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(updatedCfg), { merge: true })
-      .catch(err => handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`));
+    if (useSupabase) {
+      await Promise.all([
+        this.supabaseUpsertRow('system_config', toSystemConfigRow(updatedCfg)),
+        deleteIdsInCloud(
+          'jadwal_agenda',
+          '',
+          (INITIAL_SYSTEM_CONFIG.jadwalPerbaikanList || []).map(j => `perbaikan__${j.id}`)
+        ),
+        deleteIdsInCloud(
+          'absensi_murotil',
+          '',
+          [
+            ...INITIAL_MUROTIL_ABSENSI_SANTRI.map(a => `abs_s__${a.id}`),
+            ...INITIAL_MUROTIL_ABSENSI_PJ.map(a => `abs_pj__${a.id}`),
+          ]
+        ),
+      ]);
+    } else if (!this.isFirestorePaused()) {
+      await setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(updatedCfg), { merge: true })
+        .catch(err => {
+          if (isFirestoreQuotaError(err)) {
+            this.enterQuotaCacheMode(extractFirebaseErrorMessage(err));
+            return;
+          }
+          handleFirestoreError(err, OperationType.WRITE, `${CLOUD_COLLECTIONS.SYSTEM_CONFIG}/main`);
+        });
+    }
 
     this.addLog(
       'Hapus Data Sample',
@@ -2914,6 +4096,8 @@ class StorageService {
       const parsed = JSON.parse(jsonString);
       if (!parsed || typeof parsed !== 'object') return false;
 
+      const useSupabase = isSupabaseConfigured();
+
       const importedSantri: Santri[] | null = Array.isArray(parsed.santri)
         ? parsed.santri
         : Array.isArray(parsed.almaliki_data_santri)
@@ -2922,68 +4106,136 @@ class StorageService {
 
       if (importedSantri !== null) {
         this.cache.santri = importedSantri;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SANTRI, importedSantri);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('santri', importedSantri.map(toSantriRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SANTRI, importedSantri);
+        }
       }
 
       if (Array.isArray(parsed.dewanKeamanan)) {
         this.cache.dewan = parsed.dewanKeamanan;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, parsed.dewanKeamanan);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('dewan_keamanan', parsed.dewanKeamanan.map(toDewanKeamananRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.DEWAN_KEAMANAN, parsed.dewanKeamanan);
+        }
       }
       if (Array.isArray(parsed.perizinan)) {
         this.cache.perizinan = parsed.perizinan;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERIZINAN, parsed.perizinan);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('perizinan', parsed.perizinan.map(toPerizinanRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERIZINAN, parsed.perizinan);
+        }
       }
       if (Array.isArray(parsed.tataTertib)) {
         this.cache.tataTertib = parsed.tataTertib;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.TATA_TERTIB, parsed.tataTertib);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('tata_tertib', parsed.tataTertib.map(toTataTertibRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.TATA_TERTIB, parsed.tataTertib);
+        }
       }
       if (Array.isArray(parsed.pelanggaran)) {
         this.cache.pelanggaran = parsed.pelanggaran;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PELANGGARAN, parsed.pelanggaran);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('pelanggaran', parsed.pelanggaran.map(toPelanggaranRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PELANGGARAN, parsed.pelanggaran);
+        }
       }
       if (Array.isArray(parsed.sanksi)) {
         this.cache.sanksi = parsed.sanksi;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SANKSI, parsed.sanksi);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('sanksi', parsed.sanksi.map(toSanksiRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SANKSI, parsed.sanksi);
+        }
       }
       if (Array.isArray(parsed.users)) {
         this.cache.users = parsed.users;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.USERS, parsed.users);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('users', parsed.users.map(toUserRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.USERS, parsed.users);
+        }
       }
       if (Array.isArray(parsed.koordinasi)) {
         this.cache.koordinasi = parsed.koordinasi;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.KOORDINASI, parsed.koordinasi);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('koordinasi', parsed.koordinasi.map(toKoordinasiRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.KOORDINASI, parsed.koordinasi);
+        }
       }
       if (Array.isArray(parsed.strukturOrganisasi)) {
         this.cache.strukturOrganisasi = parsed.strukturOrganisasi;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, parsed.strukturOrganisasi);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('struktur_organisasi', parsed.strukturOrganisasi.map(toStrukturOrganisasiRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.STRUKTUR_ORGANISASI, parsed.strukturOrganisasi);
+        }
       }
       if (Array.isArray(parsed.agendaPengurus)) {
         this.cache.agendaPengurus = parsed.agendaPengurus;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.AGENDA_PENGURUS, parsed.agendaPengurus);
+        if (useSupabase) {
+          await this.replaceSupabaseTable(
+            'jadwal_agenda',
+            parsed.agendaPengurus.map(toJadwalAgendaFromPengurus),
+            { column: 'sumber', value: 'agenda_pengurus' }
+          );
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.AGENDA_PENGURUS, parsed.agendaPengurus);
+        }
       }
       if (Array.isArray(parsed.evaluasiKepengurusan)) {
         this.cache.evaluasiKepengurusan = parsed.evaluasiKepengurusan;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, parsed.evaluasiKepengurusan);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('evaluasi_kepengurusan', parsed.evaluasiKepengurusan.map(toEvaluasiKepengurusanRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.EVALUASI_KEPENGURUSAN, parsed.evaluasiKepengurusan);
+        }
       }
       if (Array.isArray(parsed.pengajuanDivisi)) {
         this.cache.pengajuanDivisi = parsed.pengajuanDivisi;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, parsed.pengajuanDivisi);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('pengajuan_divisi', parsed.pengajuanDivisi.map(toPengajuanDivisiRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PENGAJUAN_DIVISI, parsed.pengajuanDivisi);
+        }
       }
       if (Array.isArray(parsed.arsipSurat)) {
         this.cache.arsipSurat = parsed.arsipSurat;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SURAT_MENYURAT, parsed.arsipSurat);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('surat_menyurat', parsed.arsipSurat.map(toSuratMenyuratRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.SURAT_MENYURAT, parsed.arsipSurat);
+        }
       }
       if (Array.isArray(parsed.transaksiKeuangan)) {
         this.cache.transaksiKeuangan = parsed.transaksiKeuangan;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, parsed.transaksiKeuangan);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('keuangan_transaksi', parsed.transaksiKeuangan.map(toKeuanganTransaksiRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.KEUANGAN_TRANSAKSI, parsed.transaksiKeuangan);
+        }
       }
       if (Array.isArray(parsed.barangInventaris)) {
         this.cache.barangInventaris = parsed.barangInventaris;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, parsed.barangInventaris);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('perlengkapan_inventaris', parsed.barangInventaris.map(toPerlengkapanInventarisRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERLENGKAPAN_INVENTARIS, parsed.barangInventaris);
+        }
       }
       if (Array.isArray(parsed.peminjamanBarang)) {
         this.cache.peminjamanBarang = parsed.peminjamanBarang;
-        await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, parsed.peminjamanBarang);
+        if (useSupabase) {
+          await this.replaceSupabaseTable('perlengkapan_peminjaman', parsed.peminjamanBarang.map(toPerlengkapanPeminjamanRow));
+        } else {
+          await this.replaceCollectionInCloud(CLOUD_COLLECTIONS.PERLENGKAPAN_PEMINJAMAN, parsed.peminjamanBarang);
+        }
       }
 
       const importedUstadz: DataUstadz[] | null = Array.isArray(parsed.ustadzList)
@@ -3007,7 +4259,27 @@ class StorageService {
           nextConfig.dataUstadzList = importedUstadz;
         }
         this.cache.systemConfig = nextConfig;
-        await setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(nextConfig), { merge: true });
+        if (useSupabase) {
+          await this.supabaseUpsertRow('system_config', toSystemConfigRow(nextConfig));
+          await Promise.all([
+            this.replaceSupabaseTable('ustadz', (nextConfig.ustadzList || []).map(toUstadzRow)),
+            this.replaceSupabaseTable('fasilitas_gedung', (nextConfig.fasilitasGedungList || []).map(toFasilitasGedungRow)),
+            this.replaceSupabaseTable(
+              'jadwal_agenda',
+              (nextConfig.jadwalPerbaikanList || []).map(toJadwalAgendaFromPerbaikan),
+              { column: 'sumber', value: 'perbaikan_aset' }
+            ),
+            this.replaceSupabaseTable(
+              'absensi_murotil',
+              [
+                ...(nextConfig.murotilAbsensiSantriList || []).map(toAbsensiSantriRow),
+                ...(nextConfig.murotilAbsensiPjList || []).map(toAbsensiPjRow),
+              ]
+            ),
+          ]);
+        } else if (!this.isFirestorePaused()) {
+          await setDoc(doc(db, CLOUD_COLLECTIONS.SYSTEM_CONFIG, 'main'), sanitizeForFirestore(nextConfig), { merge: true });
+        }
       }
 
       this.addLog('Restore Database', 'Berhasil memulihkan seluruh arsip database pusat', 'admin');

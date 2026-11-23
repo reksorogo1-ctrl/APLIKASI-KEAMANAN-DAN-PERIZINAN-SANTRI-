@@ -2,6 +2,9 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocFromCache,
+  getDocs,
+  getDocsFromCache,
   onSnapshot,
   setDoc,
   updateDoc,
@@ -13,11 +16,33 @@ import {
   PengaturanSuratPerlengkapan,
   StatusPeminjamanPerlengkapan,
 } from '../types';
-import { db, handleFirestoreError, OperationType } from './firebase';
+import {
+  db,
+  handleFirestoreError,
+  isFirestoreQuotaError,
+  isFirestoreQuotaPaused,
+  OperationType,
+  pauseFirestoreNetworkForQuota,
+  subscribeFirestoreQuotaPause,
+} from './firebase';
+import {
+  extractSupabaseErrorMessage,
+  getSupabaseClient,
+  isSupabaseConfigured,
+} from './supabase';
+import {
+  fromSupabaseRow,
+  SupabaseJsonRow,
+  toPeminjamanPerlengkapanRow,
+  toPengaturanSuratPerlengkapanRow,
+} from './supabaseMappers';
 
 const COLLECTION_PEMINJAMAN = 'peminjaman_perlengkapan';
 const COLLECTION_PENGATURAN_SURAT = 'pengaturan_surat_perlengkapan';
 const DEFAULT_SURAT_DOC_ID = 'default';
+
+let latestCachedPeminjamanList: PeminjamanPerlengkapan[] = [];
+let latestCachedPengaturanSurat: PengaturanSuratPerlengkapan | null = null;
 
 export const DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN: PengaturanSuratPerlengkapan = {
   judulSurat: 'SURAT IZIN PEMINJAMAN INVENTARIS & PERLENGKAPAN',
@@ -79,11 +104,9 @@ export function normalizePengaturanSuratPerlengkapan(
       : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.posisiQrCode;
 
   return sanitizeOptionalFields({
-    judulSurat: clipStr(
-      src.judulSurat,
-      200,
-      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.judulSurat
-    ) || DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.judulSurat,
+    judulSurat:
+      clipStr(src.judulSurat, 200, DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.judulSurat) ||
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.judulSurat,
     teksPembuka:
       clipStr(src.teksPembuka, 1500, DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.teksPembuka) ||
       DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.teksPembuka,
@@ -150,44 +173,209 @@ export function formatWaktuIndonesiaNow(): string {
   return `${datePart}, ${timePart} WIB`;
 }
 
+function mapPeminjamanDoc(
+  id: string,
+  data: Partial<PeminjamanPerlengkapan>
+): PeminjamanPerlengkapan {
+  return {
+    id,
+    nomorSurat: data.nomorSurat || id,
+    namaPeminjam: data.namaPeminjam || '-',
+    statusDivisiKamar: data.statusDivisiKamar || '-',
+    nomorHp: data.nomorHp || '-',
+    tanggalPinjam: data.tanggalPinjam || '',
+    estimasiTanggalKembali: data.estimasiTanggalKembali || '',
+    daftarBarang: Array.isArray(data.daftarBarang) ? data.daftarBarang : [],
+    keperluan: data.keperluan,
+    status: (data.status as StatusPeminjamanPerlengkapan) || 'Menunggu Verifikasi Ketua Pondok',
+    catatanVerifikasi: data.catatanVerifikasi,
+    diverifikasiOleh: data.diverifikasiOleh,
+    waktuVerifikasi: data.waktuVerifikasi,
+    waktuKembali: data.waktuKembali,
+    petugasPengembalian: data.petugasPengembalian,
+    dibuatOleh: data.dibuatOleh,
+    createdAt: data.createdAt || '',
+    updatedAt: data.updatedAt,
+  };
+}
+
+/**
+ * Mengambil snapshot data peminjaman perlengkapan & pengaturan surat dari cache/Firestore lama
+ * untuk keperluan tombol migrasi data ke Supabase.
+ */
+export async function getLegacyPeminjamanPerlengkapanSnapshot(): Promise<{
+  items: PeminjamanPerlengkapan[];
+  pengaturanSurat: PengaturanSuratPerlengkapan | null;
+}> {
+  let items: PeminjamanPerlengkapan[] = [...latestCachedPeminjamanList];
+  let pengaturanSurat: PengaturanSuratPerlengkapan | null = latestCachedPengaturanSurat;
+
+  try {
+    const cachedSnap = await getDocsFromCache(collection(db, COLLECTION_PEMINJAMAN));
+    if (!cachedSnap.empty) {
+      const fromCache = cachedSnap.docs.map((d) =>
+        mapPeminjamanDoc(d.id, d.data() as Partial<PeminjamanPerlengkapan>)
+      );
+      const map = new Map<string, PeminjamanPerlengkapan>();
+      [...items, ...fromCache].forEach((x) => map.set(x.id, x));
+      items = Array.from(map.values());
+    }
+  } catch {
+    // ignore cache miss
+  }
+
+  if (!isFirestoreQuotaPaused() && items.length === 0) {
+    try {
+      const serverSnap = await getDocs(collection(db, COLLECTION_PEMINJAMAN));
+      if (!serverSnap.empty) {
+        items = serverSnap.docs.map((d) =>
+          mapPeminjamanDoc(d.id, d.data() as Partial<PeminjamanPerlengkapan>)
+        );
+      }
+    } catch {
+      // ignore if quota paused or offline
+    }
+  }
+
+  if (!pengaturanSurat) {
+    try {
+      const cfgSnap = await getDocFromCache(
+        doc(db, COLLECTION_PENGATURAN_SURAT, DEFAULT_SURAT_DOC_ID)
+      );
+      if (cfgSnap.exists()) {
+        pengaturanSurat = normalizePengaturanSuratPerlengkapan(
+          cfgSnap.data() as Partial<PengaturanSuratPerlengkapan>
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return { items, pengaturanSurat };
+}
+
 export function subscribePeminjamanPerlengkapan(
   onData: (items: PeminjamanPerlengkapan[]) => void,
   onError?: (errMsg: string) => void
 ): Unsubscribe {
-  return onSnapshot(
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConfigured()) {
+    let active = true;
+
+    const fetchAllFromSupabase = async () => {
+      try {
+        const { data, error } = await supabase.from(COLLECTION_PEMINJAMAN).select('*');
+        if (error) throw error;
+        const rows = (data || []).map((row) =>
+          mapPeminjamanDoc(
+            String((row as SupabaseJsonRow).id),
+            fromSupabaseRow<PeminjamanPerlengkapan>(row as SupabaseJsonRow)
+          )
+        );
+        rows.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        latestCachedPeminjamanList = rows;
+        if (active) onData(rows);
+      } catch (err) {
+        onError?.(extractSupabaseErrorMessage(err));
+      }
+    };
+
+    void fetchAllFromSupabase();
+
+    const channel = supabase
+      .channel(`rt-${COLLECTION_PEMINJAMAN}-${Math.random().toString(36).slice(2, 7)}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: COLLECTION_PEMINJAMAN },
+        () => {
+          void fetchAllFromSupabase();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }
+
+  const loadFromCache = async () => {
+    try {
+      const cached = await getDocsFromCache(collection(db, COLLECTION_PEMINJAMAN));
+      const rows = cached.docs.map((d) =>
+        mapPeminjamanDoc(d.id, d.data() as Partial<PeminjamanPerlengkapan>)
+      );
+      rows.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      latestCachedPeminjamanList = rows;
+      onData(rows);
+    } catch {
+      onData([]);
+    }
+  };
+
+  if (isFirestoreQuotaPaused()) {
+    void loadFromCache();
+    return () => {};
+  }
+
+  let unsubSnapshot: Unsubscribe | null = null;
+  let unsubQuota: (() => void) | null = null;
+
+  unsubSnapshot = onSnapshot(
     collection(db, COLLECTION_PEMINJAMAN),
     (snapshot) => {
-      const rows = snapshot.docs.map((d) => {
-        const data = d.data() as Partial<PeminjamanPerlengkapan>;
-        return {
-          id: d.id,
-          nomorSurat: data.nomorSurat || d.id,
-          namaPeminjam: data.namaPeminjam || '-',
-          statusDivisiKamar: data.statusDivisiKamar || '-',
-          nomorHp: data.nomorHp || '-',
-          tanggalPinjam: data.tanggalPinjam || '',
-          estimasiTanggalKembali: data.estimasiTanggalKembali || '',
-          daftarBarang: Array.isArray(data.daftarBarang) ? data.daftarBarang : [],
-          keperluan: data.keperluan,
-          status: (data.status as StatusPeminjamanPerlengkapan) || 'Menunggu Verifikasi Ketua Pondok',
-          catatanVerifikasi: data.catatanVerifikasi,
-          diverifikasiOleh: data.diverifikasiOleh,
-          waktuVerifikasi: data.waktuVerifikasi,
-          waktuKembali: data.waktuKembali,
-          petugasPengembalian: data.petugasPengembalian,
-          dibuatOleh: data.dibuatOleh,
-          createdAt: data.createdAt || '',
-          updatedAt: data.updatedAt,
-        } satisfies PeminjamanPerlengkapan;
-      });
+      const rows = snapshot.docs.map((d) =>
+        mapPeminjamanDoc(d.id, d.data() as Partial<PeminjamanPerlengkapan>)
+      );
       rows.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      latestCachedPeminjamanList = rows;
       onData(rows);
     },
     (error) => {
+      if (isFirestoreQuotaError(error)) {
+        void pauseFirestoreNetworkForQuota();
+        void loadFromCache();
+        onError?.('Kuota harian Firestore penuh (reset besok). Menampilkan data dari cache lokal.');
+        return;
+      }
       const info = handleFirestoreError(error, OperationType.LIST, COLLECTION_PEMINJAMAN);
       onError?.(info.error);
     }
   );
+
+  unsubQuota = subscribeFirestoreQuotaPause((paused) => {
+    if (paused) {
+      if (unsubSnapshot) {
+        try {
+          unsubSnapshot();
+        } catch {
+          // ignore
+        }
+        unsubSnapshot = null;
+      }
+      void loadFromCache();
+    }
+  });
+
+  return () => {
+    if (unsubSnapshot) {
+      try {
+        unsubSnapshot();
+      } catch {
+        // ignore
+      }
+      unsubSnapshot = null;
+    }
+    if (unsubQuota) {
+      try {
+        unsubQuota();
+      } catch {
+        // ignore
+      }
+      unsubQuota = null;
+    }
+  };
 }
 
 export async function createPeminjamanPerlengkapan(input: {
@@ -230,10 +418,33 @@ export async function createPeminjamanPerlengkapan(input: {
     updatedAt: clipStr(nowIso, 60),
   });
 
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConfigured()) {
+    const { error } = await supabase
+      .from(COLLECTION_PEMINJAMAN)
+      .upsert(toPeminjamanPerlengkapanRow(docData), { onConflict: 'id' });
+    if (error) {
+      throw new Error(extractSupabaseErrorMessage(error));
+    }
+    latestCachedPeminjamanList = [
+      docData,
+      ...latestCachedPeminjamanList.filter((x) => x.id !== docData.id),
+    ];
+    return docData;
+  }
+
+  if (isFirestoreQuotaPaused()) {
+    throw new Error('Kuota harian Firestore penuh (reset besok). Tidak dapat menyimpan ke server saat ini.');
+  }
+
   try {
     await setDoc(doc(db, COLLECTION_PEMINJAMAN, id), docData);
     return docData;
   } catch (error) {
+    if (isFirestoreQuotaError(error)) {
+      void pauseFirestoreNetworkForQuota();
+      throw new Error('Kuota harian Firestore penuh (reset besok). Tidak dapat menyimpan ke server saat ini.');
+    }
     const info = handleFirestoreError(
       error,
       OperationType.CREATE,
@@ -277,9 +488,53 @@ export async function updateStatusPeminjamanPerlengkapan(
     updatedAt: clipStr(new Date().toISOString(), 60),
   });
 
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConfigured()) {
+    const { data: existingRow, error: fetchErr } = await supabase
+      .from(COLLECTION_PEMINJAMAN)
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchErr) {
+      throw new Error(extractSupabaseErrorMessage(fetchErr));
+    }
+
+    const baseItem = existingRow
+      ? mapPeminjamanDoc(id, fromSupabaseRow<PeminjamanPerlengkapan>(existingRow as SupabaseJsonRow))
+      : latestCachedPeminjamanList.find((x) => x.id === id) || mapPeminjamanDoc(id, {});
+
+    const merged: PeminjamanPerlengkapan = {
+      ...baseItem,
+      ...payload,
+      id,
+    };
+
+    const { error: upsertErr } = await supabase
+      .from(COLLECTION_PEMINJAMAN)
+      .upsert(toPeminjamanPerlengkapanRow(merged), { onConflict: 'id' });
+
+    if (upsertErr) {
+      throw new Error(extractSupabaseErrorMessage(upsertErr));
+    }
+
+    latestCachedPeminjamanList = latestCachedPeminjamanList.map((x) =>
+      x.id === id ? merged : x
+    );
+    return;
+  }
+
+  if (isFirestoreQuotaPaused()) {
+    throw new Error('Kuota harian Firestore penuh (reset besok). Tidak dapat memperbarui status di server saat ini.');
+  }
+
   try {
     await updateDoc(doc(db, COLLECTION_PEMINJAMAN, id), payload);
   } catch (error) {
+    if (isFirestoreQuotaError(error)) {
+      void pauseFirestoreNetworkForQuota();
+      throw new Error('Kuota harian Firestore penuh (reset besok). Tidak dapat memperbarui status di server saat ini.');
+    }
     const info = handleFirestoreError(
       error,
       OperationType.UPDATE,
@@ -290,9 +545,27 @@ export async function updateStatusPeminjamanPerlengkapan(
 }
 
 export async function deletePeminjamanPerlengkapan(id: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConfigured()) {
+    const { error } = await supabase.from(COLLECTION_PEMINJAMAN).delete().eq('id', id);
+    if (error) {
+      throw new Error(extractSupabaseErrorMessage(error));
+    }
+    latestCachedPeminjamanList = latestCachedPeminjamanList.filter((x) => x.id !== id);
+    return;
+  }
+
+  if (isFirestoreQuotaPaused()) {
+    throw new Error('Kuota harian Firestore penuh (reset besok). Tidak dapat menghapus data di server saat ini.');
+  }
+
   try {
     await deleteDoc(doc(db, COLLECTION_PEMINJAMAN, id));
   } catch (error) {
+    if (isFirestoreQuotaError(error)) {
+      void pauseFirestoreNetworkForQuota();
+      throw new Error('Kuota harian Firestore penuh (reset besok). Tidak dapat menghapus data di server saat ini.');
+    }
     const info = handleFirestoreError(
       error,
       OperationType.DELETE,
@@ -306,16 +579,96 @@ export function subscribePengaturanSuratPerlengkapan(
   onData: (cfg: PengaturanSuratPerlengkapan) => void,
   onError?: (errMsg: string) => void
 ): Unsubscribe {
-  return onSnapshot(
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConfigured()) {
+    let active = true;
+
+    const fetchConfig = async () => {
+      try {
+        const { data, error } = await supabase
+          .from(COLLECTION_PENGATURAN_SURAT)
+          .select('*')
+          .eq('id', DEFAULT_SURAT_DOC_ID)
+          .maybeSingle();
+        if (error) throw error;
+        const normalized = data
+          ? normalizePengaturanSuratPerlengkapan(
+              fromSupabaseRow<PengaturanSuratPerlengkapan & { id: string }>(
+                data as SupabaseJsonRow
+              )
+            )
+          : normalizePengaturanSuratPerlengkapan(DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN);
+        latestCachedPengaturanSurat = normalized;
+        if (active) onData(normalized);
+      } catch (err) {
+        onError?.(extractSupabaseErrorMessage(err));
+      }
+    };
+
+    void fetchConfig();
+
+    const channel = supabase
+      .channel(`rt-${COLLECTION_PENGATURAN_SURAT}-${Math.random().toString(36).slice(2, 7)}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: COLLECTION_PENGATURAN_SURAT },
+        () => {
+          void fetchConfig();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(channel);
+    };
+  }
+
+  const loadFromCache = async () => {
+    try {
+      const snap = await getDocFromCache(doc(db, COLLECTION_PENGATURAN_SURAT, DEFAULT_SURAT_DOC_ID));
+      if (snap.exists()) {
+        const normalized = normalizePengaturanSuratPerlengkapan(
+          snap.data() as Partial<PengaturanSuratPerlengkapan>
+        );
+        latestCachedPengaturanSurat = normalized;
+        onData(normalized);
+        return;
+      }
+    } catch {
+      // ignore cache miss
+    }
+    onData(normalizePengaturanSuratPerlengkapan(DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN));
+  };
+
+  if (isFirestoreQuotaPaused()) {
+    void loadFromCache();
+    return () => {};
+  }
+
+  let unsubSnapshot: Unsubscribe | null = null;
+  let unsubQuota: (() => void) | null = null;
+
+  unsubSnapshot = onSnapshot(
     doc(db, COLLECTION_PENGATURAN_SURAT, DEFAULT_SURAT_DOC_ID),
     (snap) => {
       if (snap.exists()) {
-        onData(normalizePengaturanSuratPerlengkapan(snap.data() as Partial<PengaturanSuratPerlengkapan>));
+        const normalized = normalizePengaturanSuratPerlengkapan(
+          snap.data() as Partial<PengaturanSuratPerlengkapan>
+        );
+        latestCachedPengaturanSurat = normalized;
+        onData(normalized);
       } else {
         onData(normalizePengaturanSuratPerlengkapan(DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN));
       }
     },
     (error) => {
+      if (isFirestoreQuotaError(error)) {
+        void pauseFirestoreNetworkForQuota();
+        void loadFromCache();
+        onError?.('Kuota harian Firestore penuh (reset besok). Menggunakan format surat dari cache lokal.');
+        return;
+      }
       const info = handleFirestoreError(
         error,
         OperationType.GET,
@@ -324,6 +677,39 @@ export function subscribePengaturanSuratPerlengkapan(
       onError?.(info.error);
     }
   );
+
+  unsubQuota = subscribeFirestoreQuotaPause((paused) => {
+    if (paused) {
+      if (unsubSnapshot) {
+        try {
+          unsubSnapshot();
+        } catch {
+          // ignore
+        }
+        unsubSnapshot = null;
+      }
+      void loadFromCache();
+    }
+  });
+
+  return () => {
+    if (unsubSnapshot) {
+      try {
+        unsubSnapshot();
+      } catch {
+        // ignore
+      }
+      unsubSnapshot = null;
+    }
+    if (unsubQuota) {
+      try {
+        unsubQuota();
+      } catch {
+        // ignore
+      }
+      unsubQuota = null;
+    }
+  };
 }
 
 export async function savePengaturanSuratPerlengkapan(
@@ -333,10 +719,32 @@ export async function savePengaturanSuratPerlengkapan(
     ...cfg,
     updatedAt: new Date().toISOString(),
   });
+
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConfigured()) {
+    const { error } = await supabase
+      .from(COLLECTION_PENGATURAN_SURAT)
+      .upsert(toPengaturanSuratPerlengkapanRow(normalized), { onConflict: 'id' });
+    if (error) {
+      throw new Error(extractSupabaseErrorMessage(error));
+    }
+    latestCachedPengaturanSurat = normalized;
+    return normalized;
+  }
+
+  if (isFirestoreQuotaPaused()) {
+    throw new Error('Kuota harian Firestore penuh (reset besok). Pengaturan belum tersimpan ke server.');
+  }
+
   try {
     await setDoc(doc(db, COLLECTION_PENGATURAN_SURAT, DEFAULT_SURAT_DOC_ID), normalized);
+    latestCachedPengaturanSurat = normalized;
     return normalized;
   } catch (error) {
+    if (isFirestoreQuotaError(error)) {
+      void pauseFirestoreNetworkForQuota();
+      throw new Error('Kuota harian Firestore penuh (reset besok). Pengaturan belum tersimpan ke server.');
+    }
     const info = handleFirestoreError(
       error,
       OperationType.WRITE,

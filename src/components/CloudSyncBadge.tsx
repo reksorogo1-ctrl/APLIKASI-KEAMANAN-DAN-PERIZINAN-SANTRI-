@@ -58,8 +58,11 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
     }
   };
 
+  const isSupabase = telemetry.provider === 'supabase';
+  const providerLabel = isSupabase ? 'Supabase Realtime' : 'Firebase';
   const isConnected = telemetry.status === 'connected';
   const isSyncing = telemetry.status === 'syncing';
+  const isQuotaPaused = Boolean(!isSupabase && telemetry.quotaExceeded);
   const isFailed = telemetry.status === 'error' || telemetry.status === 'offline';
 
   return (
@@ -75,9 +78,11 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
           }
         }}
         title={
-          isFailed && telemetry.errorMessage
-            ? `Offline / Gagal Koneksi Firebase: ${telemetry.errorMessage}`
-            : `Cloud Synced (Firebase) · ${telemetry.lastSyncTime}`
+          isQuotaPaused
+            ? 'Kuota harian gratis Firestore tercapai (reset otomatis besok). Data cache lokal tetap aktif.'
+            : isFailed && telemetry.errorMessage
+              ? `Offline / Gagal Koneksi ${providerLabel}: ${telemetry.errorMessage}`
+              : `Cloud Synced (${providerLabel}) · ${telemetry.lastSyncTime}`
         }
         className={`inline-flex items-center gap-1.5 rounded-xl border font-mono transition-all cursor-pointer select-none max-w-full ${
           compact ? 'px-2.5 py-1 text-[10px]' : 'px-3 py-1.5 text-[11px]'
@@ -86,7 +91,9 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
             ? 'bg-emerald-950/90 border-emerald-500/45 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
             : isSyncing
               ? 'bg-amber-950/85 border-amber-500/45 text-amber-200'
-              : 'bg-red-950/95 border-red-500/70 text-red-200 shadow-[0_0_14px_rgba(239,68,68,0.3)]'
+              : isQuotaPaused
+                ? 'bg-amber-950/95 border-amber-500/70 text-amber-200 shadow-[0_0_14px_rgba(245,158,11,0.25)]'
+                : 'bg-red-950/95 border-red-500/70 text-red-200 shadow-[0_0_14px_rgba(239,68,68,0.3)]'
         }`}
       >
         <span
@@ -95,23 +102,29 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
               ? 'bg-[#10B981] animate-pulse shadow-[0_0_8px_#10B981]'
               : isSyncing
                 ? 'bg-amber-400 animate-ping'
-                : 'bg-red-500 animate-pulse shadow-[0_0_8px_#EF4444]'
+                : isQuotaPaused
+                  ? 'bg-amber-400 animate-pulse shadow-[0_0_8px_#F59E0B]'
+                  : 'bg-red-500 animate-pulse shadow-[0_0_8px_#EF4444]'
           }`}
         />
         {isConnected ? (
           <Cloud className="w-3.5 h-3.5 text-[#10B981] shrink-0" />
         ) : isSyncing ? (
           <RefreshCw className="w-3.5 h-3.5 text-amber-300 animate-spin shrink-0" />
+        ) : isQuotaPaused ? (
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
         ) : (
           <CloudOff className="w-3.5 h-3.5 text-red-400 shrink-0" />
         )}
 
         <span className="font-bold truncate">
           {isConnected
-            ? 'Cloud Synced (Firebase)'
+            ? `Cloud Synced (${providerLabel})`
             : isSyncing
-              ? 'Menghubungkan Firebase...'
-              : 'Offline / Gagal Koneksi Firebase'}
+              ? `Menghubungkan ${providerLabel}...`
+              : isQuotaPaused
+                ? 'Mode Cache (Kuota Harian Penuh)'
+                : `Offline / Gagal Koneksi ${providerLabel}`}
         </span>
 
         {showDetails ? (
@@ -121,10 +134,10 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
         )}
       </div>
 
-      {/* Tampilkan pesan error asli Firebase secara langsung saat gagal/ditolak aturan keamanan */}
-      {isFailed && telemetry.errorMessage && (
+      {/* Tampilkan pesan status saat gagal atau kuota harian penuh */}
+      {isFailed && telemetry.errorMessage && !isQuotaPaused && (
         <div className="mt-1 px-2.5 py-1 rounded-lg bg-red-950/95 border border-red-500/60 text-red-200 text-[10px] font-mono leading-snug max-w-[300px] sm:max-w-sm break-words shadow-lg text-left">
-          <span className="font-bold text-red-300">Error Firebase: </span>
+          <span className="font-bold text-red-300">Error {providerLabel}: </span>
           <span>{telemetry.errorMessage}</span>
         </div>
       )}
@@ -133,7 +146,9 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
       {showDetails && (
         <div className="absolute right-0 top-full mt-1.5 w-[280px] sm:w-[320px] p-3 rounded-2xl bg-[#041A13]/98 border border-emerald-500/35 shadow-2xl backdrop-blur-xl text-[11px] font-mono text-emerald-100 z-50 space-y-2 text-left">
           <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-1.5">
-            <span className="font-bold text-[#D4AF37]">STATUS FIREBASE CLOUD</span>
+            <span className="font-bold text-[#D4AF37]">
+              {isSupabase ? 'STATUS SUPABASE CLOUD' : 'STATUS FIREBASE CLOUD'}
+            </span>
             <button
               type="button"
               onClick={(e) => {
@@ -148,8 +163,8 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
           </div>
           <div className="space-y-1 text-[10px]">
             <div className="flex justify-between gap-2">
-              <span className="text-emerald-300/75">Project ID:</span>
-              <span className="text-white font-bold">{telemetry.projectId}</span>
+              <span className="text-emerald-300/75">{isSupabase ? 'Host:' : 'Project ID:'}</span>
+              <span className="text-white font-bold truncate max-w-[180px]">{telemetry.projectId}</span>
             </div>
             <div className="flex justify-between gap-2">
               <span className="text-emerald-300/75">Database:</span>
@@ -159,23 +174,48 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
             </div>
             <div className="flex justify-between gap-2">
               <span className="text-emerald-300/75">Sinkronisasi:</span>
-              <span className={isFailed ? 'text-red-300 font-bold' : 'text-emerald-300 font-bold'}>
+              <span className={isQuotaPaused ? 'text-amber-300 font-bold' : isFailed ? 'text-red-300 font-bold' : 'text-emerald-300 font-bold'}>
                 {telemetry.lastSyncTime}
               </span>
             </div>
             <div className="flex justify-between gap-2">
               <span className="text-emerald-300/75">Listener Aktif:</span>
               <span className="text-emerald-200 font-bold">
-                {telemetry.activeListenersCount} onSnapshot ({telemetry.totalSyncedItems} dok)
+                {telemetry.activeListenersCount} {isSupabase ? 'postgres_changes' : 'onSnapshot'} ({telemetry.totalSyncedItems} dok)
               </span>
             </div>
           </div>
 
-          {isFailed && telemetry.errorMessage && (
-            <div className="p-2 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[10px] break-words flex items-start gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
-              <span>{telemetry.errorMessage}</span>
+          {!isSupabase && (
+            <div className="p-2 rounded-xl bg-purple-950/80 border border-purple-400/40 text-purple-100 text-[10px] leading-relaxed">
+              Kredensial Supabase belum diisi di environment / <span className="font-bold">supabase.ts</span> (masih menggunakan mode fallback).
             </div>
+          )}
+
+          {isQuotaPaused ? (
+            <div className="p-2.5 rounded-xl bg-amber-950/90 border border-amber-500/50 text-amber-100 text-[10px] space-y-1.5 leading-relaxed">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  Kuota baca/tulis harian gratis Firestore Enterprise hari ini telah penuh dan akan reset otomatis besok. Data cache lokal tetap aktif.
+                </span>
+              </div>
+              <a
+                href={`https://console.firebase.google.com/project/${telemetry.projectId}/firestore/databases/${telemetry.databaseId}/data?openUpgradeDialog=true`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-amber-300 underline hover:text-amber-200 font-bold"
+              >
+                Buka Firebase Console Firestore &rarr;
+              </a>
+            </div>
+          ) : (
+            isFailed && telemetry.errorMessage && (
+              <div className="p-2 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[10px] break-words flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+                <span>{telemetry.errorMessage}</span>
+              </div>
+            )
           )}
 
           <button
@@ -185,7 +225,7 @@ export const CloudSyncBadge: React.FC<CloudSyncBadgeProps> = ({
             className="w-full py-1.5 px-3 rounded-xl bg-emerald-600/80 hover:bg-emerald-500 text-white font-bold text-[10px] flex items-center justify-center gap-1.5 cursor-pointer transition-colors disabled:opacity-60"
           >
             <RefreshCw className={`w-3 h-3 ${isRetrying ? 'animate-spin' : ''}`} />
-            <span>{isRetrying ? 'Menyinkronkan...' : 'Sinkronkan Ulang ke Firebase'}</span>
+            <span>{isRetrying ? 'Menyinkronkan...' : `Sinkronkan Ulang ke ${providerLabel}`}</span>
           </button>
         </div>
       )}

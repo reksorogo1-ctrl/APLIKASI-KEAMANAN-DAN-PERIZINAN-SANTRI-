@@ -15,9 +15,13 @@ import {
   Check,
   Activity,
   Trash2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Copy,
+  FileCode2
 } from 'lucide-react';
 import { storageService, CloudSyncTelemetry } from '../services/storageService';
+import { SUPABASE_SETUP_SQL } from '../services/supabaseSchema';
+import { transferAllLegacyDataToSupabase } from '../services/supabaseMigrationService';
 import { Santri, Perizinan, Pelanggaran, Sanksi, DewanKeamanan, LogAktivitas } from '../types';
 
 interface DatabaseSettingsProps {
@@ -40,8 +44,13 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
   const [statusMessage, setStatusMessage] = useState<string>('');
   const [syncTelemetry, setSyncTelemetry] = useState<CloudSyncTelemetry>(storageService.getCloudSyncStatus());
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isMigratingSupabase, setIsMigratingSupabase] = useState<boolean>(false);
   const [isClearingSample, setIsClearingSample] = useState<boolean>(false);
   const [confirmClearSample, setConfirmClearSample] = useState<boolean>(false);
+  const [copiedSql, setCopiedSql] = useState<boolean>(false);
+
+  const isSupabase = syncTelemetry.provider === 'supabase';
+  const providerLabel = isSupabase ? 'Supabase Realtime' : 'Firebase';
 
   useEffect(() => {
     const syncState = () => setSyncTelemetry(storageService.getCloudSyncStatus());
@@ -91,7 +100,7 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
       const content = evt.target?.result as string;
       const success = await storageService.importFullBackup(content);
       if (success) {
-        setStatusMessage('Alhamdulillah, pemulihan database dari file JSON berhasil diterapkan dan disinkronkan real-time ke Database Pusat Firestore.');
+        setStatusMessage(`Alhamdulillah, pemulihan database dari file JSON berhasil diterapkan dan disinkronkan real-time ke Database Pusat ${providerLabel}.`);
         setSyncTelemetry(storageService.getCloudSyncStatus());
       } else {
         setStatusMessage('Gagal memulihkan database: Format file JSON tidak valid.');
@@ -109,12 +118,49 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
     setSyncTelemetry(latestTelemetry);
     setIsSyncing(false);
     if (ok) {
-      setStatusMessage('Data berhasil disinkronkan langsung dari Database Pusat Firestore.');
+      setStatusMessage(`Data berhasil disinkronkan langsung dari Database Pusat ${latestTelemetry.provider === 'supabase' ? 'Supabase Realtime' : 'Firestore'}.`);
     } else if (latestTelemetry.quotaExceeded) {
       setStatusMessage('Kuota baca harian gratis Firestore hari ini telah tercapai dan akan reset otomatis besok. Cache offline Firestore tetap aktif.');
     } else {
-      setStatusMessage('Gagal memperbarui dari server cloud saat ini; cache offline Firestore tetap aktif.');
+      setStatusMessage('Gagal memperbarui dari server cloud saat ini; cache lokal tetap aktif.');
     }
+  };
+
+  const handleMigrateToSupabase = async () => {
+    if (isMigratingSupabase) return;
+    setIsMigratingSupabase(true);
+    setStatusMessage('Mentransfer seluruh data lama (Santri, Ustadzah, Fasilitas, Surat, Perizinan, Peminjaman, Jadwal, Absensi) ke Supabase...');
+    try {
+      const res = await transferAllLegacyDataToSupabase();
+      setSyncTelemetry(storageService.getCloudSyncStatus());
+      setStatusMessage(res.message);
+    } finally {
+      setIsMigratingSupabase(false);
+    }
+  };
+
+  const handleCopySql = async () => {
+    try {
+      await navigator.clipboard.writeText(SUPABASE_SETUP_SQL);
+      setCopiedSql(true);
+      setStatusMessage('Skrip SQL CREATE TABLE + RLS + Realtime + Storage Bucket berhasil disalin ke clipboard!');
+      setTimeout(() => setCopiedSql(false), 3000);
+    } catch {
+      setStatusMessage('Gagal menyalin otomatis. Silakan gunakan tombol Unduh File .sql.');
+    }
+  };
+
+  const handleDownloadSql = () => {
+    const blob = new Blob([SUPABASE_SETUP_SQL], { type: 'text/sql;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'almaliki_supabase_schema_realtime.sql';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setStatusMessage('File almaliki_supabase_schema_realtime.sql berhasil diunduh.');
   };
 
   const handleClearSampleData = async () => {
@@ -136,7 +182,7 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
   const handleResetToDefault = async () => {
     await storageService.forcePullFromCloud();
     setSyncTelemetry(storageService.getCloudSyncStatus());
-    setStatusMessage('Seluruh data perangkat telah disinkronkan ulang secara langsung dari Database Pusat Firestore.');
+    setStatusMessage(`Seluruh data perangkat telah disinkronkan ulang secara langsung dari Database Pusat ${providerLabel}.`);
   };
 
   return (
@@ -169,7 +215,9 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
                   ? 'bg-[#02100a]/90 border-emerald-500/45 text-emerald-300 glow-gold'
                   : syncTelemetry.status === 'syncing'
                     ? 'bg-amber-950/80 border-amber-500/45 text-amber-200'
-                    : 'bg-red-950/90 border-red-500/60 text-red-200'
+                    : syncTelemetry.quotaExceeded
+                      ? 'bg-amber-950/90 border-amber-500/65 text-amber-200'
+                      : 'bg-red-950/90 border-red-500/60 text-red-200'
               }`}
             >
               <span
@@ -178,21 +226,41 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
                     ? 'bg-emerald-400 animate-pulse'
                     : syncTelemetry.status === 'syncing'
                       ? 'bg-amber-400 animate-ping'
-                      : 'bg-red-500 animate-pulse'
+                      : syncTelemetry.quotaExceeded
+                        ? 'bg-amber-400 animate-pulse'
+                        : 'bg-red-500 animate-pulse'
                 }`}
               />
               <span className="font-bold tracking-wide">
                 {syncTelemetry.status === 'connected'
-                  ? 'Cloud Synced (Firebase)'
+                  ? `Cloud Synced (${providerLabel})`
                   : syncTelemetry.status === 'syncing'
-                    ? 'Menghubungkan Firebase...'
-                    : 'Offline / Gagal Koneksi Firebase'}
+                    ? `Menghubungkan ${providerLabel}...`
+                    : syncTelemetry.quotaExceeded
+                      ? 'Mode Cache (Kuota Harian Penuh)'
+                      : `Offline / Gagal Koneksi ${providerLabel}`}
               </span>
             </div>
-            {(syncTelemetry.status === 'error' || syncTelemetry.status === 'offline') && syncTelemetry.errorMessage && (
-              <div className="px-3 py-1.5 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[11px] font-mono max-w-md break-words">
-                Error Firebase: {syncTelemetry.errorMessage}
+            {syncTelemetry.quotaExceeded ? (
+              <div className="px-3 py-2 rounded-xl bg-amber-950/90 border border-amber-500/50 text-amber-100 text-[11px] font-mono max-w-md space-y-1">
+                <p>
+                  Kuota baca/tulis harian gratis Firestore hari ini penuh dan akan reset otomatis besok. Data cache lokal tetap aktif.
+                </p>
+                <a
+                  href={`https://console.firebase.google.com/project/${syncTelemetry.projectId}/firestore/databases/${syncTelemetry.databaseId}/data?openUpgradeDialog=true`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-amber-300 underline hover:text-amber-200 font-bold"
+                >
+                  Cek Kuota / Upgrade di Firebase Console &rarr;
+                </a>
               </div>
+            ) : (
+              (syncTelemetry.status === 'error' || syncTelemetry.status === 'offline') && syncTelemetry.errorMessage && (
+                <div className="px-3 py-1.5 rounded-xl bg-red-950/90 border border-red-500/50 text-red-200 text-[11px] font-mono max-w-md break-words">
+                  Error {providerLabel}: {syncTelemetry.errorMessage}
+                </div>
+              )
             )}
           </div>
         </div>
@@ -223,22 +291,35 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
               </div>
               <h2 className="text-base font-black text-white uppercase tracking-tight mt-0.5">
-                Pusat Penyimpanan Firestore Terpadu Al-Maliki
+                {isSupabase
+                  ? 'Pusat Penyimpanan Supabase PostgreSQL Realtime Al-Maliki'
+                  : 'Pusat Penyimpanan Cloud Terpadu Al-Maliki'}
               </h2>
               <p className="text-xs text-emerald-200/75 font-mono">
-                ID Database: <span className="text-amber-300 font-bold">{syncTelemetry.databaseId}</span> · Project: <span className="text-emerald-300 font-bold">{syncTelemetry.projectId}</span>
+                Database: <span className="text-amber-300 font-bold">{syncTelemetry.databaseId}</span> · Host/Project: <span className="text-emerald-300 font-bold">{syncTelemetry.projectId}</span>
               </p>
             </div>
           </div>
 
-          <button
-            onClick={handleForcePull}
-            disabled={isSyncing}
-            className="tactile-interactive inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-amber-400 hover:from-emerald-300 hover:to-amber-300 rounded-xl transition-all shadow-lg cursor-pointer border border-emerald-300 disabled:opacity-60"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-slate-950 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Ulang Sekarang'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleMigrateToSupabase}
+              disabled={isMigratingSupabase}
+              className="tactile-interactive inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-mono font-extrabold text-white bg-gradient-to-r from-purple-600 via-fuchsia-600 to-amber-500 hover:brightness-110 rounded-xl transition-all shadow-lg cursor-pointer border border-amber-300/60 disabled:opacity-60"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>{isMigratingSupabase ? 'Mentransfer...' : '🚀 Transfer Semua Data Lama ke Supabase'}</span>
+            </button>
+            <button
+              onClick={handleForcePull}
+              disabled={isSyncing}
+              className="tactile-interactive inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-amber-400 hover:from-emerald-300 hover:to-amber-300 rounded-xl transition-all shadow-lg cursor-pointer border border-emerald-300 disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-950 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Ulang Sekarang'}</span>
+            </button>
+          </div>
         </div>
 
         {/* 3 Platform Interconnection Cards */}
@@ -459,6 +540,43 @@ export const DatabaseSettings: React.FC<DatabaseSettingsProps> = ({
               <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
               <span>Tarik Ulang dari Database Pusat</span>
             </button>
+          </div>
+        </div>
+
+        {/* Panel 4: Skrip SQL Supabase Setup */}
+        <div className="metallic-glass-card rounded-3xl p-6 border border-purple-500/40 space-y-4 shadow-2xl md:col-span-2 hover-rainbow-edge card-3d-floating">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-purple-500/15 text-purple-300 border border-purple-400/40">
+                <FileCode2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white font-sans uppercase tracking-wide">
+                  Skrip SQL Pembentukan 24 Tabel, RLS, Realtime &amp; Bucket Storage Supabase
+                </h3>
+                <p className="text-xs text-emerald-200/75 font-mono">
+                  Salin dan jalankan di SQL Editor Supabase sebelum menekan tombol Transfer Semua Data Lama ke Supabase
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopySql}
+                className="tactile-interactive py-2 px-4 rounded-xl bg-purple-600/80 hover:bg-purple-500 text-white font-bold font-mono text-xs inline-flex items-center gap-1.5 cursor-pointer border border-purple-300/40"
+              >
+                {copiedSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedSql ? 'SQL Disalin!' : 'Salin Skrip SQL'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadSql}
+                className="tactile-interactive py-2 px-4 rounded-xl bg-[#041d13]/90 hover:bg-[#072c1e] text-amber-300 font-bold font-mono text-xs inline-flex items-center gap-1.5 cursor-pointer border border-amber-400/40"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh File .SQL</span>
+              </button>
+            </div>
           </div>
         </div>
 

@@ -51,9 +51,10 @@ import { openPrintWindow } from '../utils/printDocument';
 import { downloadSuratSekretarisPDF, loadImageAsDataUrl } from '../utils/pdfGenerator';
 import { downloadWordDocument } from '../utils/wordExport';
 import { DivisiKotakMasuk } from './DivisiKotakMasuk';
-import { ScanSuratModal } from './ScanSuratModal';
+import { ScanSuratModal, type ScanSuratAttachment } from './ScanSuratModal';
 import { PieChart3D } from './Charts3D';
 import { computeRealtimePondokAnalytics } from '../utils/realtimeAnalytics';
+import { uploadFileToSupabaseStorage } from '../services/supabase';
 import {
   applyPengaturanSuratToConfig,
   convertSignatureFileToBase64,
@@ -214,16 +215,54 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     tujuanAtauPengirim: '',
     perihal: '',
     isiSurat: '',
+    fileLampiranUrl: '',
+    fileLampiranNama: '',
   });
   const [manualMasukFromScan, setManualMasukFromScan] = useState(false);
+  const [isUploadingLampiranMasuk, setIsUploadingLampiranMasuk] = useState(false);
   const isiSuratMasukRef = useRef<HTMLTextAreaElement | null>(null);
   const [editingMasukId, setEditingMasukId] = useState<string | null>(null);
   const [editingMasukText, setEditingMasukText] = useState('');
+
+  const handleUploadLampiranSuratMasuk = async (file: File) => {
+    setIsUploadingLampiranMasuk(true);
+    try {
+      const res = await uploadFileToSupabaseStorage(
+        file,
+        'scan-surat',
+        file.name.replace(/\.[^.]+$/, '') || 'scan-surat'
+      );
+      setManualMasukForm((prev) => ({
+        ...prev,
+        fileLampiranUrl: res.publicUrl,
+        fileLampiranNama: file.name,
+        perihal: prev.perihal || file.name.replace(/\.[^.]+$/, ''),
+        isiSurat:
+          prev.isiSurat ||
+          `Lampiran dokumen scan: ${file.name}.`,
+      }));
+      setShowManualMasukForm(true);
+      showToast(
+        res.uploadedToBucket
+          ? `File "${file.name}" berhasil diunggah ke Storage almaliki-dokumen.`
+          : `File "${file.name}" dilampirkan ke formulir Surat Masuk.`
+      );
+    } catch {
+      showToast('Gagal mengunggah lampiran file surat.');
+    } finally {
+      setIsUploadingLampiranMasuk(false);
+    }
+  };
 
   const handleDirectUploadSuratMasuk = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      void handleUploadLampiranSuratMasuk(file);
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -665,7 +704,7 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
   };
 
   // Handler OCR Scan Kamera Gemini -> Otomatis isi Formulir Surat Masuk (termasuk Latin & Arab)
-  const handleScanTranscribed = (transcribedText: string) => {
+  const handleScanTranscribed = (transcribedText: string, attachment?: ScanSuratAttachment) => {
     const cleanText = transcribedText.trim();
     const lines = cleanText
       .split('\n')
@@ -695,13 +734,17 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       tujuanAtauPengirim: detectedPengirim,
       perihal: detectedPerihal,
       isiSurat: cleanText,
+      fileLampiranUrl: attachment?.fileLampiranUrl || prev.fileLampiranUrl || '',
+      fileLampiranNama: attachment?.fileLampiranNama || prev.fileLampiranNama || '',
     }));
     setManualMasukFromScan(true);
     setShowManualMasukForm(true);
     setShowScanModal(false);
     setActiveTab('riwayat_surat');
     showToast(
-      'Teks surat (Latin/Arab) berhasil diekstrak ke formulir Surat Masuk. Silakan periksa & klik Simpan.'
+      attachment?.fileLampiranUrl
+        ? 'Hasil scan & file lampiran tersimpan! Silakan periksa & klik Simpan ke Tabel.'
+        : 'Teks surat (Latin/Arab) berhasil diekstrak ke formulir Surat Masuk. Silakan periksa & klik Simpan.'
     );
 
     setTimeout(() => {
@@ -726,11 +769,13 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
         manualMasukForm.nomorSurat.trim() ||
         `SM-${String(masukCount).padStart(3, '0')}/${new Date().getFullYear()}`,
       tanggalSurat: manualMasukForm.tanggalSurat || new Date().toISOString().split('T')[0],
-      lampiran: '-',
+      lampiran: manualMasukForm.fileLampiranNama || '-',
       perihal: manualMasukForm.perihal.trim(),
       tujuanAtauPengirim: manualMasukForm.tujuanAtauPengirim.trim() || 'Pengirim Eksternal',
       alamatTujuan: 'Sekretariat Pondok',
       isiSurat: manualMasukForm.isiSurat.trim(),
+      fileLampiranUrl: manualMasukForm.fileLampiranUrl || undefined,
+      fileLampiranNama: manualMasukForm.fileLampiranNama || undefined,
       status: 'Diarsipkan',
       dibuatOleh: currentUser.nama,
       createdAt: new Date().toLocaleString('id-ID'),
@@ -747,6 +792,8 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       tujuanAtauPengirim: '',
       perihal: '',
       isiSurat: '',
+      fileLampiranUrl: '',
+      fileLampiranNama: '',
     });
     setManualMasukFromScan(false);
     setShowManualMasukForm(false);
@@ -924,13 +971,27 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (typeof ev.target?.result === 'string') {
-        onResult(ev.target.result);
+    void (async () => {
+      try {
+        const uploaded = await uploadFileToSupabaseStorage(
+          file,
+          'kop-surat',
+          file.name.replace(/\.[^.]+$/, '') || 'kop-stempel'
+        );
+        onResult(uploaded.publicUrl);
+        if (uploaded.uploadedToBucket) {
+          showToast(`Gambar "${file.name}" diunggah ke Storage almaliki-dokumen!`);
+        }
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          if (typeof ev.target?.result === 'string') {
+            onResult(ev.target.result);
+          }
+        };
+        reader.readAsDataURL(file);
       }
-    };
-    reader.readAsDataURL(file);
+    })();
   };
 
   const handleUploadSignatureImage = async (
@@ -943,9 +1004,15 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
     try {
       const base64 = await convertSignatureFileToBase64(file);
       if (!base64) return;
+      const uploaded = await uploadFileToSupabaseStorage(
+        base64,
+        'ttd-pejabat',
+        `ttd-${role}`
+      );
+      const finalUrl = uploaded.publicUrl || base64;
       const updated = {
         ...kopForm,
-        ...(role === 'ketua' ? { ttdUrl2: base64 } : { ttdUrl1: base64 }),
+        ...(role === 'ketua' ? { ttdUrl2: finalUrl } : { ttdUrl1: finalUrl }),
       };
       setKopForm(updated);
       savePengaturanSuratToStorage({
@@ -959,12 +1026,16 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
       });
       setFormSurat((prev) => ({
         ...prev,
-        ...(role === 'ketua' ? { ttdUrl2: base64 } : { ttdUrl1: base64 }),
+        ...(role === 'ketua' ? { ttdUrl2: finalUrl } : { ttdUrl1: finalUrl }),
       }));
       showToast(
-        role === 'ketua'
-          ? 'Gambar Tanda Tangan Ketua Pondok berhasil dikonversi ke Base64 & disimpan!'
-          : 'Gambar Tanda Tangan Sekretaris berhasil dikonversi ke Base64 & disimpan!'
+        uploaded.uploadedToBucket
+          ? role === 'ketua'
+            ? 'TTD Ketua Pondok diunggah ke Storage almaliki-dokumen & disimpan!'
+            : 'TTD Sekretaris diunggah ke Storage almaliki-dokumen & disimpan!'
+          : role === 'ketua'
+            ? 'Gambar Tanda Tangan Ketua Pondok berhasil dikonversi & disimpan!'
+            : 'Gambar Tanda Tangan Sekretaris berhasil dikonversi & disimpan!'
       );
     } catch {
       showToast('Gagal memproses gambar tanda tangan. Pastikan format PNG/JPG valid.');
@@ -2008,12 +2079,12 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                     className="px-3.5 py-2.5 rounded-xl bg-[#042116] hover:bg-[#083524] text-[#f3d266] border border-[#d4af37]/45 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <Upload className="w-4 h-4" />
-                    <span>Pilih File / Upload Foto Surat</span>
+                    <span>Upload Scan PDF / Foto Surat</span>
                   </button>
                   <input
                     ref={uploadFotoInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf"
                     className="hidden"
                     onChange={handleDirectUploadSuratMasuk}
                   />
@@ -2126,6 +2197,33 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                         className="w-full px-3 py-2 rounded-xl bg-[#052419] border border-[#d4af37]/30 text-[#f4f9f5] leading-relaxed"
                       />
                     </div>
+                    <div className="sm:col-span-3 flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-[#052419] border border-[#d4af37]/25">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-[#e5c158]">
+                          Lampiran Scan PDF / Foto Surat (Supabase Storage: almaliki-dokumen)
+                        </p>
+                        <p className="text-[11px] text-[#9ec5b0] truncate">
+                          {manualMasukForm.fileLampiranNama
+                            ? `Terlampir: ${manualMasukForm.fileLampiranNama}`
+                            : 'Opsional — unggah file PDF atau gambar hasil scan untuk disimpan di cloud storage.'}
+                        </p>
+                      </div>
+                      <label className="px-3 py-1.5 rounded-lg bg-[#042116] hover:bg-[#083524] text-[#f3d266] border border-[#d4af37]/40 text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{isUploadingLampiranMasuk ? 'Mengunggah...' : 'Upload PDF / Scan'}</span>
+                        <input
+                          type="file"
+                          accept="application/pdf,image/*"
+                          disabled={isUploadingLampiranMasuk}
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = '';
+                            if (f) void handleUploadLampiranSuratMasuk(f);
+                          }}
+                        />
+                      </label>
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2">
                     <button
@@ -2198,6 +2296,18 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                             <div className="text-[11px] text-[#d1e7da] mt-0.5">
                               Dari: {srt.tujuanAtauPengirim || '-'}
                             </div>
+                            {srt.fileLampiranUrl && (
+                              <a
+                                href={srt.fileLampiranUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-900/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-500/40 text-[10px] font-bold"
+                              >
+                                <FileText className="w-3 h-3" />
+                                <span className="truncate max-w-[160px]">{srt.fileLampiranNama || 'Lihat Lampiran Scan'}</span>
+                                <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                              </a>
+                            )}
                           </td>
                           <td className="py-3 px-3 min-w-[260px] max-w-xl">
                             {editingMasukId === srt.id ? (
@@ -2337,6 +2447,18 @@ export const SekretarisPanel: React.FC<SekretarisPanelProps> = ({
                             <td className="py-3 px-3 min-w-[170px]">
                               <div className="font-bold text-white">{srt.perihal}</div>
                               <div className="text-[11px] text-[#d1e7da]">{srt.tujuanAtauPengirim || '-'}</div>
+                              {srt.fileLampiranUrl && (
+                                <a
+                                  href={srt.fileLampiranUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-900/70 hover:bg-emerald-800 text-emerald-200 border border-emerald-500/40 text-[10px] font-bold"
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  <span className="truncate max-w-[150px]">{srt.fileLampiranNama || 'Lihat Lampiran Scan'}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                                </a>
+                              )}
                             </td>
                             <td className="py-3 px-3 min-w-[220px] max-w-md">
                               <div dir="auto" className="whitespace-pre-line text-[#d1e7da] line-clamp-3">

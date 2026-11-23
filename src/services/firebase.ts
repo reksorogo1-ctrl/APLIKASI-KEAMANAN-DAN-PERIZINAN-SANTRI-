@@ -8,9 +8,11 @@ import {
   doc,
   getDocFromServer,
   enableNetwork,
+  disableNetwork,
   type Firestore,
 } from 'firebase/firestore';
 import appletConfig from '../../firebase-applet-config.json';
+import { isSupabaseConfigured } from './supabase';
 
 /**
  * Konfigurasi resmi tunggal Firebase Cloud proyek ini.
@@ -145,11 +147,143 @@ export interface FirestoreConnectionResult {
   permissionDenied?: boolean;
 }
 
+const QUOTA_PAUSE_STORAGE_KEY = 'almaliki_firestore_quota_pause_v1';
+
+function getCurrentPacificDateKey(): string {
+  try {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+function readPersistedQuotaPause(): boolean {
+  if (isSupabaseConfigured()) return false;
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+    const raw = window.localStorage.getItem(QUOTA_PAUSE_STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { databaseId?: string; datePT?: string };
+    if (
+      parsed.databaseId === FIRESTORE_DATABASE_ID &&
+      parsed.datePT === getCurrentPacificDateKey()
+    ) {
+      return true;
+    }
+    window.localStorage.removeItem(QUOTA_PAUSE_STORAGE_KEY);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function writePersistedQuotaPause(paused: boolean): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    if (paused) {
+      window.localStorage.setItem(
+        QUOTA_PAUSE_STORAGE_KEY,
+        JSON.stringify({
+          databaseId: FIRESTORE_DATABASE_ID,
+          datePT: getCurrentPacificDateKey(),
+          pausedAt: Date.now(),
+        })
+      );
+    } else {
+      window.localStorage.removeItem(QUOTA_PAUSE_STORAGE_KEY);
+    }
+  } catch {
+    // ignore storage quota errors
+  }
+}
+
+let firestoreQuotaPaused = readPersistedQuotaPause();
+let pendingDisableNetworkPromise: Promise<void> | null = null;
+const quotaPauseListeners = new Set<(paused: boolean) => void>();
+
+// Jika kuota harian Firestore untuk hari ini sudah penuh atau Supabase sudah aktif,
+// langsung hentikan jaringan Firestore sebelum SDK memicu retry/backoff di background.
+if (firestoreQuotaPaused || isSupabaseConfigured()) {
+  pendingDisableNetworkPromise = disableNetwork(db)
+    .catch(() => {
+      // ignore disableNetwork startup error
+    })
+    .finally(() => {
+      pendingDisableNetworkPromise = null;
+    });
+}
+
+export function isFirestoreQuotaPaused(): boolean {
+  return firestoreQuotaPaused;
+}
+
+export function subscribeFirestoreQuotaPause(listener: (paused: boolean) => void): () => void {
+  quotaPauseListeners.add(listener);
+  return () => {
+    quotaPauseListeners.delete(listener);
+  };
+}
+
+export async function pauseFirestoreNetworkForQuota(): Promise<void> {
+  writePersistedQuotaPause(true);
+  if (!firestoreQuotaPaused) {
+    firestoreQuotaPaused = true;
+    quotaPauseListeners.forEach((fn) => {
+      try {
+        fn(true);
+      } catch {
+        // ignore
+      }
+    });
+  }
+  if (!pendingDisableNetworkPromise) {
+    pendingDisableNetworkPromise = disableNetwork(db)
+      .catch(() => {
+        // ignore disableNetwork errors
+      })
+      .finally(() => {
+        pendingDisableNetworkPromise = null;
+      });
+  }
+  await pendingDisableNetworkPromise;
+}
+
+export async function resumeFirestoreNetworkFromQuota(): Promise<boolean> {
+  writePersistedQuotaPause(false);
+  firestoreQuotaPaused = false;
+  quotaPauseListeners.forEach((fn) => {
+    try {
+      fn(false);
+    } catch {
+      // ignore
+    }
+  });
+  if (isSupabaseConfigured()) {
+    return false;
+  }
+  try {
+    await enableNetwork(db);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function testFirestoreConnection(): Promise<FirestoreConnectionResult> {
+  if (isSupabaseConfigured()) {
+    return { ok: true };
+  }
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     return {
       ok: false,
       errorMessage: 'Perangkat sedang offline (tidak ada koneksi internet).',
+    };
+  }
+  if (firestoreQuotaPaused) {
+    return {
+      ok: false,
+      quotaExceeded: true,
+      errorMessage: 'Kuota harian Firestore penuh. Mode cache lokal aktif hingga reset berikutnya.',
     };
   }
   try {
@@ -158,7 +292,8 @@ export async function testFirestoreConnection(): Promise<FirestoreConnectionResu
   } catch (error) {
     const rawMsg = extractFirebaseErrorMessage(error);
     if (isFirestoreQuotaError(error)) {
-      console.warn('Firestore daily free read quota reached; using offline cache until quota resets.');
+      console.warn('Firestore daily free quota reached; pausing network sync and using offline cache until quota resets.');
+      await pauseFirestoreNetworkForQuota();
       return {
         ok: false,
         quotaExceeded: true,
@@ -184,6 +319,9 @@ export async function testFirestoreConnection(): Promise<FirestoreConnectionResu
 }
 
 export async function resyncFirestoreNetwork(): Promise<boolean> {
+  if (firestoreQuotaPaused || isSupabaseConfigured()) {
+    return false;
+  }
   try {
     await enableNetwork(db);
     return true;

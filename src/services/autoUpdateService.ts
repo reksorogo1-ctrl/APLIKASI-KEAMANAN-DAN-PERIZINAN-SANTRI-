@@ -160,12 +160,12 @@ export function initAutoUpdateAndSync(): void {
   });
 
   window.addEventListener('online', () => {
-    void runBackgroundRefresh(true);
+    void runBackgroundRefresh(false);
   });
 
   window.addEventListener('pageshow', (event) => {
     if (event.persisted) {
-      void runBackgroundRefresh(true);
+      void runBackgroundRefresh(false);
     }
   });
 

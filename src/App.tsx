@@ -121,9 +121,10 @@ export default function App() {
     storageService.checkAndDetectLatePermits();
     storageService.checkAndDetectTodayAgendas();
     const lateTimer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       storageService.checkAndDetectLatePermits();
       storageService.checkAndDetectTodayAgendas();
-    }, 15000);
+    }, 60000);
 
     const unsubscribe = storageService.subscribe(() => {
       setCurrentUser(storageService.getCurrentUser());

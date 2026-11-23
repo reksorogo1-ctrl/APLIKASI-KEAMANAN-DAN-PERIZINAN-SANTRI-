@@ -41,6 +41,8 @@ import {
 import { storageService } from '../services/storageService';
 import { syncPWAIdentity } from '../services/pwaSyncService';
 import { INITIAL_SURAT_SEKRETARIS_CONFIG } from '../data/seedData';
+import { uploadFileToSupabaseStorage } from '../services/supabase';
+import { convertSignatureFileToBase64 } from '../utils/pengaturanSurat';
 import {
   SystemConfig,
   UserAccount,
@@ -1594,23 +1596,69 @@ export const AdminOptionPanel: React.FC<AdminOptionPanelProps> = ({
               </div>
               <div>
                 <label className="block text-[#e5c158] font-bold mb-1">Link URL Gambar Tanda Tangan Digital 1 (Sekretaris)</label>
-                <input
-                  type="text"
-                  placeholder="https://... atau data:image/..."
-                  value={secCfg.ttdUrl1 || ''}
-                  onChange={(e) => updateSecCfg({ ttdUrl1: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#031810] border border-[#d4af37]/40 rounded-xl text-[#f4f9f5] font-mono"
-                />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="https://... atau URL Storage almaliki-dokumen"
+                    value={secCfg.ttdUrl1 || ''}
+                    onChange={(e) => updateSecCfg({ ttdUrl1: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-[#031810] border border-[#d4af37]/40 rounded-xl text-[#f4f9f5] font-mono"
+                  />
+                  <label className="px-3 py-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-[#d4af37]/40 text-[#e5c158] font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload TTD ke Storage</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!f) return;
+                        try {
+                          const base64 = await convertSignatureFileToBase64(f);
+                          const up = await uploadFileToSupabaseStorage(base64, 'ttd-pejabat', 'ttd-sekretaris');
+                          updateSecCfg({ ttdUrl1: up.publicUrl });
+                        } catch {
+                          // ignore invalid image
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
               <div>
                 <label className="block text-[#e5c158] font-bold mb-1">Link URL Gambar Tanda Tangan Digital 2 (Ketua Pondok)</label>
-                <input
-                  type="text"
-                  placeholder="https://... atau data:image/..."
-                  value={secCfg.ttdUrl2 || ''}
-                  onChange={(e) => updateSecCfg({ ttdUrl2: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#031810] border border-[#d4af37]/40 rounded-xl text-[#f4f9f5] font-mono"
-                />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="https://... atau URL Storage almaliki-dokumen"
+                    value={secCfg.ttdUrl2 || ''}
+                    onChange={(e) => updateSecCfg({ ttdUrl2: e.target.value })}
+                    className="flex-1 px-3 py-2 bg-[#031810] border border-[#d4af37]/40 rounded-xl text-[#f4f9f5] font-mono"
+                  />
+                  <label className="px-3 py-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 border border-[#d4af37]/40 text-[#e5c158] font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload TTD ke Storage</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!f) return;
+                        try {
+                          const base64 = await convertSignatureFileToBase64(f);
+                          const up = await uploadFileToSupabaseStorage(base64, 'ttd-pejabat', 'ttd-ketua');
+                          updateSecCfg({ ttdUrl2: up.publicUrl });
+                        } catch {
+                          // ignore invalid image
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-4 pt-2">
                 <label className="inline-flex items-center gap-2 text-[#f4f9f5] cursor-pointer">
