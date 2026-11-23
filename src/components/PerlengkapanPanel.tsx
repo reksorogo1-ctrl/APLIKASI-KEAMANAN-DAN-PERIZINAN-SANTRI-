@@ -58,7 +58,6 @@ import {
   subscribePengaturanSuratPerlengkapan,
   updateStatusPeminjamanPerlengkapan,
 } from '../services/peminjamanPerlengkapanService';
-import { openPrintWindow } from '../utils/printDocument';
 import { downloadWordDocument } from '../utils/wordExport';
 import { DivisiKotakMasuk } from './DivisiKotakMasuk';
 import { PieChart3D } from './Charts3D';
@@ -67,9 +66,11 @@ import { INITIAL_PERLENGKAPAN_CONFIG } from '../data/seedData';
 import { SuratPeminjamanPerlengkapanModal } from './SuratPeminjamanPerlengkapanModal';
 import { ScanQRPengembalianModal } from './ScanQRPengembalianModal';
 import { OptionPanelSuratPerlengkapanModal } from './OptionPanelSuratPerlengkapanModal';
+import { SuratPerlengkapanLayoutEditor } from './SuratPerlengkapanLayoutEditor';
 
 export type PerlengkapanSubTab =
   | 'kotak_masuk'
+  | 'fasilitas_inventaris'
   | 'inventaris'
   | 'barang_masuk_keluar'
   | 'peminjaman'
@@ -92,8 +93,15 @@ interface PerlengkapanPanelProps {
 }
 
 function normalizePerlengkapanSubTab(tab?: PerlengkapanSubTab): PerlengkapanSubTab {
-  if (!tab) return 'inventaris';
-  if (tab === 'data_fasilitas') return 'kamar_santri';
+  if (!tab) return 'fasilitas_inventaris';
+  if (
+    tab === 'inventaris' ||
+    tab === 'kamar_santri' ||
+    tab === 'data_fasilitas' ||
+    tab === 'fasilitas_inventaris'
+  ) {
+    return 'fasilitas_inventaris';
+  }
   if (tab === 'peminjaman') return 'barang_masuk_keluar';
   return tab;
 }
@@ -150,25 +158,54 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     setTimeout(() => setToastMsg(''), 4000);
   };
 
-  // Form Inventaris Baru
+  // Konfigurasi Data Fasilitas Gedung (diakses awal untuk sinkronisasi form Inventaris, Masuk, Keluar & Peminjaman)
+  const fasilitasGedungList: DataFasilitasGedung[] = useMemo(
+    () =>
+      Array.isArray(systemConfig.fasilitasGedungList)
+        ? systemConfig.fasilitasGedungList
+        : [],
+    [systemConfig.fasilitasGedungList]
+  );
+
+  // Form Inventaris Baru (Barang Pemberian -> Otomatis masuk & terkonfigurasi ke Data Fasilitas Gedung)
   const [formBarang, setFormBarang] = useState<Partial<BarangInventaris>>({
     kodeBarang: `INV-MLK-${String(barangInventaris.length + 1).padStart(3, '0')}`,
     namaBarang: '',
     kategori: 'Elektronik',
-    jumlah: 10,
-    stokMinimal: 3,
+    jumlah: 1,
+    stokMinimal: 2,
     satuan: 'Unit',
     kondisi: 'Baik',
     lokasi: 'Gudang Perlengkapan',
     penanggungJawab: currentUser.nama,
     tanggalPerolehan: new Date().toISOString().split('T')[0],
-    nilaiPerolehan: 1000000,
+    nilaiPerolehan: 0,
     catatan: '',
+    sumberBarang: 'Pemberian',
+    asalPemberian: '',
+    gedungId: '',
   });
+  const [syncInvGedungDraft, setSyncInvGedungDraft] = useState<Record<string, string>>({});
 
-  // Form Barang Masuk (Bagian Atas)
+  const effectiveFormBarangGedungId = useMemo(() => {
+    if (
+      formBarang.gedungId &&
+      fasilitasGedungList.some((g) => g.id === formBarang.gedungId)
+    ) {
+      return formBarang.gedungId;
+    }
+    return fasilitasGedungList[0]?.id || '';
+  }, [formBarang.gedungId, fasilitasGedungList]);
+
+  // Form Barang Masuk (Bagian Atas) — mendukung Tujuan: Inventaris ATAU Data Fasilitas (Gedung)
   const [masukForm, setMasukForm] = useState({
+    tujuanTipe: 'inventaris' as 'inventaris' | 'fasilitas',
     barangId: barangInventaris[0]?.id || '',
+    gedungId: '',
+    fasilitasItemId: '',
+    namaFasilitasBaru: '',
+    satuanBaru: 'Unit',
+    kondisiBaru: 'Baik' as 'Baik' | 'Perlu Perbaikan' | 'Rusak',
     jumlah: 1,
     tanggal: new Date().toISOString().split('T')[0],
     petugas: currentUser.nama,
@@ -184,12 +221,42 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     return barangInventaris[0]?.id || '';
   }, [masukForm.barangId, barangInventaris]);
 
+  const effectiveMasukGedungId = useMemo(() => {
+    if (
+      masukForm.gedungId &&
+      fasilitasGedungList.some((g) => g.id === masukForm.gedungId)
+    ) {
+      return masukForm.gedungId;
+    }
+    return fasilitasGedungList[0]?.id || '';
+  }, [masukForm.gedungId, fasilitasGedungList]);
+
+  const selectedMasukGedung = useMemo(
+    () => fasilitasGedungList.find((g) => g.id === effectiveMasukGedungId) || null,
+    [fasilitasGedungList, effectiveMasukGedungId]
+  );
+
+  const effectiveMasukFasilitasId = useMemo(() => {
+    const items = selectedMasukGedung?.daftarFasilitas || [];
+    if (masukForm.fasilitasItemId === '__NEW__') return '__NEW__';
+    if (
+      masukForm.fasilitasItemId &&
+      items.some((f) => f.id === masukForm.fasilitasItemId)
+    ) {
+      return masukForm.fasilitasItemId;
+    }
+    return items[0]?.id || '__NEW__';
+  }, [masukForm.fasilitasItemId, selectedMasukGedung]);
+
   // Form Barang Keluar / Dipinjam (Bagian Bawah)
   const [keluarInputMode, setKeluarInputMode] = useState<
     'keluar' | 'pinjam_internal' | 'ajukan_sekretaris'
   >('keluar');
   const [keluarForm, setKeluarForm] = useState({
+    sumberTipe: 'inventaris' as 'inventaris' | 'fasilitas',
     barangId: barangInventaris[0]?.id || '',
+    gedungId: '',
+    fasilitasItemId: '',
     jumlah: 1,
     tanggal: new Date().toISOString().split('T')[0],
     petugas: currentUser.nama,
@@ -209,9 +276,38 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     return barangInventaris[0]?.id || '';
   }, [keluarForm.barangId, barangInventaris]);
 
-  // Form Peminjaman Barang Internal
+  const effectiveKeluarGedungId = useMemo(() => {
+    if (
+      keluarForm.gedungId &&
+      fasilitasGedungList.some((g) => g.id === keluarForm.gedungId)
+    ) {
+      return keluarForm.gedungId;
+    }
+    return fasilitasGedungList[0]?.id || '';
+  }, [keluarForm.gedungId, fasilitasGedungList]);
+
+  const selectedKeluarGedung = useMemo(
+    () => fasilitasGedungList.find((g) => g.id === effectiveKeluarGedungId) || null,
+    [fasilitasGedungList, effectiveKeluarGedungId]
+  );
+
+  const effectiveKeluarFasilitasId = useMemo(() => {
+    const items = selectedKeluarGedung?.daftarFasilitas || [];
+    if (
+      keluarForm.fasilitasItemId &&
+      items.some((f) => f.id === keluarForm.fasilitasItemId)
+    ) {
+      return keluarForm.fasilitasItemId;
+    }
+    return items[0]?.id || '';
+  }, [keluarForm.fasilitasItemId, selectedKeluarGedung]);
+
+  // Form Peminjaman Barang Internal (Mendukung 2 Sumber: Inventaris ATAU Fasilitas Gedung)
   const [pinjamForm, setPinjamForm] = useState<Partial<PeminjamanBarang>>({
+    sumberBarang: 'inventaris',
     barangId: barangInventaris[0]?.id || '',
+    gedungId: '',
+    fasilitasItemId: '',
     jumlahPinjam: 1,
     peminjamNama: '',
     peminjamBagian: 'Pendidikan & Taklim',
@@ -228,8 +324,38 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     return barangInventaris[0]?.id || '';
   }, [pinjamForm.barangId, barangInventaris]);
 
+  const effectivePinjamGedungId = useMemo(() => {
+    if (
+      pinjamForm.gedungId &&
+      fasilitasGedungList.some((g) => g.id === pinjamForm.gedungId)
+    ) {
+      return pinjamForm.gedungId;
+    }
+    return fasilitasGedungList[0]?.id || '';
+  }, [pinjamForm.gedungId, fasilitasGedungList]);
+
+  const selectedPinjamGedung = useMemo(
+    () => fasilitasGedungList.find((g) => g.id === effectivePinjamGedungId) || null,
+    [fasilitasGedungList, effectivePinjamGedungId]
+  );
+
+  const effectivePinjamFasilitasId = useMemo(() => {
+    const items = selectedPinjamGedung?.daftarFasilitas || [];
+    if (
+      pinjamForm.fasilitasItemId &&
+      items.some((f) => f.id === pinjamForm.fasilitasItemId)
+    ) {
+      return pinjamForm.fasilitasItemId;
+    }
+    return items[0]?.id || '';
+  }, [pinjamForm.fasilitasItemId, selectedPinjamGedung]);
+
   // Form Pengajuan Peminjaman Barang (Kirim Otomatis ke Sekretaris untuk Cetak Surat)
   const [pengajuanPinjamForm, setPengajuanPinjamForm] = useState({
+    sumberBarang: 'manual' as 'manual' | 'inventaris' | 'fasilitas',
+    barangId: '',
+    gedungId: '',
+    fasilitasItemId: '',
     namaBarang: '',
     pinjamKe: '',
     mulai: new Date().toISOString().split('T')[0],
@@ -266,6 +392,8 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     jumlah: 1,
     satuan: 'Unit',
     kondisiAwal: 'Baik / Normal',
+    sumberBarang: 'inventaris',
+    gedungId: fasilitasGedungList[0]?.id || '',
   });
 
   const [cloudPinjamForm, setCloudPinjamForm] = useState({
@@ -283,6 +411,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       jumlah: 1,
       satuan: 'Unit',
       kondisiAwal: 'Baik / Normal',
+      sumberBarang: 'inventaris',
     },
   ]);
 
@@ -326,13 +455,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     [systemConfig.perlengkapanConfig]
   );
 
-  const fasilitasGedungList: DataFasilitasGedung[] = useMemo(
-    () =>
-      Array.isArray(systemConfig.fasilitasGedungList)
-        ? systemConfig.fasilitasGedungList
-        : [],
-    [systemConfig.fasilitasGedungList]
-  );
+  // Konfigurasi Perlengkapan (fasilitasGedungList dideklarasikan di atas)
 
   // State Tambah Fasilitas per Gedung
   const [newFasilitasMap, setNewFasilitasMap] = useState<
@@ -363,6 +486,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     | 'edit_inventaris'
     | 'edit_mutasi'
     | 'edit_peminjaman_pengajuan'
+    | 'layout_surat_peminjaman'
   >('gedung_fasilitas');
 
   const [newGedungForm, setNewGedungForm] = useState({
@@ -414,68 +538,310 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
 
   // Handlers
 
+  const mapInventarisKondisiToFasilitas = (
+    kondisi: BarangInventaris['kondisi'] | string
+  ): FasilitasItemGedung['kondisi'] => {
+    if (kondisi === 'Rusak Berat') return 'Rusak';
+    if (kondisi === 'Rusak Ringan') return 'Perlu Perbaikan';
+    return 'Baik';
+  };
+
+  const mapFasilitasKondisiToInventaris = (
+    kondisi: FasilitasItemGedung['kondisi']
+  ): BarangInventaris['kondisi'] => {
+    if (kondisi === 'Rusak') return 'Rusak Berat';
+    if (kondisi === 'Perlu Perbaikan') return 'Rusak Ringan';
+    return 'Baik';
+  };
+
   const handleSimpanInventaris = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formBarang.namaBarang) return;
+    if (!formBarang.namaBarang?.trim()) return;
+    const invId = `inv_${Date.now()}`;
+    const qty = Math.max(1, Number(formBarang.jumlah) || 1);
+    const satuan = formBarang.satuan || 'Unit';
+    const kondisiInv = (formBarang.kondisi as BarangInventaris['kondisi']) || 'Baik';
+    const targetGedung = fasilitasGedungList.find(
+      (g) => g.id === effectiveFormBarangGedungId
+    );
+    const asalText = (formBarang.asalPemberian || '').trim() || 'Pemberian / Hibah Pondok';
+    const fasId = targetGedung
+      ? `fas_${Date.now()}_${Math.floor(Math.random() * 1000)}`
+      : undefined;
+
     const item: BarangInventaris = {
-      id: `inv_${Date.now()}`,
+      id: invId,
       kodeBarang: formBarang.kodeBarang || `INV-${Date.now().toString().slice(-4)}`,
-      namaBarang: formBarang.namaBarang,
+      namaBarang: formBarang.namaBarang.trim(),
       kategori: (formBarang.kategori as any) || 'Elektronik',
-      jumlah: Number(formBarang.jumlah) || 1,
+      jumlah: qty,
       stokMinimal: Number(formBarang.stokMinimal) || 2,
-      satuan: formBarang.satuan || 'Unit',
-      kondisi: (formBarang.kondisi as any) || 'Baik',
-      lokasi: formBarang.lokasi || 'Gudang Pusat',
+      satuan,
+      kondisi: kondisiInv,
+      lokasi: targetGedung ? targetGedung.namaGedung : formBarang.lokasi || 'Gudang Pusat',
       penanggungJawab: formBarang.penanggungJawab || currentUser.nama,
       tanggalPerolehan: formBarang.tanggalPerolehan || new Date().toISOString().split('T')[0],
       nilaiPerolehan: Number(formBarang.nilaiPerolehan) || 0,
       catatan: formBarang.catatan || '',
+      sumberBarang: 'Pemberian',
+      asalPemberian: asalText,
+      gedungId: targetGedung?.id,
+      gedungNama: targetGedung?.namaGedung,
+      fasilitasItemId: fasId,
     };
+
     storageService.saveBarangInventaris(item);
-    setToastMsg(`Barang inventaris "${item.namaBarang}" berhasil disimpan!`);
-    setTimeout(() => setToastMsg(''), 4000);
-    setFormBarang({ ...formBarang, namaBarang: '', catatan: '' });
+
+    // Otomatis masukkan dan konfigurasikan langsung ke Data Fasilitas Gedung terpilih
+    if (targetGedung && fasId) {
+      const fasItem: FasilitasItemGedung = {
+        id: fasId,
+        namaFasilitas: item.namaBarang,
+        jumlah: qty,
+        satuan,
+        kondisi: mapInventarisKondisiToFasilitas(kondisiInv),
+        keterangan: `Barang Pemberian (${asalText})${item.catatan ? ` · ${item.catatan}` : ''}`,
+        inventarisId: item.id,
+        asalPemberian: asalText,
+      };
+      const nextGedungList = fasilitasGedungList.map((g) =>
+        g.id === targetGedung.id
+          ? { ...g, daftarFasilitas: [...g.daftarFasilitas, fasItem] }
+          : g
+      );
+      storageService.updateSystemConfig({ fasilitasGedungList: nextGedungList });
+      notifyToast(
+        `Barang pemberian "${item.namaBarang}" masuk Inventaris & langsung terkonfigurasi ke fasilitas ${targetGedung.namaGedung}!`
+      );
+    } else {
+      notifyToast(`Barang pemberian "${item.namaBarang}" berhasil disimpan ke Inventaris!`);
+    }
+
+    setFormBarang({
+      ...formBarang,
+      kodeBarang: `INV-MLK-${String(barangInventaris.length + 2).padStart(3, '0')}`,
+      namaBarang: '',
+      asalPemberian: '',
+      catatan: '',
+    });
+  };
+
+  const handleSinkronInventarisKeGedung = (
+    b: BarangInventaris,
+    targetGedungId: string
+  ) => {
+    const targetGedung = fasilitasGedungList.find((g) => g.id === targetGedungId);
+    if (!targetGedung) {
+      notifyToast('Pilih gedung tujuan terlebih dahulu.');
+      return;
+    }
+
+    const existingFasId = b.fasilitasItemId;
+    const fasId = existingFasId || `fas_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const fasPayload: FasilitasItemGedung = {
+      id: fasId,
+      namaFasilitas: b.namaBarang,
+      jumlah: Math.max(0, Number(b.jumlah) || 0),
+      satuan: b.satuan || 'Unit',
+      kondisi: mapInventarisKondisiToFasilitas(b.kondisi),
+      keterangan: `Barang Pemberian (${b.asalPemberian || 'Inventaris Pondok'})`,
+      inventarisId: b.id,
+      asalPemberian: b.asalPemberian || 'Pemberian',
+    };
+
+    const nextGedungList = fasilitasGedungList.map((g) => {
+      // Hapus duplikat lama jika pindah gedung
+      const cleaned = g.daftarFasilitas.filter(
+        (f) => f.inventarisId !== b.id && f.id !== existingFasId
+      );
+      if (g.id === targetGedung.id) {
+        return { ...g, daftarFasilitas: [...cleaned, fasPayload] };
+      }
+      return { ...g, daftarFasilitas: cleaned };
+    });
+
+    storageService.updateSystemConfig({ fasilitasGedungList: nextGedungList });
+    storageService.saveBarangInventaris({
+      ...b,
+      lokasi: targetGedung.namaGedung,
+      gedungId: targetGedung.id,
+      gedungNama: targetGedung.namaGedung,
+      fasilitasItemId: fasId,
+      sumberBarang: b.sumberBarang || 'Pemberian',
+    });
+    notifyToast(
+      `Inventaris "${b.namaBarang}" berhasil dikonfigurasi & disinkronkan ke ${targetGedung.namaGedung}.`
+    );
   };
 
   const handleSimpanBarangMasuk = (e: React.FormEvent) => {
     e.preventDefault();
-    const target = barangInventaris.find((b) => b.id === effectiveMasukBarangId);
     const qty = Math.max(0, Number(masukForm.jumlah) || 0);
-    if (!target) {
-      notifyToast('Pilih barang inventaris terlebih dahulu sebelum mencatat barang masuk.');
-      return;
-    }
     if (qty <= 0) {
       notifyToast('Jumlah barang masuk harus lebih dari 0.');
       return;
     }
 
     const petugasNama = masukForm.petugas.trim() || currentUser.nama;
+    const tanggalStr = masukForm.tanggal || new Date().toISOString().split('T')[0];
+
+    if (masukForm.tujuanTipe === 'fasilitas') {
+      const targetGedung = fasilitasGedungList.find(
+        (g) => g.id === effectiveMasukGedungId
+      );
+      if (!targetGedung) {
+        notifyToast('Pilih Gedung tujuan terlebih dahulu.');
+        return;
+      }
+
+      const isNewFasilitas = effectiveMasukFasilitasId === '__NEW__';
+      let itemId = '';
+      let itemNama = '';
+      let itemSatuan = 'Unit';
+      let linkedInvId: string | undefined;
+      let prevQty = 0;
+
+      if (isNewFasilitas) {
+        const namaBaru = masukForm.namaFasilitasBaru.trim();
+        if (!namaBaru) {
+          notifyToast('Isi nama fasilitas baru yang masuk ke gedung.');
+          return;
+        }
+        itemId = `fas_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        itemNama = namaBaru;
+        itemSatuan = masukForm.satuanBaru.trim() || 'Unit';
+      } else {
+        const existingItem = targetGedung.daftarFasilitas.find(
+          (f) => f.id === effectiveMasukFasilitasId
+        );
+        if (!existingItem) {
+          notifyToast('Pilih item fasilitas pada gedung tujuan.');
+          return;
+        }
+        itemId = existingItem.id;
+        itemNama = existingItem.namaFasilitas;
+        itemSatuan = existingItem.satuan || 'Unit';
+        linkedInvId = existingItem.inventarisId;
+        prevQty = Number(existingItem.jumlah) || 0;
+      }
+
+      const newQty = prevQty + qty;
+      const nextGedungList = fasilitasGedungList.map((g) => {
+        if (g.id !== targetGedung.id) return g;
+        if (isNewFasilitas) {
+          const addedItem: FasilitasItemGedung = {
+            id: itemId,
+            namaFasilitas: itemNama,
+            jumlah: newQty,
+            satuan: itemSatuan,
+            kondisi: masukForm.kondisiBaru || 'Baik',
+            keterangan: masukForm.keterangan.trim() || 'Barang masuk fasilitas gedung',
+          };
+          return { ...g, daftarFasilitas: [...g.daftarFasilitas, addedItem] };
+        }
+        return {
+          ...g,
+          daftarFasilitas: g.daftarFasilitas.map((f) =>
+            f.id === itemId ? { ...f, jumlah: newQty } : f
+          ),
+        };
+      });
+
+      const mutasi: MutasiBarang = {
+        id: `mut_${Date.now()}`,
+        barangId: itemId,
+        namaBarang: itemNama,
+        tanggal: tanggalStr,
+        tipe: 'Masuk',
+        jumlah: qty,
+        satuan: itemSatuan,
+        keterangan:
+          masukForm.keterangan.trim() ||
+          `Masuk ke Fasilitas ${targetGedung.namaGedung}`,
+        petugas: petugasNama,
+        targetTipe: 'fasilitas',
+        gedungId: targetGedung.id,
+        gedungNama: targetGedung.namaGedung,
+        fasilitasItemId: itemId,
+      };
+
+      storageService.updateSystemConfig({
+        fasilitasGedungList: nextGedungList,
+        mutasiBarangList: [mutasi, ...(systemConfig.mutasiBarangList || [])],
+      });
+
+      if (linkedInvId) {
+        const linkedInv = barangInventaris.find((b) => b.id === linkedInvId);
+        if (linkedInv) {
+          storageService.saveBarangInventaris({ ...linkedInv, jumlah: newQty });
+        }
+      }
+
+      notifyToast(
+        `Barang Masuk (+${qty} ${itemSatuan} ${itemNama}) tercatat di Fasilitas ${targetGedung.namaGedung}! Total kini: ${newQty} ${itemSatuan}.`
+      );
+      setMasukForm((prev) => ({
+        ...prev,
+        fasilitasItemId: itemId,
+        namaFasilitasBaru: '',
+        jumlah: 1,
+        keterangan: '',
+      }));
+      return;
+    }
+
+    // Tujuan: Inventaris
+    const target = barangInventaris.find((b) => b.id === effectiveMasukBarangId);
+    if (!target) {
+      notifyToast('Pilih barang inventaris terlebih dahulu sebelum mencatat barang masuk.');
+      return;
+    }
+
     const keteranganText =
-      masukForm.keterangan.trim() || 'Penambahan stok masuk Gudang Perlengkapan';
+      masukForm.keterangan.trim() || 'Penambahan stok masuk Inventaris Pondok';
 
     const mutasi: MutasiBarang = {
       id: `mut_${Date.now()}`,
       barangId: target.id,
       namaBarang: target.namaBarang,
-      tanggal: masukForm.tanggal || new Date().toISOString().split('T')[0],
+      tanggal: tanggalStr,
       tipe: 'Masuk',
       jumlah: qty,
       satuan: target.satuan,
       keterangan: keteranganText,
       petugas: petugasNama,
+      targetTipe: 'inventaris',
+      gedungId: target.gedungId,
+      gedungNama: target.gedungNama,
+      fasilitasItemId: target.fasilitasItemId,
     };
+
+    const newQty = target.jumlah + qty;
+    let nextGedungList: DataFasilitasGedung[] | undefined;
+    if (target.gedungId && target.fasilitasItemId) {
+      nextGedungList = fasilitasGedungList.map((g) =>
+        g.id === target.gedungId
+          ? {
+              ...g,
+              daftarFasilitas: g.daftarFasilitas.map((f) =>
+                f.id === target.fasilitasItemId ? { ...f, jumlah: newQty } : f
+              ),
+            }
+          : g
+      );
+    }
 
     storageService.updateSystemConfig({
       mutasiBarangList: [mutasi, ...(systemConfig.mutasiBarangList || [])],
+      ...(nextGedungList ? { fasilitasGedungList: nextGedungList } : {}),
     });
 
-    const newQty = target.jumlah + qty;
     storageService.saveBarangInventaris({ ...target, jumlah: newQty });
 
     notifyToast(
-      `Barang Masuk (+${mutasi.jumlah} ${target.satuan} ${target.namaBarang}) tercatat! Stok: ${target.jumlah} -> ${newQty} ${target.satuan}.`
+      `Barang Masuk (+${mutasi.jumlah} ${target.satuan} ${target.namaBarang}) tercatat di Inventaris${
+        target.gedungNama ? ` & sinkron ke ${target.gedungNama}` : ''
+      }! Stok: ${target.jumlah} -> ${newQty} ${target.satuan}.`
     );
     setMasukForm((prev) => ({
       ...prev,
@@ -487,14 +853,86 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
 
   const handleSimpanBarangKeluar = (e: React.FormEvent) => {
     e.preventDefault();
-    const target = barangInventaris.find((b) => b.id === effectiveKeluarBarangId);
     const qty = Math.max(0, Number(keluarForm.jumlah) || 0);
-    if (!target) {
-      notifyToast('Pilih barang inventaris terlebih dahulu sebelum mencatat barang keluar.');
-      return;
-    }
     if (qty <= 0) {
       notifyToast('Jumlah barang keluar harus lebih dari 0.');
+      return;
+    }
+
+    const petugasNama = keluarForm.petugas.trim() || currentUser.nama;
+    const tanggalStr = keluarForm.tanggal || new Date().toISOString().split('T')[0];
+
+    if (keluarForm.sumberTipe === 'fasilitas') {
+      const targetGedung = fasilitasGedungList.find(
+        (g) => g.id === effectiveKeluarGedungId
+      );
+      const targetFas = targetGedung?.daftarFasilitas.find(
+        (f) => f.id === effectiveKeluarFasilitasId
+      );
+      if (!targetGedung || !targetFas) {
+        notifyToast('Pilih Gedung dan item Fasilitas terlebih dahulu.');
+        return;
+      }
+      if (qty > targetFas.jumlah) {
+        notifyToast(
+          `Jumlah "${targetFas.namaFasilitas}" di ${targetGedung.namaGedung} tidak mencukupi (tersisa ${targetFas.jumlah} ${targetFas.satuan}).`
+        );
+        return;
+      }
+      const newQty = Math.max(0, targetFas.jumlah - qty);
+      const nextGedungList = fasilitasGedungList.map((g) =>
+        g.id === targetGedung.id
+          ? {
+              ...g,
+              daftarFasilitas: g.daftarFasilitas.map((f) =>
+                f.id === targetFas.id ? { ...f, jumlah: newQty } : f
+              ),
+            }
+          : g
+      );
+
+      const mutasi: MutasiBarang = {
+        id: `mut_${Date.now()}`,
+        barangId: targetFas.id,
+        namaBarang: targetFas.namaFasilitas,
+        tanggal: tanggalStr,
+        tipe: 'Keluar',
+        jumlah: qty,
+        satuan: targetFas.satuan,
+        keterangan:
+          keluarForm.keterangan.trim() ||
+          `Keluar dari Fasilitas ${targetGedung.namaGedung}`,
+        petugas: petugasNama,
+        targetTipe: 'fasilitas',
+        gedungId: targetGedung.id,
+        gedungNama: targetGedung.namaGedung,
+        fasilitasItemId: targetFas.id,
+      };
+
+      storageService.updateSystemConfig({
+        fasilitasGedungList: nextGedungList,
+        mutasiBarangList: [mutasi, ...(systemConfig.mutasiBarangList || [])],
+      });
+
+      if (targetFas.inventarisId) {
+        const linkedInv = barangInventaris.find(
+          (b) => b.id === targetFas.inventarisId
+        );
+        if (linkedInv) {
+          storageService.saveBarangInventaris({ ...linkedInv, jumlah: newQty });
+        }
+      }
+
+      notifyToast(
+        `Barang Keluar (-${qty} ${targetFas.satuan} ${targetFas.namaFasilitas}) dari ${targetGedung.namaGedung} tercatat! Sisa: ${newQty} ${targetFas.satuan}.`
+      );
+      setKeluarForm((prev) => ({ ...prev, jumlah: 1, keterangan: '' }));
+      return;
+    }
+
+    const target = barangInventaris.find((b) => b.id === effectiveKeluarBarangId);
+    if (!target) {
+      notifyToast('Pilih barang inventaris terlebih dahulu sebelum mencatat barang keluar.');
       return;
     }
     if (qty > target.jumlah) {
@@ -504,7 +942,6 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       return;
     }
 
-    const petugasNama = keluarForm.petugas.trim() || currentUser.nama;
     const keteranganText =
       keluarForm.keterangan.trim() || 'Pengeluaran barang dari Gudang Perlengkapan';
 
@@ -512,19 +949,38 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       id: `mut_${Date.now()}`,
       barangId: target.id,
       namaBarang: target.namaBarang,
-      tanggal: keluarForm.tanggal || new Date().toISOString().split('T')[0],
+      tanggal: tanggalStr,
       tipe: 'Keluar',
       jumlah: qty,
       satuan: target.satuan,
       keterangan: keteranganText,
       petugas: petugasNama,
+      targetTipe: 'inventaris',
+      gedungId: target.gedungId,
+      gedungNama: target.gedungNama,
+      fasilitasItemId: target.fasilitasItemId,
     };
+
+    const newQty = Math.max(0, target.jumlah - qty);
+    let nextGedungList: DataFasilitasGedung[] | undefined;
+    if (target.gedungId && target.fasilitasItemId) {
+      nextGedungList = fasilitasGedungList.map((g) =>
+        g.id === target.gedungId
+          ? {
+              ...g,
+              daftarFasilitas: g.daftarFasilitas.map((f) =>
+                f.id === target.fasilitasItemId ? { ...f, jumlah: newQty } : f
+              ),
+            }
+          : g
+      );
+    }
 
     storageService.updateSystemConfig({
       mutasiBarangList: [mutasi, ...(systemConfig.mutasiBarangList || [])],
+      ...(nextGedungList ? { fasilitasGedungList: nextGedungList } : {}),
     });
 
-    const newQty = Math.max(0, target.jumlah - qty);
     storageService.saveBarangInventaris({ ...target, jumlah: newQty });
 
     notifyToast(
@@ -540,15 +996,59 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
 
   const handleSimpanPeminjaman = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!pinjamForm.peminjamNama?.trim()) return;
+
+    const sumber = pinjamForm.sumberBarang === 'fasilitas' ? 'fasilitas' : 'inventaris';
+    if (sumber === 'fasilitas') {
+      const targetGedung = fasilitasGedungList.find(
+        (g) => g.id === effectivePinjamGedungId
+      );
+      const targetFas = targetGedung?.daftarFasilitas.find(
+        (f) => f.id === effectivePinjamFasilitasId
+      );
+      if (!targetGedung || !targetFas) {
+        notifyToast('Pilih Gedung dan Fasilitas yang dipinjam terlebih dahulu.');
+        return;
+      }
+      const item: PeminjamanBarang = {
+        id: `pjm_${Date.now()}`,
+        kodePeminjaman: `PJM-${Date.now().toString().slice(-5)}`,
+        barangId: targetFas.id,
+        namaBarang: targetFas.namaFasilitas,
+        jumlahPinjam: Number(pinjamForm.jumlahPinjam) || 1,
+        peminjamNama: pinjamForm.peminjamNama.trim(),
+        peminjamBagian: pinjamForm.peminjamBagian || 'Pengurus',
+        noWaPeminjam: pinjamForm.noWaPeminjam || '0812',
+        tanggalPinjam: pinjamForm.tanggalPinjam || new Date().toISOString().split('T')[0],
+        batasKembali: pinjamForm.batasKembali || new Date().toISOString().split('T')[0],
+        status: 'Dipinjam',
+        petugasNama: currentUser.nama,
+        keperluan: pinjamForm.keperluan || '-',
+        sumberBarang: 'fasilitas',
+        gedungId: targetGedung.id,
+        gedungNama: targetGedung.namaGedung,
+        fasilitasItemId: targetFas.id,
+      };
+      storageService.savePeminjamanBarang(item);
+      notifyToast(
+        `Peminjaman fasilitas "${targetFas.namaFasilitas}" (${targetGedung.namaGedung}) oleh ${item.peminjamNama} berhasil dicatat!`
+      );
+      setPinjamForm({ ...pinjamForm, peminjamNama: '', keperluan: '' });
+      return;
+    }
+
     const target = barangInventaris.find((b) => b.id === effectivePinjamBarangId);
-    if (!target || !pinjamForm.peminjamNama) return;
+    if (!target) {
+      notifyToast('Pilih barang inventaris yang dipinjam.');
+      return;
+    }
     const item: PeminjamanBarang = {
       id: `pjm_${Date.now()}`,
       kodePeminjaman: `PJM-${Date.now().toString().slice(-5)}`,
       barangId: target.id,
       namaBarang: target.namaBarang,
       jumlahPinjam: Number(pinjamForm.jumlahPinjam) || 1,
-      peminjamNama: pinjamForm.peminjamNama,
+      peminjamNama: pinjamForm.peminjamNama.trim(),
       peminjamBagian: pinjamForm.peminjamBagian || 'Pengurus',
       noWaPeminjam: pinjamForm.noWaPeminjam || '0812',
       tanggalPinjam: pinjamForm.tanggalPinjam || new Date().toISOString().split('T')[0],
@@ -556,6 +1056,9 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       status: 'Dipinjam',
       petugasNama: currentUser.nama,
       keperluan: pinjamForm.keperluan || '-',
+      sumberBarang: 'inventaris',
+      gedungId: target.gedungId,
+      gedungNama: target.gedungNama,
     };
     storageService.savePeminjamanBarang(item);
     notifyToast(`Peminjaman "${target.namaBarang}" oleh ${item.peminjamNama} berhasil dicatat!`);
@@ -567,11 +1070,23 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     e.preventDefault();
     if (!pengajuanPinjamForm.namaBarang || !pengajuanPinjamForm.pinjamKe) return;
 
+    const selectedInv =
+      pengajuanPinjamForm.sumberBarang === 'inventaris'
+        ? barangInventaris.find((b) => b.id === pengajuanPinjamForm.barangId)
+        : undefined;
+    const selectedGdg =
+      pengajuanPinjamForm.sumberBarang === 'fasilitas'
+        ? fasilitasGedungList.find((g) => g.id === pengajuanPinjamForm.gedungId)
+        : undefined;
+
     const kodePjm = `PJM-EXT-${Date.now().toString().slice(-5)}`;
     const newPinjam: PeminjamanBarang = {
       id: `pjm_req_${Date.now()}`,
       kodePeminjaman: kodePjm,
-      barangId: 'external_req',
+      barangId:
+        pengajuanPinjamForm.sumberBarang === 'fasilitas'
+          ? pengajuanPinjamForm.fasilitasItemId || 'fasilitas_req'
+          : selectedInv?.id || 'external_req',
       namaBarang: pengajuanPinjamForm.namaBarang,
       jumlahPinjam: Number(pengajuanPinjamForm.jumlah) || 1,
       peminjamNama: `${currentUser.nama} (Pinjam ke: ${pengajuanPinjamForm.pinjamKe})`,
@@ -582,6 +1097,20 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       status: 'Dipinjam',
       petugasNama: currentUser.nama,
       keperluan: `Pinjam ke ${pengajuanPinjamForm.pinjamKe} — ${pengajuanPinjamForm.keperluan || 'Operasional Pondok'}`,
+      ...(pengajuanPinjamForm.sumberBarang === 'fasilitas'
+        ? {
+            sumberBarang: 'fasilitas' as const,
+            gedungId: selectedGdg?.id,
+            gedungNama: selectedGdg?.namaGedung,
+            fasilitasItemId: pengajuanPinjamForm.fasilitasItemId || undefined,
+          }
+        : pengajuanPinjamForm.sumberBarang === 'inventaris'
+          ? {
+              sumberBarang: 'inventaris' as const,
+              gedungId: selectedInv?.gedungId,
+              gedungNama: selectedInv?.gedungNama,
+            }
+          : {}),
     };
     storageService.savePeminjamanBarang(newPinjam);
 
@@ -640,78 +1169,53 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     setTimeout(() => setToastMsg(''), 5000);
     setPengajuanPinjamForm({
       ...pengajuanPinjamForm,
+      sumberBarang: 'manual',
+      barangId: '',
+      gedungId: '',
+      fasilitasItemId: '',
       namaBarang: '',
       pinjamKe: '',
       keperluan: '',
     });
   };
 
-  // CETAK SURAT PEMINJAMAN BARANG LANGSUNG (A4)
+  // CETAK & PRATINJAU SURAT PEMINJAMAN BARANG (MENGIKUTI LAYOUT EDITABLE DI OPTION PANEL)
   const handleCetakSuratPeminjaman = (p: PeminjamanBarang) => {
-    const html = `
-      <div style="font-family: 'Times New Roman', Georgia, serif; padding: 28px; color: #000; max-width: 780px; margin: 0 auto;">
-        <div style="text-align: center; border-bottom: 4px double #000; padding-bottom: 12px; margin-bottom: 20px;">
-          <h1 style="margin: 0; font-size: 18pt; font-weight: 900; text-transform: uppercase;">${systemConfig.kopSuratBaris1 || 'PONDOK PESANTREN SALAF AL-MALIKI'}</h1>
-          <h2 style="margin: 4px 0; font-size: 13pt; font-weight: 700; text-transform: uppercase;">${perlengkapanCfg.namaUnitPerlengkapan || 'DIVISI PERLENGKAPAN, INVENTARIS & SARANA PRASARANA'}</h2>
-          <p style="margin: 0; font-size: 10pt;">${systemConfig.alamatKopSurat || 'Jl. Pesantren Luhur No. 99, Karawang'}</p>
-        </div>
-
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h3 style="margin: 0; font-size: 14pt; text-decoration: underline; font-weight: bold;">SURAT BUKTI & PERMOHONAN PEMINJAMAN BARANG</h3>
-          <p style="margin: 4px 0; font-size: 10.5pt;">Nomor Kode Peminjaman: <strong>${p.kodePeminjaman}</strong></p>
-        </div>
-
-        <p style="font-size: 11pt; line-height: 1.6;">
-          Yang bertanda tangan di bawah ini, Pengurus Divisi Perlengkapan Pondok Pesantren Salaf Al-Maliki menerangkan rincian peminjaman barang/inventaris sebagai berikut:
-        </p>
-
-        <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 11pt;">
-          <tr>
-            <td style="padding: 8px; border: 1px solid #000; width: 35%; font-weight: bold;">Nama Barang / Inventaris</td>
-            <td style="padding: 8px; border: 1px solid #000;"><strong>${p.namaBarang}</strong> (${p.jumlahPinjam} Unit)</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">Peminjam / Tujuan Pinjam</td>
-            <td style="padding: 8px; border: 1px solid #000;">${p.peminjamNama} (${p.peminjamBagian})</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">Tanggal Mulai Pinjam</td>
-            <td style="padding: 8px; border: 1px solid #000;">${p.tanggalPinjam}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">Batas Akhir Pengembalian</td>
-            <td style="padding: 8px; border: 1px solid #000;">${p.batasKembali}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">Status Peminjaman</td>
-            <td style="padding: 8px; border: 1px solid #000;">${p.status}${p.tanggalAktualKembali ? ` (Dikembalikan: ${p.tanggalAktualKembali})` : ''}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px; border: 1px solid #000; font-weight: bold;">Keperluan</td>
-            <td style="padding: 8px; border: 1px solid #000;">${p.keperluan}</td>
-          </tr>
-        </table>
-
-        <p style="font-size: 11pt; line-height: 1.6;">
-          Demikian surat bukti peminjaman barang ini diterbitkan agar dipergunakan sebagaimana mestinya dan wajib dijaga keutuhan serta dikembalikan tepat pada waktunya.
-        </p>
-
-        <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 11pt;">
-          <div style="text-align: center; width: 220px;">
-            <p>Peminjam / Penerima,</p>
-            <div style="height: 65px;"></div>
-            <p style="font-weight: bold; text-decoration: underline;">${p.peminjamNama}</p>
-          </div>
-          <div style="text-align: center; width: 240px;">
-            <p>${systemConfig.kotaInstansi || 'Karawang'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-            <p style="font-weight: bold;">${perlengkapanCfg.jabatanKepala || 'Kepala Divisi Perlengkapan'},</p>
-            <div style="height: 55px;"></div>
-            <p style="font-weight: bold; text-decoration: underline;">${perlengkapanCfg.kepalaPerlengkapan || currentUser.nama}</p>
-          </div>
-        </div>
-      </div>
-    `;
-    openPrintWindow(`Surat_Peminjaman_${p.kodePeminjaman}`, html);
+    const linkedInv = barangByIdMap.get(p.barangId);
+    const linkedFas = fasilitasByIdMap.get(p.fasilitasItemId || p.barangId);
+    const mapped: PeminjamanPerlengkapan = {
+      id: p.id,
+      nomorSurat: p.kodePeminjaman,
+      namaPeminjam: p.peminjamNama,
+      statusDivisiKamar: p.peminjamBagian || 'Pengurus / Divisi Pondok',
+      nomorHp: p.noWaPeminjam || '-',
+      tanggalPinjam: p.tanggalPinjam,
+      estimasiTanggalKembali: p.batasKembali,
+      daftarBarang: [
+        {
+          id: p.barangId || p.id,
+          namaBarang: p.namaBarang,
+          jumlah: Number(p.jumlahPinjam) || 1,
+          satuan: linkedInv?.satuan || linkedFas?.item.satuan || 'Unit',
+          kondisiAwal: linkedFas?.item.kondisi || linkedInv?.kondisi || 'Baik / Normal',
+          sumberBarang: p.sumberBarang === 'fasilitas' ? 'fasilitas' : 'inventaris',
+          gedungId: p.gedungId || linkedFas?.gedung.id || linkedInv?.gedungId,
+          gedungNama: p.gedungNama || linkedFas?.gedung.namaGedung || linkedInv?.gedungNama,
+          fasilitasItemId: p.fasilitasItemId || linkedFas?.item.id,
+          inventarisId: linkedInv?.id,
+        },
+      ],
+      status:
+        p.status === 'Dikembalikan'
+          ? 'Sudah Dikembalikan'
+          : 'Disetujui',
+      keperluan: p.keperluan || '-',
+      dibuatOleh: p.petugasNama || currentUser.nama,
+      createdAt: p.tanggalPinjam,
+      diverifikasiOleh: perlengkapanCfg.kepalaPerlengkapan || currentUser.nama,
+      waktuKembali: p.tanggalAktualKembali,
+    };
+    setSelectedSuratPeminjaman(mapped);
   };
 
   const handleKembalikanPinjaman = (pjm: PeminjamanBarang) => {
@@ -957,17 +1461,37 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     itemId: string,
     patch: Partial<FasilitasItemGedung>
   ) => {
+    let syncedInvId: string | undefined;
+    let updatedFasItem: FasilitasItemGedung | undefined;
     const nextList = fasilitasGedungList.map((g) =>
       g.id === gedungId
         ? {
             ...g,
-            daftarFasilitas: g.daftarFasilitas.map((f) =>
-              f.id === itemId ? { ...f, ...patch } : f
-            ),
+            daftarFasilitas: g.daftarFasilitas.map((f) => {
+              if (f.id === itemId) {
+                updatedFasItem = { ...f, ...patch };
+                syncedInvId = updatedFasItem.inventarisId;
+                return updatedFasItem;
+              }
+              return f;
+            }),
           }
         : g
     );
     updateFasilitasGedungList(nextList);
+
+    if (syncedInvId && updatedFasItem) {
+      const linkedInv = barangInventaris.find((b) => b.id === syncedInvId);
+      if (linkedInv) {
+        storageService.saveBarangInventaris({
+          ...linkedInv,
+          namaBarang: updatedFasItem.namaFasilitas,
+          jumlah: updatedFasItem.jumlah,
+          satuan: updatedFasItem.satuan,
+          kondisi: mapFasilitasKondisiToInventaris(updatedFasItem.kondisi),
+        });
+      }
+    }
   };
 
   const handleHapusFasilitasItem = (gedungId: string, itemId: string, namaFasilitas: string) => {
@@ -1338,6 +1862,16 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
     return map;
   }, [barangInventaris]);
 
+  const fasilitasByIdMap = useMemo(() => {
+    const map = new Map<string, { gedung: DataFasilitasGedung; item: FasilitasItemGedung }>();
+    fasilitasGedungList.forEach((g) => {
+      g.daftarFasilitas.forEach((f) => {
+        map.set(f.id, { gedung: g, item: f });
+      });
+    });
+    return map;
+  }, [fasilitasGedungList]);
+
   const filteredMasukList = useMemo(() => {
     const all = (systemConfig.mutasiBarangList || []).filter((m) => m.tipe === 'Masuk');
     const q = searchMasuk.trim().toLowerCase();
@@ -1347,11 +1881,13 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       }
       if (q) {
         const barangMeta = barangByIdMap.get(m.barangId);
+        const fasMeta = fasilitasByIdMap.get(m.fasilitasItemId || m.barangId);
         const hay = [
           m.namaBarang,
           m.petugas,
           m.keterangan,
           m.tanggal,
+          m.gedungNama || fasMeta?.gedung.namaGedung || '',
           barangMeta?.kodeBarang || '',
           barangMeta?.kategori || '',
           barangMeta?.lokasi || '',
@@ -1362,7 +1898,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       }
       return true;
     });
-  }, [systemConfig.mutasiBarangList, filterMasukBulan, searchMasuk, barangByIdMap]);
+  }, [systemConfig.mutasiBarangList, filterMasukBulan, searchMasuk, barangByIdMap, fasilitasByIdMap]);
 
   const filteredKeluarList = useMemo(() => {
     const all = (systemConfig.mutasiBarangList || []).filter((m) => m.tipe === 'Keluar');
@@ -1373,11 +1909,13 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       }
       if (q) {
         const barangMeta = barangByIdMap.get(m.barangId);
+        const fasMeta = fasilitasByIdMap.get(m.fasilitasItemId || m.barangId);
         const hay = [
           m.namaBarang,
           m.petugas,
           m.keterangan,
           m.tanggal,
+          m.gedungNama || fasMeta?.gedung.namaGedung || '',
           barangMeta?.kodeBarang || '',
           barangMeta?.kategori || '',
           barangMeta?.lokasi || '',
@@ -1388,7 +1926,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
       }
       return true;
     });
-  }, [systemConfig.mutasiBarangList, filterKeluarBulan, searchKeluar, barangByIdMap]);
+  }, [systemConfig.mutasiBarangList, filterKeluarBulan, searchKeluar, barangByIdMap, fasilitasByIdMap]);
 
   const filteredPeminjamanList = useMemo(() => {
     const q = searchPinjam.trim().toLowerCase();
@@ -1453,10 +1991,17 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
         ? [
             ...list.map((m, idx) => {
               const meta = barangByIdMap.get(m.barangId);
+              const fasMeta = fasilitasByIdMap.get(m.fasilitasItemId || m.barangId);
+              const sumberText =
+                m.targetTipe === 'fasilitas' || fasMeta
+                  ? `Fasilitas · ${m.gedungNama || fasMeta?.gedung.namaGedung || '-'}`
+                  : meta
+                    ? `Inventaris (${meta.kodeBarang})`
+                    : 'Inventaris';
               return [
                 String(idx + 1),
                 m.tanggal || '-',
-                meta ? `${m.namaBarang} (${meta.kodeBarang})` : m.namaBarang,
+                `${m.namaBarang} [${sumberText}]`,
                 `${tipe === 'Masuk' ? '+' : '-'}${m.jumlah} ${m.satuan}`,
                 m.petugas || '-',
                 m.keterangan || '-',
@@ -1549,7 +2094,10 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
         <div className="flex flex-wrap items-center gap-1.5 bg-[#02100a] p-1.5 rounded-2xl border border-emerald-800/70">
           {[
             { id: 'kotak_masuk', label: `Kotak Masuk (${koordinasiList.length})` },
-            { id: 'inventaris', label: `Inventaris (${barangInventaris.length})` },
+            {
+              id: 'fasilitas_inventaris',
+              label: `Fasilitas & Inventaris (${fasilitasGedungList.length} Gedung · ${barangInventaris.length})`,
+            },
             {
               id: 'barang_masuk_keluar',
               label: `Barang Masuk & Keluar${
@@ -1557,7 +2105,6 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
               }`,
             },
             { id: 'pengajuan_pembelian', label: 'Pengajuan Pembelian' },
-            { id: 'kamar_santri', label: 'Data Fasilitas' },
             { id: 'option_perlengkapan', label: 'Option Panel Perlengkapan' },
           ].map((t) => (
             <button
@@ -1565,7 +2112,10 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
               onClick={() => setActiveTab(t.id as PerlengkapanSubTab)}
               className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                 activeTab === t.id ||
-                (t.id === 'kamar_santri' && activeTab === 'data_fasilitas')
+                (t.id === 'fasilitas_inventaris' &&
+                  (activeTab === 'inventaris' ||
+                    activeTab === 'kamar_santri' ||
+                    activeTab === 'data_fasilitas'))
                   ? 'bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#02120a] shadow-md'
                   : 'text-emerald-200 hover:text-white hover:bg-[#06281c]'
               }`}
@@ -1650,185 +2200,76 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
         />
       )}
 
-      {/* TAB 1: DAFTAR INVENTARIS & PERINGATAN STOK MINIMAL */}
-      {activeTab === 'inventaris' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <form
-            onSubmit={handleSimpanInventaris}
-            className="lg:col-span-4 rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/40 p-5 shadow-xl space-y-3 h-fit"
-          >
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-              Tambah Barang Inventaris Baru
-            </h2>
-            <input
-              type="text"
-              required
-              placeholder="Nama Barang / Aset..."
-              value={formBarang.namaBarang}
-              onChange={(e) => setFormBarang({ ...formBarang, namaBarang: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
-            />
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
-                  Kategori Barang
-                </label>
-                <select
-                  value={formBarang.kategori || perlengkapanCfg.kategoriInventaris?.[0] || 'Elektronik'}
-                  onChange={(e) => setFormBarang({ ...formBarang, kategori: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
-                >
-                  {(perlengkapanCfg.kategoriInventaris || INITIAL_PERLENGKAPAN_CONFIG.kategoriInventaris || []).map((kat) => (
-                    <option key={kat} value={kat}>
-                      {kat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
-                  Satuan
-                </label>
-                <select
-                  value={formBarang.satuan || perlengkapanCfg.satuanList?.[0] || 'Unit'}
-                  onChange={(e) => setFormBarang({ ...formBarang, satuan: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
-                >
-                  {(perlengkapanCfg.satuanList || INITIAL_PERLENGKAPAN_CONFIG.satuanList || []).map((sat) => (
-                    <option key={sat} value={sat}>
-                      {sat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
-                  Jumlah Stok
-                </label>
-                <input
-                  type="number"
-                  value={formBarang.jumlah}
-                  onChange={(e) => setFormBarang({ ...formBarang, jumlah: Number(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-mono uppercase text-amber-300 mb-1">
-                  Batas Stok Minimal
-                </label>
-                <input
-                  type="number"
-                  value={formBarang.stokMinimal}
-                  onChange={(e) => setFormBarang({ ...formBarang, stokMinimal: Number(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white font-mono"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              <select
-                value={formBarang.kondisi}
-                onChange={(e) => setFormBarang({ ...formBarang, kondisi: e.target.value as any })}
-                className="px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
-              >
-                <option value="Baik">Kondisi Baik</option>
-                <option value="Rusak Ringan">Rusak Ringan</option>
-                <option value="Rusak Berat">Rusak Berat</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Lokasi Penempatan..."
-                value={formBarang.lokasi}
-                onChange={(e) => setFormBarang({ ...formBarang, lokasi: e.target.value })}
-                className="px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#02120a] font-bold text-xs cursor-pointer"
-            >
-              Simpan ke Daftar Inventaris
-            </button>
-          </form>
-
-          <div className="lg:col-span-8 rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-5 shadow-xl space-y-4">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-              Daftar Inventaris Pondok (Nama Barang, Jumlah, Kondisi, Lokasi)
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-emerald-800 text-[10px] font-mono uppercase text-[#f3d266] bg-[#03160f]">
-                    <th className="py-3 px-3">Nama Barang & Kode</th>
-                    <th className="py-3 px-3">Jumlah & Stok Min</th>
-                    <th className="py-3 px-3">Kondisi</th>
-                    <th className="py-3 px-3">Lokasi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-900/50">
-                  {barangInventaris.map((b) => {
-                    const isLow = b.jumlah <= (b.stokMinimal ?? 3);
-                    return (
-                      <tr key={b.id} className="hover:bg-[#06281c]/50">
-                        <td className="py-3 px-3 font-bold text-white">
-                          {b.namaBarang}
-                          <span className="block text-[10px] font-mono text-emerald-400">
-                            {b.kodeBarang} · {b.kategori}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-mono">
-                          <span className="text-white font-bold">
-                            {b.jumlah} {b.satuan}
-                          </span>
-                          <span className="block text-[10px] text-emerald-300/75">
-                            Stok Min: {b.stokMinimal ?? 3}
-                          </span>
-                          {isLow && (
-                            <span className="inline-block mt-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold">
-                              ⚠ HAMPIR HABIS
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                              b.kondisi === 'Baik'
-                                ? 'bg-emerald-500/20 text-emerald-300'
-                                : 'bg-rose-500/20 text-rose-300'
-                            }`}
-                          >
-                            {b.kondisi}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-emerald-200">{b.lokasi}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* TAB 2: BARANG MASUK & KELUAR (TERPISAH ATAS: BARANG MASUK | BAWAH: BARANG KELUAR ATAU DIPINJAM) */}
       {(activeTab === 'barang_masuk_keluar' || activeTab === 'peminjaman') && (() => {
         const selectedMasukBarang = barangInventaris.find((b) => b.id === effectiveMasukBarangId);
+        const selectedMasukFasilitas = selectedMasukGedung?.daftarFasilitas.find(
+          (f) => f.id === effectiveMasukFasilitasId
+        );
+        const isMasukToFasilitas = masukForm.tujuanTipe === 'fasilitas';
+        const isMasukNewFasilitas = isMasukToFasilitas && effectiveMasukFasilitasId === '__NEW__';
         const qtyMasuk = Math.max(0, Number(masukForm.jumlah) || 0);
-        const stokMasukNow = selectedMasukBarang ? Number(selectedMasukBarang.jumlah) || 0 : 0;
+        const stokMasukNow = isMasukToFasilitas
+          ? isMasukNewFasilitas
+            ? 0
+            : Number(selectedMasukFasilitas?.jumlah) || 0
+          : selectedMasukBarang
+            ? Number(selectedMasukBarang.jumlah) || 0
+            : 0;
         const estimasiMasukAkhir = stokMasukNow + qtyMasuk;
+        const masukSatuanLabel = isMasukToFasilitas
+          ? isMasukNewFasilitas
+            ? masukForm.satuanBaru || 'Unit'
+            : selectedMasukFasilitas?.satuan || 'Unit'
+          : selectedMasukBarang?.satuan || 'Unit';
+        const canSubmitMasuk =
+          qtyMasuk > 0 &&
+          (isMasukToFasilitas
+            ? Boolean(
+                selectedMasukGedung &&
+                  (isMasukNewFasilitas
+                    ? masukForm.namaFasilitasBaru.trim().length > 0
+                    : selectedMasukFasilitas)
+              )
+            : Boolean(selectedMasukBarang));
 
         const selectedKeluarBarang = barangInventaris.find((b) => b.id === effectiveKeluarBarangId);
+        const selectedKeluarFasilitas = selectedKeluarGedung?.daftarFasilitas.find(
+          (f) => f.id === effectiveKeluarFasilitasId
+        );
+        const isKeluarFromFasilitas = keluarForm.sumberTipe === 'fasilitas';
         const qtyKeluar = Math.max(0, Number(keluarForm.jumlah) || 0);
-        const stokKeluarNow = selectedKeluarBarang ? Number(selectedKeluarBarang.jumlah) || 0 : 0;
-        const stokKeluarMin = selectedKeluarBarang ? Number(selectedKeluarBarang.stokMinimal ?? 3) : 3;
+        const stokKeluarNow = isKeluarFromFasilitas
+          ? Number(selectedKeluarFasilitas?.jumlah) || 0
+          : selectedKeluarBarang
+            ? Number(selectedKeluarBarang.jumlah) || 0
+            : 0;
+        const stokKeluarMin = isKeluarFromFasilitas
+          ? 0
+          : selectedKeluarBarang
+            ? Number(selectedKeluarBarang.stokMinimal ?? 3)
+            : 3;
         const estimasiKeluarAkhir = stokKeluarNow - qtyKeluar;
         const isKeluarStokKurang = qtyKeluar > stokKeluarNow;
         const isKeluarAkanKritis =
-          !isKeluarStokKurang && selectedKeluarBarang && estimasiKeluarAkhir <= stokKeluarMin;
+          !isKeluarStokKurang &&
+          !isKeluarFromFasilitas &&
+          Boolean(selectedKeluarBarang) &&
+          estimasiKeluarAkhir <= stokKeluarMin;
+        const keluarSatuanLabel = isKeluarFromFasilitas
+          ? selectedKeluarFasilitas?.satuan || 'Unit'
+          : selectedKeluarBarang?.satuan || 'Unit';
+        const canSubmitKeluar =
+          qtyKeluar > 0 &&
+          !isKeluarStokKurang &&
+          (isKeluarFromFasilitas
+            ? Boolean(selectedKeluarGedung && selectedKeluarFasilitas)
+            : Boolean(selectedKeluarBarang));
 
         const selectedPinjamBarang = barangInventaris.find((b) => b.id === effectivePinjamBarangId);
+        const selectedPinjamFasilitas = selectedPinjamGedung?.daftarFasilitas.find(
+          (f) => f.id === effectivePinjamFasilitasId
+        );
 
         const totalFilteredMasukUnit = filteredMasukList.reduce(
           (s, m) => s + (Number(m.jumlah) || 0),
@@ -1943,53 +2384,208 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
-                      1. Pilih Barang Inventaris
+                    <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1.5">
+                      1. Pilih Tujuan Penyimpanan Barang Masuk
                     </label>
-                    <select
-                      value={effectiveMasukBarangId}
-                      onChange={(e) => setMasukForm({ ...masukForm, barangId: e.target.value })}
-                      className="w-full px-3 py-2.5 rounded-xl bg-[#03160f] border border-emerald-700/80 focus:border-emerald-400 text-xs text-white font-semibold focus:outline-none"
-                    >
-                      {barangInventaris.length === 0 ? (
-                        <option value="">Belum ada barang di inventaris</option>
-                      ) : (
-                        barangInventaris.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.namaBarang} — Stok: {b.jumlah} {b.satuan} ({b.lokasi})
-                          </option>
-                        ))
-                      )}
-                    </select>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#02100a] border border-emerald-800/80 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => setMasukForm((prev) => ({ ...prev, tujuanTipe: 'inventaris' }))}
+                        className={`py-2 px-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                          !isMasukToFasilitas
+                            ? 'bg-emerald-500 text-[#02120a] shadow'
+                            : 'text-emerald-200/75 hover:text-white'
+                        }`}
+                      >
+                        Masuk ke Inventaris
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMasukForm((prev) => ({ ...prev, tujuanTipe: 'fasilitas' }))}
+                        className={`py-2 px-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                          isMasukToFasilitas
+                            ? 'bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#02120a] shadow'
+                            : 'text-emerald-200/75 hover:text-white'
+                        }`}
+                      >
+                        Masuk ke Fasilitas
+                      </button>
+                    </div>
 
-                    {selectedMasukBarang && (
-                      <div className="mt-2 rounded-xl bg-[#02100a] border border-emerald-800/80 p-2.5 space-y-2">
-                        <div className="flex items-center justify-between gap-2 text-[11px]">
-                          <span className="font-bold text-white truncate">
-                            {selectedMasukBarang.namaBarang}
-                          </span>
-                          <span className="text-[10px] font-mono text-emerald-300/80 shrink-0">
-                            {selectedMasukBarang.kodeBarang}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-center">
-                          <div className="rounded-lg bg-[#041d14] p-1.5">
-                            <span className="block text-[9px] font-mono uppercase text-emerald-300/75">
-                              Stok Saat Ini
-                            </span>
-                            <span className="text-xs font-extrabold font-mono text-white">
-                              {stokMasukNow} {selectedMasukBarang.satuan}
-                            </span>
+                    {!isMasukToFasilitas ? (
+                      <>
+                        <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                          Pilih Barang Inventaris
+                        </label>
+                        <select
+                          value={effectiveMasukBarangId}
+                          onChange={(e) => setMasukForm({ ...masukForm, barangId: e.target.value })}
+                          className="w-full px-3 py-2.5 rounded-xl bg-[#03160f] border border-emerald-700/80 focus:border-emerald-400 text-xs text-white font-semibold focus:outline-none"
+                        >
+                          {barangInventaris.length === 0 ? (
+                            <option value="">Belum ada barang di inventaris</option>
+                          ) : (
+                            barangInventaris.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.namaBarang} — Stok: {b.jumlah} {b.satuan} ({b.gedungNama || b.lokasi})
+                              </option>
+                            ))
+                          )}
+                        </select>
+
+                        {selectedMasukBarang && (
+                          <div className="mt-2 rounded-xl bg-[#02100a] border border-emerald-800/80 p-2.5 space-y-2">
+                            <div className="flex items-center justify-between gap-2 text-[11px]">
+                              <span className="font-bold text-white truncate">
+                                {selectedMasukBarang.namaBarang}
+                              </span>
+                              <span className="text-[10px] font-mono text-emerald-300/80 shrink-0">
+                                {selectedMasukBarang.kodeBarang}
+                              </span>
+                            </div>
+                            {selectedMasukBarang.gedungNama && (
+                              <p className="text-[10px] font-mono text-[#f3d266]">
+                                Terhubung ke Fasilitas: {selectedMasukBarang.gedungNama} (otomatis ikut bertambah)
+                              </p>
+                            )}
+                            <div className="grid grid-cols-2 gap-2 text-center">
+                              <div className="rounded-lg bg-[#041d14] p-1.5">
+                                <span className="block text-[9px] font-mono uppercase text-emerald-300/75">
+                                  Stok Saat Ini
+                                </span>
+                                <span className="text-xs font-extrabold font-mono text-white">
+                                  {stokMasukNow} {selectedMasukBarang.satuan}
+                                </span>
+                              </div>
+                              <div className="rounded-lg bg-emerald-950/70 border border-emerald-500/45 p-1.5">
+                                <span className="block text-[9px] font-mono uppercase text-emerald-300">
+                                  Stok Setelah Masuk
+                                </span>
+                                <span className="text-xs font-extrabold font-mono text-emerald-300">
+                                  {estimasiMasukAkhir} {selectedMasukBarang.satuan}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="rounded-lg bg-emerald-950/70 border border-emerald-500/45 p-1.5">
-                            <span className="block text-[9px] font-mono uppercase text-emerald-300">
-                              Stok Setelah Masuk
-                            </span>
-                            <span className="text-xs font-extrabold font-mono text-emerald-300">
-                              {estimasiMasukAkhir} {selectedMasukBarang.satuan}
-                            </span>
-                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="space-y-2.5 rounded-xl bg-[#02100a] border border-[#d4af37]/40 p-3">
+                        <div>
+                          <label className="block text-[10px] font-mono uppercase text-[#f3d266] mb-1">
+                            Pilih Gedung Tujuan Fasilitas *
+                          </label>
+                          <select
+                            value={effectiveMasukGedungId}
+                            onChange={(e) =>
+                              setMasukForm({
+                                ...masukForm,
+                                gedungId: e.target.value,
+                                fasilitasItemId: '',
+                              })
+                            }
+                            className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-700/80 text-xs text-white font-semibold"
+                          >
+                            {fasilitasGedungList.length === 0 ? (
+                              <option value="">Belum ada data gedung</option>
+                            ) : (
+                              fasilitasGedungList.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                  {g.namaGedung} ({g.daftarFasilitas.length} Fasilitas)
+                                </option>
+                              ))
+                            )}
+                          </select>
                         </div>
+
+                        {selectedMasukGedung && (
+                          <div>
+                            <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                              Pilih Item Fasilitas ({selectedMasukGedung.namaGedung})
+                            </label>
+                            <select
+                              value={effectiveMasukFasilitasId}
+                              onChange={(e) =>
+                                setMasukForm({ ...masukForm, fasilitasItemId: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-700/80 text-xs text-white font-semibold"
+                            >
+                              {selectedMasukGedung.daftarFasilitas.map((f) => (
+                                <option key={f.id} value={f.id}>
+                                  {f.namaFasilitas} — Jumlah: {f.jumlah} {f.satuan} ({f.kondisi})
+                                </option>
+                              ))}
+                              <option value="__NEW__">+ Tambah Item Fasilitas Baru ke Gedung Ini</option>
+                            </select>
+                          </div>
+                        )}
+
+                        {isMasukNewFasilitas ? (
+                          <div className="space-y-2 pt-1 border-t border-emerald-800/60">
+                            <input
+                              type="text"
+                              required
+                              placeholder="Nama fasilitas baru (Cth: Kipas Dinding)..."
+                              value={masukForm.namaFasilitasBaru}
+                              onChange={(e) =>
+                                setMasukForm({ ...masukForm, namaFasilitasBaru: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-[#d4af37]/50 text-xs text-white"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <select
+                                value={masukForm.satuanBaru}
+                                onChange={(e) =>
+                                  setMasukForm({ ...masukForm, satuanBaru: e.target.value })
+                                }
+                                className="px-2.5 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                              >
+                                {(perlengkapanCfg.satuanList || ['Unit', 'Set', 'Buah', 'Pcs']).map(
+                                  (sat) => (
+                                    <option key={sat} value={sat}>
+                                      {sat}
+                                    </option>
+                                  )
+                                )}
+                              </select>
+                              <select
+                                value={masukForm.kondisiBaru}
+                                onChange={(e) =>
+                                  setMasukForm({
+                                    ...masukForm,
+                                    kondisiBaru: e.target.value as 'Baik' | 'Perlu Perbaikan' | 'Rusak',
+                                  })
+                                }
+                                className="px-2.5 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                              >
+                                <option value="Baik">Kondisi Baik</option>
+                                <option value="Perlu Perbaikan">Perlu Perbaikan</option>
+                                <option value="Rusak">Rusak</option>
+                              </select>
+                            </div>
+                          </div>
+                        ) : (
+                          selectedMasukFasilitas && (
+                            <div className="grid grid-cols-2 gap-2 text-center pt-1">
+                              <div className="rounded-lg bg-[#041d14] p-1.5">
+                                <span className="block text-[9px] font-mono uppercase text-emerald-300/75">
+                                  Jumlah di Gedung
+                                </span>
+                                <span className="text-xs font-extrabold font-mono text-white">
+                                  {stokMasukNow} {selectedMasukFasilitas.satuan}
+                                </span>
+                              </div>
+                              <div className="rounded-lg bg-emerald-950/70 border border-emerald-500/45 p-1.5">
+                                <span className="block text-[9px] font-mono uppercase text-emerald-300">
+                                  Setelah Masuk
+                                </span>
+                                <span className="text-xs font-extrabold font-mono text-emerald-300">
+                                  {estimasiMasukAkhir} {selectedMasukFasilitas.satuan}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        )}
                       </div>
                     )}
                   </div>
@@ -1997,7 +2593,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-mono uppercase text-emerald-300">
-                        2. Jumlah Masuk ({selectedMasukBarang?.satuan || 'Unit'})
+                        2. Jumlah Masuk ({masukSatuanLabel})
                       </label>
                       <div className="flex items-center gap-1">
                         {[1, 2, 5, 10].map((preset) => (
@@ -2113,11 +2709,15 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
 
                   <button
                     type="submit"
-                    disabled={!selectedMasukBarang || qtyMasuk <= 0}
+                    disabled={!canSubmitMasuk}
                     className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-[#02120a] font-extrabold text-xs shadow-lg cursor-pointer disabled:opacity-45 flex items-center justify-center gap-1.5"
                   >
                     <TrendingUp className="w-4 h-4" />
-                    <span>Simpan Barang Masuk (+) &amp; Tambah Stok</span>
+                    <span>
+                      {isMasukToFasilitas
+                        ? 'Simpan Masuk (+) ke Data Fasilitas Gedung'
+                        : 'Simpan Barang Masuk (+) ke Inventaris'}
+                    </span>
                   </button>
                 </form>
 
@@ -2201,6 +2801,16 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                         ) : (
                           filteredMasukList.map((m, idx) => {
                             const meta = barangByIdMap.get(m.barangId);
+                            const fasMeta = fasilitasByIdMap.get(m.fasilitasItemId || m.barangId);
+                            const isFas = m.targetTipe === 'fasilitas' || (!meta && Boolean(fasMeta));
+                            const gedungLabel = m.gedungNama || fasMeta?.gedung.namaGedung || meta?.gedungNama;
+                            const stokKiniText = isFas
+                              ? fasMeta
+                                ? `${fasMeta.item.jumlah} ${fasMeta.item.satuan}`
+                                : '-'
+                              : meta
+                                ? `${meta.jumlah} ${meta.satuan}`
+                                : '-';
                             return (
                               <tr
                                 key={m.id}
@@ -2214,11 +2824,24 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                                 </td>
                                 <td className="py-2.5 px-3">
                                   <div className="font-bold text-white">{m.namaBarang}</div>
-                                  {meta && (
-                                    <div className="text-[10px] font-mono text-emerald-300/75">
-                                      {meta.kodeBarang} · {meta.lokasi}
-                                    </div>
-                                  )}
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                    <span
+                                      className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
+                                        isFas
+                                          ? 'bg-[#d4af37]/20 text-[#f3d266] border border-[#d4af37]/40'
+                                          : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/35'
+                                      }`}
+                                    >
+                                      {isFas
+                                        ? `Fasilitas${gedungLabel ? ` · ${gedungLabel}` : ''}`
+                                        : `Inventaris${meta ? ` · ${meta.kodeBarang}` : ''}`}
+                                    </span>
+                                    {!isFas && gedungLabel && (
+                                      <span className="text-[10px] font-mono text-emerald-300/75">
+                                        {gedungLabel}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="py-2.5 px-3 text-center whitespace-nowrap">
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-mono font-extrabold tabular-nums text-[11px]">
@@ -2226,7 +2849,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                                   </span>
                                 </td>
                                 <td className="py-2.5 px-3 text-center font-mono text-emerald-100 whitespace-nowrap tabular-nums">
-                                  {meta ? `${meta.jumlah} ${meta.satuan}` : '-'}
+                                  {stokKiniText}
                                 </td>
                                 <td className="py-2.5 px-3 font-semibold text-emerald-200 whitespace-nowrap">
                                   {m.petugas}
@@ -2331,80 +2954,186 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                   {keluarInputMode === 'keluar' && (
                     <form onSubmit={handleSimpanBarangKeluar} className="space-y-3.5">
                       <div>
-                        <label className="block text-[10px] font-mono uppercase text-rose-300 mb-1">
-                          1. Pilih Barang yang Keluar
+                        <label className="block text-[10px] font-mono uppercase text-rose-300 mb-1.5">
+                          1. Pilih Sumber Barang Keluar
                         </label>
-                        <select
-                          value={effectiveKeluarBarangId}
-                          onChange={(e) =>
-                            setKeluarForm({ ...keluarForm, barangId: e.target.value })
-                          }
-                          className="w-full px-3 py-2.5 rounded-xl bg-[#03160f] border border-emerald-700/80 focus:border-rose-400 text-xs text-white font-semibold focus:outline-none"
-                        >
-                          {barangInventaris.length === 0 ? (
-                            <option value="">Belum ada barang di inventaris</option>
-                          ) : (
-                            barangInventaris.map((b) => (
-                              <option key={b.id} value={b.id}>
-                                {b.namaBarang} — Stok: {b.jumlah} {b.satuan} ({b.lokasi})
-                              </option>
-                            ))
-                          )}
-                        </select>
+                        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#02100a] border border-emerald-800/80 mb-2.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setKeluarForm((prev) => ({ ...prev, sumberTipe: 'inventaris' }))
+                            }
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                              !isKeluarFromFasilitas
+                                ? 'bg-rose-600 text-white shadow'
+                                : 'text-emerald-200/75 hover:text-white'
+                            }`}
+                          >
+                            Dari Inventaris
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setKeluarForm((prev) => ({ ...prev, sumberTipe: 'fasilitas' }))
+                            }
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                              isKeluarFromFasilitas
+                                ? 'bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#02120a] shadow'
+                                : 'text-emerald-200/75 hover:text-white'
+                            }`}
+                          >
+                            Dari Fasilitas Gedung
+                          </button>
+                        </div>
 
-                        {selectedKeluarBarang && (
-                          <div className="mt-2 rounded-xl bg-[#02100a] border border-emerald-800/80 p-2.5 space-y-2">
-                            <div className="flex items-center justify-between gap-2 text-[11px]">
-                              <span className="font-bold text-white truncate">
-                                {selectedKeluarBarang.namaBarang}
-                              </span>
-                              <span className="text-[10px] font-mono text-emerald-300/80 shrink-0">
-                                Min: {stokKeluarMin} {selectedKeluarBarang.satuan}
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-center">
-                              <div className="rounded-lg bg-[#041d14] p-1.5">
-                                <span className="block text-[9px] font-mono uppercase text-emerald-300/75">
-                                  Stok Tersedia
-                                </span>
-                                <span className="text-xs font-extrabold font-mono text-white">
-                                  {stokKeluarNow} {selectedKeluarBarang.satuan}
-                                </span>
+                        {!isKeluarFromFasilitas ? (
+                          <>
+                            <select
+                              value={effectiveKeluarBarangId}
+                              onChange={(e) =>
+                                setKeluarForm({ ...keluarForm, barangId: e.target.value })
+                              }
+                              className="w-full px-3 py-2.5 rounded-xl bg-[#03160f] border border-emerald-700/80 focus:border-rose-400 text-xs text-white font-semibold focus:outline-none"
+                            >
+                              {barangInventaris.length === 0 ? (
+                                <option value="">Belum ada barang di inventaris</option>
+                              ) : (
+                                barangInventaris.map((b) => (
+                                  <option key={b.id} value={b.id}>
+                                    {b.namaBarang} — Stok: {b.jumlah} {b.satuan} ({b.gedungNama || b.lokasi})
+                                  </option>
+                                ))
+                              )}
+                            </select>
+
+                            {selectedKeluarBarang && (
+                              <div className="mt-2 rounded-xl bg-[#02100a] border border-emerald-800/80 p-2.5 space-y-2">
+                                <div className="flex items-center justify-between gap-2 text-[11px]">
+                                  <span className="font-bold text-white truncate">
+                                    {selectedKeluarBarang.namaBarang}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-emerald-300/80 shrink-0">
+                                    Min: {stokKeluarMin} {selectedKeluarBarang.satuan}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-center">
+                                  <div className="rounded-lg bg-[#041d14] p-1.5">
+                                    <span className="block text-[9px] font-mono uppercase text-emerald-300/75">
+                                      Stok Tersedia
+                                    </span>
+                                    <span className="text-xs font-extrabold font-mono text-white">
+                                      {stokKeluarNow} {selectedKeluarBarang.satuan}
+                                    </span>
+                                  </div>
+                                  <div
+                                    className={`rounded-lg p-1.5 border ${
+                                      isKeluarStokKurang
+                                        ? 'bg-rose-950/80 border-rose-500/60'
+                                        : isKeluarAkanKritis
+                                          ? 'bg-amber-950/70 border-amber-500/50'
+                                          : 'bg-[#041d14] border-rose-500/35'
+                                    }`}
+                                  >
+                                    <span className="block text-[9px] font-mono uppercase text-rose-200/85">
+                                      Sisa Setelah Keluar
+                                    </span>
+                                    <span
+                                      className={`text-xs font-extrabold font-mono ${
+                                        isKeluarStokKurang
+                                          ? 'text-rose-300'
+                                          : isKeluarAkanKritis
+                                            ? 'text-amber-300'
+                                            : 'text-[#f3d266]'
+                                      }`}
+                                    >
+                                      {isKeluarStokKurang
+                                        ? 'Stok Kurang!'
+                                        : `${estimasiKeluarAkhir} ${selectedKeluarBarang.satuan}`}
+                                    </span>
+                                  </div>
+                                </div>
+                                {isKeluarStokKurang && (
+                                  <p className="text-[11px] text-rose-300 font-semibold flex items-center gap-1">
+                                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                    <span>
+                                      Jumlah keluar ({qtyKeluar}) melebihi stok ({stokKeluarNow}).
+                                    </span>
+                                  </p>
+                                )}
                               </div>
-                              <div
-                                className={`rounded-lg p-1.5 border ${
-                                  isKeluarStokKurang
-                                    ? 'bg-rose-950/80 border-rose-500/60'
-                                    : isKeluarAkanKritis
-                                      ? 'bg-amber-950/70 border-amber-500/50'
-                                      : 'bg-[#041d14] border-rose-500/35'
-                                }`}
+                            )}
+                          </>
+                        ) : (
+                          <div className="space-y-2 rounded-xl bg-[#02100a] border border-[#d4af37]/35 p-2.5">
+                            <select
+                              value={effectiveKeluarGedungId}
+                              onChange={(e) =>
+                                setKeluarForm({
+                                  ...keluarForm,
+                                  gedungId: e.target.value,
+                                  fasilitasItemId: '',
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-700/80 text-xs text-white font-semibold"
+                            >
+                              {fasilitasGedungList.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                  {g.namaGedung} ({g.daftarFasilitas.length} item)
+                                </option>
+                              ))}
+                            </select>
+
+                            {selectedKeluarGedung && (
+                              <select
+                                value={effectiveKeluarFasilitasId}
+                                onChange={(e) =>
+                                  setKeluarForm({ ...keluarForm, fasilitasItemId: e.target.value })
+                                }
+                                className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-700/80 text-xs text-white font-semibold"
                               >
-                                <span className="block text-[9px] font-mono uppercase text-rose-200/85">
-                                  Sisa Setelah Keluar
-                                </span>
-                                <span
-                                  className={`text-xs font-extrabold font-mono ${
+                                {selectedKeluarGedung.daftarFasilitas.length === 0 ? (
+                                  <option value="">Gedung belum memiliki fasilitas</option>
+                                ) : (
+                                  selectedKeluarGedung.daftarFasilitas.map((f) => (
+                                    <option key={f.id} value={f.id}>
+                                      {f.namaFasilitas} — Jumlah: {f.jumlah} {f.satuan} ({f.kondisi})
+                                    </option>
+                                  ))
+                                )}
+                              </select>
+                            )}
+
+                            {selectedKeluarFasilitas && (
+                              <div className="grid grid-cols-2 gap-2 text-center pt-1">
+                                <div className="rounded-lg bg-[#041d14] p-1.5">
+                                  <span className="block text-[9px] font-mono uppercase text-emerald-300/75">
+                                    Tersedia di Gedung
+                                  </span>
+                                  <span className="text-xs font-extrabold font-mono text-white">
+                                    {stokKeluarNow} {selectedKeluarFasilitas.satuan}
+                                  </span>
+                                </div>
+                                <div
+                                  className={`rounded-lg p-1.5 border ${
                                     isKeluarStokKurang
-                                      ? 'text-rose-300'
-                                      : isKeluarAkanKritis
-                                        ? 'text-amber-300'
-                                        : 'text-[#f3d266]'
+                                      ? 'bg-rose-950/80 border-rose-500/60'
+                                      : 'bg-[#041d14] border-rose-500/35'
                                   }`}
                                 >
-                                  {isKeluarStokKurang
-                                    ? 'Stok Kurang!'
-                                    : `${estimasiKeluarAkhir} ${selectedKeluarBarang.satuan}`}
-                                </span>
+                                  <span className="block text-[9px] font-mono uppercase text-rose-200/85">
+                                    Sisa Setelah Keluar
+                                  </span>
+                                  <span
+                                    className={`text-xs font-extrabold font-mono ${
+                                      isKeluarStokKurang ? 'text-rose-300' : 'text-[#f3d266]'
+                                    }`}
+                                  >
+                                    {isKeluarStokKurang
+                                      ? 'Stok Kurang!'
+                                      : `${estimasiKeluarAkhir} ${selectedKeluarFasilitas.satuan}`}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                            {isKeluarStokKurang && (
-                              <p className="text-[11px] text-rose-300 font-semibold flex items-center gap-1">
-                                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                                <span>
-                                  Jumlah keluar ({qtyKeluar}) melebihi stok ({stokKeluarNow}).
-                                </span>
-                              </p>
                             )}
                           </div>
                         )}
@@ -2413,7 +3142,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="text-[10px] font-mono uppercase text-rose-300">
-                            2. Jumlah Keluar ({selectedKeluarBarang?.satuan || 'Unit'})
+                            2. Jumlah Keluar ({keluarSatuanLabel})
                           </label>
                           <div className="flex items-center gap-1">
                             {[1, 2, 5, 10].map((preset) => (
@@ -2542,40 +3271,123 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
 
                       <button
                         type="submit"
-                        disabled={!selectedKeluarBarang || isKeluarStokKurang || qtyKeluar <= 0}
+                        disabled={!canSubmitKeluar}
                         className="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-extrabold text-xs shadow-lg cursor-pointer disabled:opacity-45 flex items-center justify-center gap-1.5"
                       >
                         <TrendingDown className="w-4 h-4" />
-                        <span>Simpan Barang Keluar (-) &amp; Kurangi Stok</span>
+                        <span>
+                          {isKeluarFromFasilitas
+                            ? 'Simpan Keluar (-) dari Fasilitas Gedung'
+                            : 'Simpan Barang Keluar (-) & Kurangi Stok'}
+                        </span>
                       </button>
                     </form>
                   )}
 
-                  {/* MODE 2: FORM INPUT BARANG DIPINJAM (INTERNAL) */}
+                  {/* MODE 2: FORM INPUT BARANG DIPINJAM (INTERNAL — INVENTARIS ATAU FASILITAS) */}
                   {keluarInputMode === 'pinjam_internal' && (
                     <form onSubmit={handleSimpanPeminjaman} className="space-y-3">
                       <div>
-                        <label className="block text-[10px] font-mono uppercase text-[#f3d266] mb-1">
-                          Pilih Barang yang Dipinjam
+                        <label className="block text-[10px] font-mono uppercase text-[#f3d266] mb-1.5">
+                          Sumber Barang yang Dipinjam
                         </label>
-                        <select
-                          value={effectivePinjamBarangId}
-                          onChange={(e) =>
-                            setPinjamForm({ ...pinjamForm, barangId: e.target.value })
-                          }
-                          className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white font-semibold"
-                        >
-                          {barangInventaris.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.namaBarang} (Tersedia: {b.jumlah} {b.satuan})
-                            </option>
-                          ))}
-                        </select>
-                        {selectedPinjamBarang && (
-                          <p className="text-[10px] font-mono text-emerald-300/80 mt-1">
-                            Lokasi: {selectedPinjamBarang.lokasi} · Stok Tersedia:{' '}
-                            {selectedPinjamBarang.jumlah} {selectedPinjamBarang.satuan}
-                          </p>
+                        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-[#02100a] border border-emerald-800/80 mb-2.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPinjamForm((prev) => ({ ...prev, sumberBarang: 'inventaris' }))
+                            }
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                              pinjamForm.sumberBarang !== 'fasilitas'
+                                ? 'bg-emerald-500 text-[#02120a] shadow'
+                                : 'text-emerald-200/75 hover:text-white'
+                            }`}
+                          >
+                            Barang Inventaris
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPinjamForm((prev) => ({ ...prev, sumberBarang: 'fasilitas' }))
+                            }
+                            className={`py-1.5 px-2 rounded-lg text-[11px] font-extrabold transition-all cursor-pointer ${
+                              pinjamForm.sumberBarang === 'fasilitas'
+                                ? 'bg-gradient-to-r from-[#d4af37] to-[#b58922] text-[#02120a] shadow'
+                                : 'text-emerald-200/75 hover:text-white'
+                            }`}
+                          >
+                            Barang Fasilitas Gedung
+                          </button>
+                        </div>
+
+                        {pinjamForm.sumberBarang !== 'fasilitas' ? (
+                          <>
+                            <select
+                              value={effectivePinjamBarangId}
+                              onChange={(e) =>
+                                setPinjamForm({ ...pinjamForm, barangId: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white font-semibold"
+                            >
+                              {barangInventaris.map((b) => (
+                                <option key={b.id} value={b.id}>
+                                  {b.namaBarang} (Tersedia: {b.jumlah} {b.satuan})
+                                </option>
+                              ))}
+                            </select>
+                            {selectedPinjamBarang && (
+                              <p className="text-[10px] font-mono text-emerald-300/80 mt-1">
+                                Lokasi: {selectedPinjamBarang.gedungNama || selectedPinjamBarang.lokasi} · Tersedia:{' '}
+                                {selectedPinjamBarang.jumlah} {selectedPinjamBarang.satuan}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <div className="space-y-2 rounded-xl bg-[#02100a] border border-[#d4af37]/35 p-2.5">
+                            <select
+                              value={effectivePinjamGedungId}
+                              onChange={(e) =>
+                                setPinjamForm({
+                                  ...pinjamForm,
+                                  gedungId: e.target.value,
+                                  fasilitasItemId: '',
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white font-semibold"
+                            >
+                              {fasilitasGedungList.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                  {g.namaGedung} ({g.daftarFasilitas.length} item)
+                                </option>
+                              ))}
+                            </select>
+
+                            {selectedPinjamGedung && (
+                              <select
+                                value={effectivePinjamFasilitasId}
+                                onChange={(e) =>
+                                  setPinjamForm({ ...pinjamForm, fasilitasItemId: e.target.value })
+                                }
+                                className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white font-semibold"
+                              >
+                                {selectedPinjamGedung.daftarFasilitas.length === 0 ? (
+                                  <option value="">Belum ada fasilitas di gedung ini</option>
+                                ) : (
+                                  selectedPinjamGedung.daftarFasilitas.map((f) => (
+                                    <option key={f.id} value={f.id}>
+                                      {f.namaFasilitas} (Tersedia: {f.jumlah} {f.satuan} · {f.kondisi})
+                                    </option>
+                                  ))
+                                )}
+                              </select>
+                            )}
+
+                            {selectedPinjamFasilitas && selectedPinjamGedung && (
+                              <p className="text-[10px] font-mono text-[#f3d266]">
+                                Fasilitas {selectedPinjamGedung.namaGedung} · Kondisi: {selectedPinjamFasilitas.kondisi}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -2684,6 +3496,101 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                         Data pengajuan otomatis masuk ke Notifikasi &amp; Arsip Surat (SPp) pada{' '}
                         <strong>Dashboard Sekretaris</strong> agar siap dicetak.
                       </p>
+                      <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-[#02100a] border border-emerald-800/80">
+                        {[
+                          { id: 'manual', label: 'Manual' },
+                          { id: 'inventaris', label: 'Inventaris' },
+                          { id: 'fasilitas', label: 'Fasilitas' },
+                        ].map((src) => (
+                          <button
+                            key={src.id}
+                            type="button"
+                            onClick={() =>
+                              setPengajuanPinjamForm((prev) => ({
+                                ...prev,
+                                sumberBarang: src.id as 'manual' | 'inventaris' | 'fasilitas',
+                              }))
+                            }
+                            className={`py-1 px-2 rounded-lg text-[10px] font-bold cursor-pointer ${
+                              pengajuanPinjamForm.sumberBarang === src.id
+                                ? 'bg-emerald-600 text-white'
+                                : 'text-emerald-200/75 hover:text-white'
+                            }`}
+                          >
+                            {src.label}
+                          </button>
+                        ))}
+                      </div>
+                      {pengajuanPinjamForm.sumberBarang === 'inventaris' && (
+                        <select
+                          value={pengajuanPinjamForm.barangId}
+                          onChange={(e) => {
+                            const found = barangInventaris.find((b) => b.id === e.target.value);
+                            setPengajuanPinjamForm((prev) => ({
+                              ...prev,
+                              barangId: e.target.value,
+                              namaBarang: found ? found.namaBarang : prev.namaBarang,
+                            }));
+                          }}
+                          className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                        >
+                          <option value="">-- Pilih Barang Inventaris --</option>
+                          {barangInventaris.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.namaBarang} ({b.jumlah} {b.satuan})
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {pengajuanPinjamForm.sumberBarang === 'fasilitas' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <select
+                            value={pengajuanPinjamForm.gedungId}
+                            onChange={(e) =>
+                              setPengajuanPinjamForm((prev) => ({
+                                ...prev,
+                                gedungId: e.target.value,
+                                fasilitasItemId: '',
+                              }))
+                            }
+                            className="px-2.5 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                          >
+                            <option value="">-- Gedung --</option>
+                            {fasilitasGedungList.map((g) => (
+                              <option key={g.id} value={g.id}>
+                                {g.namaGedung}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={pengajuanPinjamForm.fasilitasItemId}
+                            onChange={(e) => {
+                              const gdg = fasilitasGedungList.find(
+                                (g) => g.id === pengajuanPinjamForm.gedungId
+                              );
+                              const item = gdg?.daftarFasilitas.find((f) => f.id === e.target.value);
+                              setPengajuanPinjamForm((prev) => ({
+                                ...prev,
+                                fasilitasItemId: e.target.value,
+                                namaBarang: item
+                                  ? `${item.namaFasilitas} (${gdg?.namaGedung})`
+                                  : prev.namaBarang,
+                              }));
+                            }}
+                            className="px-2.5 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                          >
+                            <option value="">-- Item --</option>
+                            {(
+                              fasilitasGedungList.find((g) => g.id === pengajuanPinjamForm.gedungId)
+                                ?.daftarFasilitas || []
+                            ).map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.namaFasilitas} ({f.jumlah} {f.satuan})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                       <div>
                         <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
                           Nama Barang *
@@ -2878,6 +3785,18 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                           ) : (
                             filteredKeluarList.map((m, idx) => {
                               const meta = barangByIdMap.get(m.barangId);
+                              const fasMeta = fasilitasByIdMap.get(m.fasilitasItemId || m.barangId);
+                              const isFas =
+                                m.targetTipe === 'fasilitas' || (!meta && Boolean(fasMeta));
+                              const gedungLabel =
+                                m.gedungNama || fasMeta?.gedung.namaGedung || meta?.gedungNama;
+                              const stokKiniText = isFas
+                                ? fasMeta
+                                  ? `${fasMeta.item.jumlah} ${fasMeta.item.satuan}`
+                                  : '-'
+                                : meta
+                                  ? `${meta.jumlah} ${meta.satuan}`
+                                  : '-';
                               return (
                                 <tr
                                   key={m.id}
@@ -2891,11 +3810,19 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                                   </td>
                                   <td className="py-2.5 px-3">
                                     <div className="font-bold text-white">{m.namaBarang}</div>
-                                    {meta && (
-                                      <div className="text-[10px] font-mono text-emerald-300/75">
-                                        {meta.kodeBarang} · {meta.lokasi}
-                                      </div>
-                                    )}
+                                    <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                      <span
+                                        className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
+                                          isFas
+                                            ? 'bg-[#d4af37]/20 text-[#f3d266] border border-[#d4af37]/40'
+                                            : 'bg-rose-500/15 text-rose-200 border border-rose-500/35'
+                                        }`}
+                                      >
+                                        {isFas
+                                          ? `Fasilitas${gedungLabel ? ` · ${gedungLabel}` : ''}`
+                                          : `Inventaris${meta ? ` · ${meta.kodeBarang}` : ''}`}
+                                      </span>
+                                    </div>
                                   </td>
                                   <td className="py-2.5 px-3 text-center whitespace-nowrap">
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/40 font-mono font-extrabold tabular-nums text-[11px]">
@@ -2903,7 +3830,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                                     </span>
                                   </td>
                                   <td className="py-2.5 px-3 text-center font-mono text-emerald-100 whitespace-nowrap tabular-nums">
-                                    {meta ? `${meta.jumlah} ${meta.satuan}` : '-'}
+                                    {stokKiniText}
                                   </td>
                                   <td className="py-2.5 px-3 font-semibold text-emerald-200 whitespace-nowrap">
                                     {m.petugas}
@@ -3004,9 +3931,22 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                                   {idx + 1}
                                 </td>
                                 <td className="py-2.5 px-3">
-                                  <span className="inline-block px-2 py-0.5 rounded bg-[#d4af37]/20 text-[#f3d266] text-[10px] font-mono font-bold mb-1">
-                                    {p.kodePeminjaman}
-                                  </span>
+                                  <div className="flex flex-wrap items-center gap-1 mb-1">
+                                    <span className="inline-block px-2 py-0.5 rounded bg-[#d4af37]/20 text-[#f3d266] text-[10px] font-mono font-bold">
+                                      {p.kodePeminjaman}
+                                    </span>
+                                    <span
+                                      className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
+                                        p.sumberBarang === 'fasilitas'
+                                          ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40'
+                                          : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/35'
+                                      }`}
+                                    >
+                                      {p.sumberBarang === 'fasilitas'
+                                        ? `Fasilitas${p.gedungNama ? ` · ${p.gedungNama}` : ''}`
+                                        : 'Inventaris'}
+                                    </span>
+                                  </div>
                                   <div className="font-bold text-white">
                                     {p.namaBarang}{' '}
                                     <span className="text-[#f3d266] font-mono">
@@ -3290,102 +4230,206 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                         ))}
                       </datalist>
 
-                      <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-0.5">
-                        {rincianBarangRows.map((row, idx) => (
-                          <div
-                            key={row.id}
-                            className="p-2.5 rounded-xl bg-[#041d14] border border-emerald-800/70 space-y-2"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-mono text-emerald-300 font-bold">
-                                Barang #{idx + 1}
-                              </span>
-                              {rincianBarangRows.length > 1 && (
+                      <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-0.5">
+                        {rincianBarangRows.map((row, idx) => {
+                          const rowSumber = row.sumberBarang === 'fasilitas' ? 'fasilitas' : 'inventaris';
+                          const rowGedungId = row.gedungId || fasilitasGedungList[0]?.id || '';
+                          const rowGedung = fasilitasGedungList.find((g) => g.id === rowGedungId);
+                          return (
+                            <div
+                              key={row.id}
+                              className="p-2.5 rounded-xl bg-[#041d14] border border-emerald-800/70 space-y-2"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] font-mono text-emerald-300 font-bold">
+                                  Barang #{idx + 1}
+                                </span>
+                                {rincianBarangRows.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveRincianBarangRow(row.id)}
+                                    className="text-rose-300 hover:text-rose-200 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Hapus Baris</span>
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-[#02100a] border border-emerald-800/70">
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveRincianBarangRow(row.id)}
-                                  className="text-rose-300 hover:text-rose-200 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                                  onClick={() =>
+                                    handleUpdateRincianBarangRow(row.id, {
+                                      sumberBarang: 'inventaris',
+                                      fasilitasItemId: undefined,
+                                    })
+                                  }
+                                  className={`py-1 px-2 rounded-md text-[10px] font-bold cursor-pointer ${
+                                    rowSumber === 'inventaris'
+                                      ? 'bg-emerald-500 text-[#02120a]'
+                                      : 'text-emerald-200/75 hover:text-white'
+                                  }`}
                                 >
-                                  <Trash2 className="w-3 h-3" />
-                                  <span>Hapus Baris</span>
+                                  Pinjam Inventaris
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateRincianBarangRow(row.id, {
+                                      sumberBarang: 'fasilitas',
+                                      gedungId: rowGedungId,
+                                    })
+                                  }
+                                  className={`py-1 px-2 rounded-md text-[10px] font-bold cursor-pointer ${
+                                    rowSumber === 'fasilitas'
+                                      ? 'bg-[#d4af37] text-[#02120a]'
+                                      : 'text-emerald-200/75 hover:text-white'
+                                  }`}
+                                >
+                                  Pinjam Fasilitas Gedung
+                                </button>
+                              </div>
+
+                              {rowSumber === 'fasilitas' && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  <select
+                                    value={rowGedungId}
+                                    onChange={(e) => {
+                                      const nextG = fasilitasGedungList.find(
+                                        (g) => g.id === e.target.value
+                                      );
+                                      handleUpdateRincianBarangRow(row.id, {
+                                        sumberBarang: 'fasilitas',
+                                        gedungId: e.target.value,
+                                        gedungNama: nextG?.namaGedung,
+                                        fasilitasItemId: '',
+                                      });
+                                    }}
+                                    className="px-2 py-1.5 rounded-lg bg-[#02100a] border border-emerald-800 text-[11px] text-white"
+                                  >
+                                    {fasilitasGedungList.map((g) => (
+                                      <option key={g.id} value={g.id}>
+                                        {g.namaGedung}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <select
+                                    value={row.fasilitasItemId || ''}
+                                    onChange={(e) => {
+                                      const item = rowGedung?.daftarFasilitas.find(
+                                        (f) => f.id === e.target.value
+                                      );
+                                      if (item) {
+                                        handleUpdateRincianBarangRow(row.id, {
+                                          sumberBarang: 'fasilitas',
+                                          gedungId: rowGedung?.id,
+                                          gedungNama: rowGedung?.namaGedung,
+                                          fasilitasItemId: item.id,
+                                          namaBarang: item.namaFasilitas,
+                                          satuan: item.satuan || 'Unit',
+                                          kondisiAwal: item.kondisi,
+                                        });
+                                      }
+                                    }}
+                                    className="px-2 py-1.5 rounded-lg bg-[#02100a] border border-emerald-800 text-[11px] text-white"
+                                  >
+                                    <option value="">-- Pilih Fasilitas --</option>
+                                    {(rowGedung?.daftarFasilitas || []).map((f) => (
+                                      <option key={f.id} value={f.id}>
+                                        {f.namaFasilitas} ({f.jumlah} {f.satuan})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
                               )}
-                            </div>
 
-                            <input
-                              type="text"
-                              required
-                              list="perlengkapan-inventaris-datalist"
-                              placeholder="Pilih atau ketik nama barang..."
-                              value={row.namaBarang}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                const matched = barangInventaris.find(
-                                  (b) => b.namaBarang.toLowerCase() === val.trim().toLowerCase()
-                                );
-                                handleUpdateRincianBarangRow(row.id, {
-                                  namaBarang: val,
-                                  ...(matched ? { satuan: matched.satuan } : {}),
-                                });
-                              }}
-                              className="w-full px-3 py-2 rounded-lg bg-[#02100a] border border-emerald-800 text-xs text-white"
-                            />
+                              <input
+                                type="text"
+                                required
+                                list="perlengkapan-inventaris-datalist"
+                                placeholder={
+                                  rowSumber === 'fasilitas'
+                                    ? 'Nama fasilitas terpilih (atau edit manual)...'
+                                    : 'Pilih atau ketik nama barang inventaris...'
+                                }
+                                value={row.namaBarang}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  const matched = barangInventaris.find(
+                                    (b) => b.namaBarang.toLowerCase() === val.trim().toLowerCase()
+                                  );
+                                  handleUpdateRincianBarangRow(row.id, {
+                                    namaBarang: val,
+                                    ...(matched && rowSumber === 'inventaris'
+                                      ? {
+                                          satuan: matched.satuan,
+                                          inventarisId: matched.id,
+                                          gedungId: matched.gedungId,
+                                          gedungNama: matched.gedungNama,
+                                        }
+                                      : {}),
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-lg bg-[#02100a] border border-emerald-800 text-xs text-white"
+                              />
 
-                            <div className="grid grid-cols-3 gap-2">
-                              <div>
-                                <label className="block text-[9px] font-mono text-emerald-300/80 mb-0.5">
-                                  Jumlah
-                                </label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  required
-                                  value={row.jumlah}
-                                  onChange={(e) =>
-                                    handleUpdateRincianBarangRow(row.id, {
-                                      jumlah: Math.max(1, Number(e.target.value) || 1),
-                                    })
-                                  }
-                                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-800 text-xs text-white font-mono text-center"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-mono text-emerald-300/80 mb-0.5">
-                                  Satuan/Unit
-                                </label>
-                                <input
-                                  type="text"
-                                  required
-                                  value={row.satuan}
-                                  onChange={(e) =>
-                                    handleUpdateRincianBarangRow(row.id, {
-                                      satuan: e.target.value,
-                                    })
-                                  }
-                                  placeholder="Unit/Set"
-                                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-800 text-xs text-white"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[9px] font-mono text-emerald-300/80 mb-0.5">
-                                  Kondisi Awal
-                                </label>
-                                <input
-                                  type="text"
-                                  required
-                                  value={row.kondisiAwal}
-                                  onChange={(e) =>
-                                    handleUpdateRincianBarangRow(row.id, {
-                                      kondisiAwal: e.target.value,
-                                    })
-                                  }
-                                  placeholder="Baik"
-                                  className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-800 text-xs text-white"
-                                />
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="block text-[9px] font-mono text-emerald-300/80 mb-0.5">
+                                    Jumlah
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    required
+                                    value={row.jumlah}
+                                    onChange={(e) =>
+                                      handleUpdateRincianBarangRow(row.id, {
+                                        jumlah: Math.max(1, Number(e.target.value) || 1),
+                                      })
+                                    }
+                                    className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-800 text-xs text-white font-mono text-center"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[9px] font-mono text-emerald-300/80 mb-0.5">
+                                    Satuan/Unit
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={row.satuan}
+                                    onChange={(e) =>
+                                      handleUpdateRincianBarangRow(row.id, {
+                                        satuan: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Unit/Set"
+                                    className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-800 text-xs text-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[9px] font-mono text-emerald-300/80 mb-0.5">
+                                    Kondisi Awal
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={row.kondisiAwal}
+                                    onChange={(e) =>
+                                      handleUpdateRincianBarangRow(row.id, {
+                                        kondisiAwal: e.target.value,
+                                      })
+                                    }
+                                    placeholder="Baik"
+                                    className="w-full px-2.5 py-1.5 rounded-lg bg-[#02100a] border border-emerald-800 text-xs text-white"
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -3576,9 +4620,16 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                                       key={brg.id || bIdx}
                                       className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-[#041d14] border border-emerald-800/50 text-[11px]"
                                     >
-                                      <span className="font-bold text-white truncate">
-                                        {bIdx + 1}. {brg.namaBarang}
-                                      </span>
+                                      <div className="min-w-0">
+                                        <span className="font-bold text-white block truncate">
+                                          {bIdx + 1}. {brg.namaBarang}
+                                        </span>
+                                        <span className="text-[9px] font-mono text-emerald-300/75">
+                                          {brg.sumberBarang === 'fasilitas'
+                                            ? `Fasilitas${brg.gedungNama ? ` · ${brg.gedungNama}` : ''}`
+                                            : 'Inventaris'}
+                                        </span>
+                                      </div>
                                       <span className="font-mono text-[#f3d266] shrink-0">
                                         {brg.jumlah} {brg.satuan} · {brg.kondisiAwal}
                                       </span>
@@ -3807,8 +4858,11 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
         </div>
       )}
 
-      {/* TAB 5: DATA FASILITAS PER GEDUNG (FORMAT TABEL + EDITABLE + RINGKASAN + DOWNLOAD WORD) */}
-      {(activeTab === 'kamar_santri' || activeTab === 'data_fasilitas') && (() => {
+      {/* TAB GABUNGAN: FASILITAS & INVENTARIS (BARANG PEMBERIAN OTOMATIS MASUK KE FASILITAS GEDUNG) */}
+      {(activeTab === 'fasilitas_inventaris' ||
+        activeTab === 'inventaris' ||
+        activeTab === 'kamar_santri' ||
+        activeTab === 'data_fasilitas') && (() => {
         const displayedGedungList =
           filterGedungId === 'ALL'
             ? fasilitasGedungList
@@ -3830,7 +4884,287 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
         const totalPerhatianAll = totalJenisAll - totalBaikAll;
 
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
+            {/* BAGIAN 1: INVENTARIS BARANG PEMBERIAN (OTOMATIS MASUK & TERKONFIGURASI KE DATA FASILITAS) */}
+            <section className="rounded-3xl bg-[#031a12]/90 border-2 border-emerald-500/35 p-5 shadow-2xl space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-800/70 pb-3">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-[#f3d266] font-bold">
+                    BAGIAN 1 · INVENTARIS BARANG PEMBERIAN &amp; SINKRONISASI FASILITAS
+                  </span>
+                  <h2 className="text-base font-extrabold text-white mt-0.5 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-[#f3d266]" />
+                    <span>
+                      Inventaris Barang Pemberian (Terkonfigurasi Langsung ke Data Fasilitas Gedung)
+                    </span>
+                  </h2>
+                  <p className="text-xs text-emerald-200/80 mt-0.5">
+                    Setiap barang pemberian / hibah yang diinput ke Inventaris akan langsung masuk dan terkonfigurasi ke dalam Data Fasilitas pada Gedung yang dipilih.
+                  </p>
+                </div>
+                <span className="px-3 py-1 rounded-xl bg-emerald-950/90 border border-emerald-600/50 text-emerald-300 text-xs font-mono font-bold self-start">
+                  {barangInventaris.length} Barang Terdaftar
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <form
+                  onSubmit={handleSimpanInventaris}
+                  className="lg:col-span-4 rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/45 p-4 sm:p-5 shadow-xl space-y-3 h-fit"
+                >
+                  <h3 className="text-sm font-bold text-[#f3d266] uppercase tracking-wider">
+                    + Tambah Barang Pemberian / Inventaris
+                  </h3>
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                      Nama Barang Pemberian *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Contoh: Kipas Angin / Proyektor / Sound..."
+                      value={formBarang.namaBarang}
+                      onChange={(e) => setFormBarang({ ...formBarang, namaBarang: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                      Asal Pemberian / Donatur / Sumber Hibah
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Wali Santri / Alumni / Hamba Allah..."
+                      value={formBarang.asalPemberian || ''}
+                      onChange={(e) =>
+                        setFormBarang({ ...formBarang, asalPemberian: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-[#f3d266] mb-1">
+                      Gedung Tujuan (Otomatis Masuk Data Fasilitas) *
+                    </label>
+                    <select
+                      value={effectiveFormBarangGedungId}
+                      onChange={(e) =>
+                        setFormBarang({ ...formBarang, gedungId: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-[#d4af37]/50 text-xs text-white font-semibold"
+                    >
+                      {fasilitasGedungList.length === 0 ? (
+                        <option value="">Belum ada Gedung terdaftar</option>
+                      ) : (
+                        fasilitasGedungList.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            {g.namaGedung} ({g.daftarFasilitas.length} Fasilitas)
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                        Kategori Barang
+                      </label>
+                      <select
+                        value={formBarang.kategori || perlengkapanCfg.kategoriInventaris?.[0] || 'Elektronik'}
+                        onChange={(e) => setFormBarang({ ...formBarang, kategori: e.target.value as any })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                      >
+                        {(perlengkapanCfg.kategoriInventaris || INITIAL_PERLENGKAPAN_CONFIG.kategoriInventaris || []).map((kat) => (
+                          <option key={kat} value={kat}>
+                            {kat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                        Satuan
+                      </label>
+                      <select
+                        value={formBarang.satuan || perlengkapanCfg.satuanList?.[0] || 'Unit'}
+                        onChange={(e) => setFormBarang({ ...formBarang, satuan: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                      >
+                        {(perlengkapanCfg.satuanList || INITIAL_PERLENGKAPAN_CONFIG.satuanList || []).map((sat) => (
+                          <option key={sat} value={sat}>
+                            {sat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-emerald-300 mb-1">
+                        Jumlah Unit
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={formBarang.jumlah}
+                        onChange={(e) => setFormBarang({ ...formBarang, jumlah: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-amber-300 mb-1">
+                        Batas Stok Minimal
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={formBarang.stokMinimal}
+                        onChange={(e) => setFormBarang({ ...formBarang, stokMinimal: Number(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <select
+                      value={formBarang.kondisi}
+                      onChange={(e) => setFormBarang({ ...formBarang, kondisi: e.target.value as any })}
+                      className="px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                    >
+                      <option value="Baik">Kondisi Baik</option>
+                      <option value="Rusak Ringan">Rusak Ringan</option>
+                      <option value="Rusak Berat">Rusak Berat</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Catatan tambahan..."
+                      value={formBarang.catatan || ''}
+                      onChange={(e) => setFormBarang({ ...formBarang, catatan: e.target.value })}
+                      className="px-3 py-2 rounded-xl bg-[#03160f] border border-emerald-800 text-xs text-white"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b58922] hover:from-[#e5c158] hover:to-[#d4af37] text-[#02120a] font-extrabold text-xs cursor-pointer shadow-lg"
+                  >
+                    Simpan Inventaris &amp; Konfigurasikan ke Fasilitas
+                  </button>
+                </form>
+
+                <div className="lg:col-span-8 rounded-2xl bg-[#041d14]/95 border border-emerald-700/45 p-4 sm:p-5 shadow-xl space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      Daftar Inventaris Barang Pemberian &amp; Status Fasilitas Gedung
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto rounded-2xl border border-emerald-800/60 bg-[#03160f]">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-emerald-800 text-[10px] font-mono uppercase text-[#f3d266] bg-[#02100a]">
+                          <th className="py-2.5 px-3">Nama Barang &amp; Kode</th>
+                          <th className="py-2.5 px-3">Asal Pemberian</th>
+                          <th className="py-2.5 px-3 text-center">Jumlah &amp; Min</th>
+                          <th className="py-2.5 px-3 text-center">Kondisi</th>
+                          <th className="py-2.5 px-3 min-w-[210px]">Konfigurasi ke Fasilitas Gedung</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-emerald-900/50">
+                        {barangInventaris.map((b) => {
+                          const isLow = b.jumlah <= (b.stokMinimal ?? 3);
+                          const draftGedungId =
+                            syncInvGedungDraft[b.id] || b.gedungId || fasilitasGedungList[0]?.id || '';
+                          const isSynced = Boolean(b.gedungId && b.fasilitasItemId);
+                          return (
+                            <tr key={b.id} className="hover:bg-[#06281c]/50 align-middle">
+                              <td className="py-2.5 px-3 font-bold text-white">
+                                {b.namaBarang}
+                                <span className="block text-[10px] font-mono text-emerald-400">
+                                  {b.kodeBarang} · {b.kategori}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-emerald-200/90">
+                                <span className="inline-block px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold">
+                                  {b.asalPemberian || b.sumberBarang || 'Pemberian'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono">
+                                <span className="text-white font-bold">
+                                  {b.jumlah} {b.satuan}
+                                </span>
+                                <span className="block text-[10px] text-emerald-300/75">
+                                  Min: {b.stokMinimal ?? 3}
+                                </span>
+                                {isLow && (
+                                  <span className="inline-block mt-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold">
+                                    ⚠ HAMPIR HABIS
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                    b.kondisi === 'Baik'
+                                      ? 'bg-emerald-500/20 text-emerald-300'
+                                      : 'bg-rose-500/20 text-rose-300'
+                                  }`}
+                                >
+                                  {b.kondisi}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <div className="space-y-1.5">
+                                  {isSynced ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold">
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      <span>Terhubung: {b.gedungNama || b.lokasi}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/35 text-[10px]">
+                                      Belum tersinkron ke gedung ({b.lokasi})
+                                    </span>
+                                  )}
+                                  {fasilitasGedungList.length > 0 && (
+                                    <div className="flex items-center gap-1.5">
+                                      <select
+                                        value={draftGedungId}
+                                        onChange={(e) =>
+                                          setSyncInvGedungDraft((prev) => ({
+                                            ...prev,
+                                            [b.id]: e.target.value,
+                                          }))
+                                        }
+                                        className="flex-1 px-2 py-1 rounded-lg bg-[#02100a] border border-emerald-800 text-[11px] text-white"
+                                      >
+                                        {fasilitasGedungList.map((g) => (
+                                          <option key={g.id} value={g.id}>
+                                            {g.namaGedung}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleSinkronInventarisKeGedung(b, draftGedungId)
+                                        }
+                                        className="px-2 py-1 rounded-lg bg-[#d4af37] hover:bg-[#e5c158] text-[#02120a] text-[10px] font-extrabold cursor-pointer shrink-0"
+                                      >
+                                        {isSynced ? 'Pindah' : 'Sinkronkan'}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* BAGIAN 2: DATA FASILITAS PER GEDUNG (OTOMATIS MEMUAT BARANG PEMBERIAN + EDITABLE + WORD) */}
+            <div className="space-y-6">
             {/* Header Bar Data Fasilitas + Download Word + Kelola Gedung di Option Panel */}
             <div className="rounded-3xl bg-[#041d14]/95 border border-[#d4af37]/45 p-5 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
@@ -4594,6 +5928,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
               </div>
             </div>
           </div>
+          </div>
         );
       })()}
 
@@ -4614,11 +5949,11 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setActiveTab('kamar_santri')}
+                onClick={() => setActiveTab('fasilitas_inventaris')}
                 className="px-3.5 py-2 rounded-xl bg-[#03160f] hover:bg-[#073021] text-emerald-200 border border-emerald-700/60 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <Building2 className="w-3.5 h-3.5 text-[#f3d266]" />
-                <span>Kembali ke Data Fasilitas</span>
+                <span>Kembali ke Fasilitas &amp; Inventaris</span>
               </button>
             </div>
 
@@ -4629,6 +5964,7 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
                 { id: 'edit_inventaris', label: `3. Edit Inventaris (${barangInventaris.length})` },
                 { id: 'edit_mutasi', label: `4. Edit Keluar Masuk (${(systemConfig.mutasiBarangList || []).length})` },
                 { id: 'edit_peminjaman_pengajuan', label: '5. Edit Peminjaman & Pengajuan' },
+                { id: 'layout_surat_peminjaman', label: '6. Layout Surat Peminjaman & Pratinjau' },
               ].map((sec) => (
                 <button
                   key={sec.id}
@@ -5496,6 +6832,20 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
               </div>
             </div>
           )}
+          {/* SECTION 6: EDITOR LAYOUT SURAT PEMINJAMAN BARANG + LIVE PRATINJAU A4 */}
+          {optionSection === 'layout_surat_peminjaman' && (
+            <SuratPerlengkapanLayoutEditor
+              pengaturanSurat={pengaturanSuratPerlengkapan}
+              systemConfig={systemConfig}
+              peminjamanList={peminjamanCloudList}
+              onSaved={(saved) => {
+                setPengaturanSuratPerlengkapan(saved);
+                notifyToast(
+                  'Layout & format surat peminjaman barang berhasil disimpan & diterapkan ke pratinjau/cetak!'
+                );
+              }}
+            />
+          )}
         </div>
       )}
 
@@ -5528,9 +6878,11 @@ export const PerlengkapanPanel: React.FC<PerlengkapanPanelProps> = ({
         isOpen={isOptionSuratModalOpen}
         onClose={() => setIsOptionSuratModalOpen(false)}
         pengaturanSurat={pengaturanSuratPerlengkapan}
+        systemConfig={systemConfig}
+        peminjamanList={peminjamanCloudList}
         onSaved={(saved) => {
           setPengaturanSuratPerlengkapan(saved);
-          notifyToast('Format & layout surat peminjaman berhasil disimpan permanen ke Firebase.');
+          notifyToast('Format & layout surat peminjaman berhasil disimpan & diterapkan.');
         }}
       />
     </div>

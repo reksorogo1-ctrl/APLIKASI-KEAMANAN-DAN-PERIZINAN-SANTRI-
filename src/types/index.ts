@@ -675,6 +675,11 @@ export interface BarangInventaris {
   tanggalPerolehan: string;
   nilaiPerolehan?: number;
   catatan?: string;
+  sumberBarang?: 'Pemberian' | 'Pengadaan' | 'Wakaf' | 'Lainnya';
+  asalPemberian?: string;
+  gedungId?: string;
+  gedungNama?: string;
+  fasilitasItemId?: string;
 }
 
 export interface PeminjamanBarang {
@@ -692,6 +697,10 @@ export interface PeminjamanBarang {
   status: 'Dipinjam' | 'Dikembalikan' | 'Terlambat';
   petugasNama: string;
   keperluan: string;
+  sumberBarang?: 'inventaris' | 'fasilitas';
+  gedungId?: string;
+  gedungNama?: string;
+  fasilitasItemId?: string;
 }
 
 export interface BarangPeminjamanItem {
@@ -700,6 +709,11 @@ export interface BarangPeminjamanItem {
   jumlah: number;
   satuan: string;
   kondisiAwal: string;
+  sumberBarang?: 'inventaris' | 'fasilitas';
+  gedungId?: string;
+  gedungNama?: string;
+  fasilitasItemId?: string;
+  inventarisId?: string;
 }
 
 export type StatusPeminjamanPerlengkapan =
@@ -743,6 +757,27 @@ export interface PengaturanSuratPerlengkapan {
   ukuranFont: 'kecil' | 'sedang' | 'besar';
   tampilkanKopSurat: boolean;
   posisiQrCode: 'kiri_bawah' | 'kanan_bawah';
+  // Pengaturan Layout Lanjutan (Option Panel Perlengkapan)
+  kopTeksBismillah?: string;
+  kopNamaInstansi?: string;
+  kopNamaUnit?: string;
+  kopAlamatKontak?: string;
+  tampilkanBismillah?: boolean;
+  tampilkanLogoKop?: boolean;
+  tampilkanNomorSurat?: boolean;
+  tampilkanIdentitasPeminjam?: boolean;
+  tampilkanKeperluan?: boolean;
+  tampilkanKolomSumber?: boolean;
+  tampilkanKolomKondisi?: boolean;
+  tampilkanKetentuan?: boolean;
+  tampilkanQrCode?: boolean;
+  tampilkanStempel?: boolean;
+  labelTabelBarang?: string;
+  warnaTemaSurat?: 'emerald' | 'gold' | 'classic_bw';
+  gayaBorderKop?: 'double' | 'solid' | 'minimal';
+  marginHalaman?: 'rapat' | 'standar' | 'lebar';
+  perataanJudul?: 'center' | 'left';
+  labelCatatanFooter?: string;
   updatedAt?: string;
 }
 
@@ -883,6 +918,10 @@ export interface MutasiBarang {
   satuan: string;
   keterangan: string;
   petugas: string;
+  targetTipe?: 'inventaris' | 'fasilitas';
+  gedungId?: string;
+  gedungNama?: string;
+  fasilitasItemId?: string;
 }
 
 export interface JadwalPerbaikanAset {
@@ -916,6 +955,8 @@ export interface FasilitasItemGedung {
   satuan: string;
   kondisi: 'Baik' | 'Perlu Perbaikan' | 'Rusak';
   keterangan?: string;
+  inventarisId?: string;
+  asalPemberian?: string;
 }
 
 export interface DataFasilitasGedung {

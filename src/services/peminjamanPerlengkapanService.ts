@@ -47,7 +47,7 @@ let latestCachedPengaturanSurat: PengaturanSuratPerlengkapan | null = null;
 export const DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN: PengaturanSuratPerlengkapan = {
   judulSurat: 'SURAT IZIN PEMINJAMAN INVENTARIS & PERLENGKAPAN',
   teksPembuka:
-    'Dengan ini menerangkan bahwa nama yang tercantum di bawah ini telah mendapatkan persetujuan resmi dari Ketua Pondok dan Bagian Perlengkapan untuk meminjam barang inventaris pondok pesantren dengan rincian sebagai berikut:',
+    'Dengan ini menerangkan bahwa nama yang tercantum di bawah ini telah mendapatkan persetujuan resmi dari Ketua Pondok dan Bagian Perlengkapan untuk meminjam barang inventaris/fasilitas pondok pesantren dengan rincian sebagai berikut:',
   teksPenutup:
     'Ketentuan Tanggung Jawab: Peminjam wajib menjaga keutuhan, kebersihan, dan fungsi seluruh barang yang dipinjam. Apabila terjadi kerusakan atau kehilangan selama masa peminjaman, peminjam bertanggung jawab penuh untuk memperbaiki atau mengganti sesuai kondisi awal serta mengembalikan tepat waktu dengan memindai QR Code surat ini di Bagian Perlengkapan.',
   namaKetuaPondok: 'Ustadz H. Ahmad Fauzan, M.Pd.I',
@@ -60,6 +60,26 @@ export const DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN: PengaturanSuratPerlengkapan 
   ukuranFont: 'sedang',
   tampilkanKopSurat: true,
   posisiQrCode: 'kiri_bawah',
+  kopTeksBismillah: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+  kopNamaInstansi: '',
+  kopNamaUnit: '',
+  kopAlamatKontak: '',
+  tampilkanBismillah: true,
+  tampilkanLogoKop: true,
+  tampilkanNomorSurat: true,
+  tampilkanIdentitasPeminjam: true,
+  tampilkanKeperluan: true,
+  tampilkanKolomSumber: true,
+  tampilkanKolomKondisi: true,
+  tampilkanKetentuan: true,
+  tampilkanQrCode: true,
+  tampilkanStempel: true,
+  labelTabelBarang: 'Daftar Perincian Barang yang Dipinjam:',
+  warnaTemaSurat: 'emerald',
+  gayaBorderKop: 'double',
+  marginHalaman: 'standar',
+  perataanJudul: 'center',
+  labelCatatanFooter: 'Dokumen Resmi Terintegrasi Cloud',
 };
 
 function clipStr(val: string | undefined, max: number, fallback = ''): string {
@@ -102,6 +122,31 @@ export function normalizePengaturanSuratPerlengkapan(
     src.posisiQrCode === 'kiri_bawah' || src.posisiQrCode === 'kanan_bawah'
       ? src.posisiQrCode
       : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.posisiQrCode;
+  const warnaTemaSurat =
+    src.warnaTemaSurat === 'emerald' ||
+    src.warnaTemaSurat === 'gold' ||
+    src.warnaTemaSurat === 'classic_bw'
+      ? src.warnaTemaSurat
+      : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.warnaTemaSurat;
+  const gayaBorderKop =
+    src.gayaBorderKop === 'double' ||
+    src.gayaBorderKop === 'solid' ||
+    src.gayaBorderKop === 'minimal'
+      ? src.gayaBorderKop
+      : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.gayaBorderKop;
+  const marginHalaman =
+    src.marginHalaman === 'rapat' ||
+    src.marginHalaman === 'standar' ||
+    src.marginHalaman === 'lebar'
+      ? src.marginHalaman
+      : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.marginHalaman;
+  const perataanJudul =
+    src.perataanJudul === 'center' || src.perataanJudul === 'left'
+      ? src.perataanJudul
+      : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.perataanJudul;
+
+  const boolOr = (val: unknown, def: boolean | undefined) =>
+    typeof val === 'boolean' ? val : Boolean(def);
 
   return sanitizeOptionalFields({
     judulSurat:
@@ -137,24 +182,88 @@ export function normalizePengaturanSuratPerlengkapan(
         150,
         DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.jabatanKetuaPerlengkapan
       ) || DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.jabatanKetuaPerlengkapan,
-    tampilkanTtdPeminjam:
-      typeof src.tampilkanTtdPeminjam === 'boolean'
-        ? src.tampilkanTtdPeminjam
-        : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanTtdPeminjam,
-    tampilkanTtdPerlengkapan:
-      typeof src.tampilkanTtdPerlengkapan === 'boolean'
-        ? src.tampilkanTtdPerlengkapan
-        : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanTtdPerlengkapan,
-    tampilkanTtdKetuaPondok:
-      typeof src.tampilkanTtdKetuaPondok === 'boolean'
-        ? src.tampilkanTtdKetuaPondok
-        : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanTtdKetuaPondok,
+    tampilkanTtdPeminjam: boolOr(
+      src.tampilkanTtdPeminjam,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanTtdPeminjam
+    ),
+    tampilkanTtdPerlengkapan: boolOr(
+      src.tampilkanTtdPerlengkapan,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanTtdPerlengkapan
+    ),
+    tampilkanTtdKetuaPondok: boolOr(
+      src.tampilkanTtdKetuaPondok,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanTtdKetuaPondok
+    ),
     ukuranFont,
-    tampilkanKopSurat:
-      typeof src.tampilkanKopSurat === 'boolean'
-        ? src.tampilkanKopSurat
-        : DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanKopSurat,
+    tampilkanKopSurat: boolOr(
+      src.tampilkanKopSurat,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanKopSurat
+    ),
     posisiQrCode,
+    kopTeksBismillah: clipStr(
+      src.kopTeksBismillah,
+      120,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.kopTeksBismillah || ''
+    ),
+    kopNamaInstansi: clipStr(src.kopNamaInstansi, 200, ''),
+    kopNamaUnit: clipStr(src.kopNamaUnit, 200, ''),
+    kopAlamatKontak: clipStr(src.kopAlamatKontak, 300, ''),
+    tampilkanBismillah: boolOr(
+      src.tampilkanBismillah,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanBismillah
+    ),
+    tampilkanLogoKop: boolOr(
+      src.tampilkanLogoKop,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanLogoKop
+    ),
+    tampilkanNomorSurat: boolOr(
+      src.tampilkanNomorSurat,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanNomorSurat
+    ),
+    tampilkanIdentitasPeminjam: boolOr(
+      src.tampilkanIdentitasPeminjam,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanIdentitasPeminjam
+    ),
+    tampilkanKeperluan: boolOr(
+      src.tampilkanKeperluan,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanKeperluan
+    ),
+    tampilkanKolomSumber: boolOr(
+      src.tampilkanKolomSumber,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanKolomSumber
+    ),
+    tampilkanKolomKondisi: boolOr(
+      src.tampilkanKolomKondisi,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanKolomKondisi
+    ),
+    tampilkanKetentuan: boolOr(
+      src.tampilkanKetentuan,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanKetentuan
+    ),
+    tampilkanQrCode: boolOr(
+      src.tampilkanQrCode,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanQrCode
+    ),
+    tampilkanStempel: boolOr(
+      src.tampilkanStempel,
+      DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.tampilkanStempel
+    ),
+    labelTabelBarang:
+      clipStr(
+        src.labelTabelBarang,
+        150,
+        DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.labelTabelBarang || ''
+      ) || DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.labelTabelBarang,
+    warnaTemaSurat,
+    gayaBorderKop,
+    marginHalaman,
+    perataanJudul,
+    labelCatatanFooter:
+      clipStr(
+        src.labelCatatanFooter,
+        160,
+        DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.labelCatatanFooter || ''
+      ) || DEFAULT_PENGATURAN_SURAT_PERLENGKAPAN.labelCatatanFooter,
     updatedAt: src.updatedAt ? clipStr(src.updatedAt, 60) : undefined,
   });
 }
@@ -394,13 +503,23 @@ export async function createPeminjamanPerlengkapan(input: {
   const cleanItems: BarangPeminjamanItem[] = input.daftarBarang
     .filter((item) => item.namaBarang.trim() !== '')
     .slice(0, 50)
-    .map((item, idx) => ({
-      id: clipStr(item.id || `brg_${idx + 1}_${Date.now()}`, 64),
-      namaBarang: clipStr(item.namaBarang, 150) || 'Barang Inventaris',
-      jumlah: Math.max(1, Math.round(Number(item.jumlah) || 1)),
-      satuan: clipStr(item.satuan, 40, 'Unit') || 'Unit',
-      kondisiAwal: clipStr(item.kondisiAwal, 100, 'Baik') || 'Baik',
-    }));
+    .map((item, idx) =>
+      sanitizeOptionalFields({
+        id: clipStr(item.id || `brg_${idx + 1}_${Date.now()}`, 64),
+        namaBarang: clipStr(item.namaBarang, 150) || 'Barang Inventaris',
+        jumlah: Math.max(1, Math.round(Number(item.jumlah) || 1)),
+        satuan: clipStr(item.satuan, 40, 'Unit') || 'Unit',
+        kondisiAwal: clipStr(item.kondisiAwal, 100, 'Baik') || 'Baik',
+        sumberBarang:
+          item.sumberBarang === 'fasilitas' || item.sumberBarang === 'inventaris'
+            ? item.sumberBarang
+            : undefined,
+        gedungId: item.gedungId ? clipStr(item.gedungId, 80) : undefined,
+        gedungNama: item.gedungNama ? clipStr(item.gedungNama, 150) : undefined,
+        fasilitasItemId: item.fasilitasItemId ? clipStr(item.fasilitasItemId, 80) : undefined,
+        inventarisId: item.inventarisId ? clipStr(item.inventarisId, 80) : undefined,
+      })
+    );
 
   const docData: PeminjamanPerlengkapan = sanitizeOptionalFields<PeminjamanPerlengkapan>({
     id,
