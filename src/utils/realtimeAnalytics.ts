@@ -75,6 +75,8 @@ export interface RealtimePondokAnalytics {
     santriDiPondok: number;
     ustadzAktif: number;
     ustadzahAktif: number;
+    ustadzTotal: number;
+    ustadzahTotal: number;
     totalAsatidz: number;
   };
   financeAnalytics: FinanceAnalyticsResult;
@@ -263,7 +265,14 @@ export function computeRealtimePondokAnalytics(input: RealtimePondokInput): Real
   const fasilitasGedungList = systemConfig.fasilitasGedungList || [];
   const kamarSantriList = systemConfig.kamarSantriList || [];
   const anggaranList = systemConfig.anggaranList || [];
-  const ustadzList = systemConfig.ustadzList || systemConfig.dataUstadzList || [];
+  const ustadzList =
+    Array.isArray(systemConfig.ustadzList) && systemConfig.ustadzList.length > 0
+      ? systemConfig.ustadzList
+      : Array.isArray(systemConfig.dataUstadzList)
+        ? systemConfig.dataUstadzList
+        : Array.isArray(systemConfig.ustadzList)
+          ? systemConfig.ustadzList
+          : [];
   const murotilAbsensiSantriList = systemConfig.murotilAbsensiSantriList || [];
 
   // 1. SANTRI & ASATIDZ REAL-TIME STATS
@@ -303,8 +312,11 @@ export function computeRealtimePondokAnalytics(input: RealtimePondokInput): Real
   );
   const santriDiPondok = Math.max(0, totalSantri - sedangDiluarIds.size);
 
-  const ustadzAktif = ustadzList.filter((u) => u.statusAktif && u.gender === 'ustadz').length;
-  const ustadzahAktif = ustadzList.filter((u) => u.statusAktif && u.gender === 'ustadzah').length;
+  const ustadzTotal = ustadzList.filter((u) => (u.gender || 'ustadz') !== 'ustadzah').length;
+  const ustadzahTotal = ustadzList.filter((u) => u.gender === 'ustadzah').length;
+  const ustadzAktif = ustadzList.filter((u) => u.statusAktif !== false && (u.gender || 'ustadz') !== 'ustadzah').length;
+  const ustadzahAktif = ustadzList.filter((u) => u.statusAktif !== false && u.gender === 'ustadzah').length;
+  const totalAsatidz = ustadzList.length;
 
   const santriStats = {
     totalSantri,
@@ -315,7 +327,9 @@ export function computeRealtimePondokAnalytics(input: RealtimePondokInput): Real
     santriDiPondok,
     ustadzAktif,
     ustadzahAktif,
-    totalAsatidz: ustadzAktif + ustadzahAktif,
+    ustadzTotal,
+    ustadzahTotal,
+    totalAsatidz,
   };
 
   // 2. KEDISIPLINAN SANTRI (REAL-TIME TANPA CLAMP BUATAN)

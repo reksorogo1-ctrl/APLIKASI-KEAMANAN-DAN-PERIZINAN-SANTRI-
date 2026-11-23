@@ -4,7 +4,6 @@ import {
   UserCheck,
   HeartPulse,
   Home,
-  Building2,
   TrendingUp,
   Wallet,
   FileText,
@@ -861,12 +860,18 @@ export const MainDashboard: React.FC<MainDashboardProps> = ({
         />
 
         <KpiStatCard3D
-          label="Santri Muqim"
-          value={stats.santriDiPondok}
+          label="Jumlah Ustadz & Ustadzah"
+          value={stats.totalAsatidz}
           tone="emerald"
-          subtitle="Berada di Pondok"
-          trendPercent={stats.totalSantri > 0 ? Number(((stats.santriDiPondok / stats.totalSantri) * 100).toFixed(1)) : 0}
-          icon={<Building2 className="w-4 h-4 text-[#10B981]" />}
+          subtitle="Total Ustadz & Ustadzah Keseluruhan"
+          trendText="Real-Time"
+          trendPercent={stats.totalAsatidz > 0 ? 100 : 0}
+          icon={<GraduationCap className="w-4 h-4 text-[#10B981]" />}
+          onClick={
+            currentUser.role === 'admin' || currentUser.role === 'sekretaris' || currentUser.role === 'ketua_pondok'
+              ? () => onNavigate('sekretaris', 'data_ustadz')
+              : undefined
+          }
         />
 
         <KpiStatCard3D
