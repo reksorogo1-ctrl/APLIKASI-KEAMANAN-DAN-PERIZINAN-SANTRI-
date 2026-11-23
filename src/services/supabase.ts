@@ -1,19 +1,30 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+const DEFAULT_SUPABASE_URL = 'https://gljacjsnutqaezxkwbbh.supabase.co/rest/v1/';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_Us_igr1F-9DjudD8Ozo7Dg_s0Uzps5C';
+
 function normalizeEnvValue(val: string | undefined, fallback: string): string {
-  return (val || fallback).trim().replace(/^["']|["']$/g, '');
+  const cleaned = (val || '').trim().replace(/^["']|["']$/g, '');
+  if (
+    !cleaned ||
+    cleaned.includes('[TEMPEL_PROJECT_URL]') ||
+    cleaned.includes('[TEMPEL_ANON_KEY]')
+  ) {
+    return fallback.trim().replace(/^["']|["']$/g, '');
+  }
+  return cleaned;
 }
 
 export const SUPABASE_PROJECT_URL = normalizeEnvValue(
   import.meta.env.VITE_SUPABASE_URL,
-  '[TEMPEL_PROJECT_URL]'
+  DEFAULT_SUPABASE_URL
 )
   .replace(/\/+$/, '')
   .replace(/\/rest\/v1$/i, '');
 
 export const SUPABASE_ANON_KEY = normalizeEnvValue(
   import.meta.env.VITE_SUPABASE_ANON_KEY,
-  '[TEMPEL_ANON_KEY]'
+  DEFAULT_SUPABASE_ANON_KEY
 );
 
 export const SUPABASE_BUCKET_DOKUMEN = 'almaliki-dokumen';
