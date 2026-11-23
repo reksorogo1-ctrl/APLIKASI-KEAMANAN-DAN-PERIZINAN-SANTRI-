@@ -635,7 +635,8 @@ main :is(p, span, label, div)[class*="text-emerald-100/"]:not(.surat-print-sheet
 /* ==========================================================================
    AL-MALIKI REAL-TIME QR SCANNER VIEWPORT STYLING
    ========================================================================== */
-#almaliki-qr-scanner-viewport {
+#almaliki-qr-scanner-viewport,
+#perlengkapan-qr-scanner-viewport {
   width: 100% !important;
   height: 100% !important;
   position: relative !important;
@@ -647,7 +648,8 @@ main :is(p, span, label, div)[class*="text-emerald-100/"]:not(.surat-print-sheet
   justify-content: center !important;
 }
 
-#almaliki-qr-scanner-viewport video {
+#almaliki-qr-scanner-viewport video,
+#perlengkapan-qr-scanner-viewport video {
   width: 100% !important;
   height: 100% !important;
   min-width: 100% !important;
@@ -657,6 +659,8 @@ main :is(p, span, label, div)[class*="text-emerald-100/"]:not(.surat-print-sheet
 }
 
 #almaliki-qr-scanner-viewport img[alt="Info icon"],
-#almaliki-qr-scanner-viewport span:has(a) {
+#almaliki-qr-scanner-viewport span:has(a),
+#perlengkapan-qr-scanner-viewport img[alt="Info icon"],
+#perlengkapan-qr-scanner-viewport span:has(a) {
   display: none !important;
 }

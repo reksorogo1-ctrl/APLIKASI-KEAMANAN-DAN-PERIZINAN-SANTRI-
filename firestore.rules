@@ -102,9 +102,136 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Peminjaman Barang (Perlengkapan)
+    // Peminjaman Barang (Perlengkapan - Legacy)
     match /perlengkapan_peminjaman/{peminjamanId} {
       allow read, write: if true;
+    }
+
+    // Helper Validasi untuk Sistem Peminjaman Perlengkapan & Format Surat
+    function isValidPerlengkapanDocId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidPeminjamanPerlengkapan(data) {
+      return data.keys().hasAll([
+        'id',
+        'nomorSurat',
+        'namaPeminjam',
+        'statusDivisiKamar',
+        'nomorHp',
+        'tanggalPinjam',
+        'estimasiTanggalKembali',
+        'daftarBarang',
+        'status',
+        'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'id',
+        'nomorSurat',
+        'namaPeminjam',
+        'statusDivisiKamar',
+        'nomorHp',
+        'tanggalPinjam',
+        'estimasiTanggalKembali',
+        'daftarBarang',
+        'keperluan',
+        'status',
+        'catatanVerifikasi',
+        'diverifikasiOleh',
+        'waktuVerifikasi',
+        'waktuKembali',
+        'petugasPengembalian',
+        'dibuatOleh',
+        'createdAt',
+        'updatedAt'
+      ])
+      && data.id is string && data.id.size() >= 1 && data.id.size() <= 128
+      && data.nomorSurat is string && data.nomorSurat.size() >= 1 && data.nomorSurat.size() <= 100
+      && data.namaPeminjam is string && data.namaPeminjam.size() >= 1 && data.namaPeminjam.size() <= 150
+      && data.statusDivisiKamar is string && data.statusDivisiKamar.size() >= 1 && data.statusDivisiKamar.size() <= 150
+      && data.nomorHp is string && data.nomorHp.size() >= 1 && data.nomorHp.size() <= 40
+      && data.tanggalPinjam is string && data.tanggalPinjam.size() >= 1 && data.tanggalPinjam.size() <= 30
+      && data.estimasiTanggalKembali is string && data.estimasiTanggalKembali.size() >= 1 && data.estimasiTanggalKembali.size() <= 30
+      && data.daftarBarang is list && data.daftarBarang.size() >= 1 && data.daftarBarang.size() <= 50
+      && data.status in [
+        'Menunggu Verifikasi Ketua Pondok',
+        'Disetujui',
+        'Ditolak',
+        'Sudah Dikembalikan'
+      ]
+      && data.createdAt is string && data.createdAt.size() <= 60
+      && (!('keperluan' in data) || (data.keperluan is string && data.keperluan.size() <= 500))
+      && (!('catatanVerifikasi' in data) || (data.catatanVerifikasi is string && data.catatanVerifikasi.size() <= 500))
+      && (!('diverifikasiOleh' in data) || (data.diverifikasiOleh is string && data.diverifikasiOleh.size() <= 150))
+      && (!('waktuVerifikasi' in data) || (data.waktuVerifikasi is string && data.waktuVerifikasi.size() <= 60))
+      && (!('waktuKembali' in data) || (data.waktuKembali is string && data.waktuKembali.size() <= 60))
+      && (!('petugasPengembalian' in data) || (data.petugasPengembalian is string && data.petugasPengembalian.size() <= 150))
+      && (!('dibuatOleh' in data) || (data.dibuatOleh is string && data.dibuatOleh.size() <= 150))
+      && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 60));
+    }
+
+    function isValidPengaturanSuratPerlengkapan(data) {
+      return data.keys().hasAll([
+        'judulSurat',
+        'teksPembuka',
+        'teksPenutup',
+        'namaKetuaPondok',
+        'jabatanKetuaPondok',
+        'namaKetuaPerlengkapan',
+        'jabatanKetuaPerlengkapan',
+        'tampilkanTtdPeminjam',
+        'tampilkanTtdPerlengkapan',
+        'tampilkanTtdKetuaPondok',
+        'ukuranFont',
+        'tampilkanKopSurat',
+        'posisiQrCode'
+      ])
+      && data.keys().hasOnly([
+        'judulSurat',
+        'teksPembuka',
+        'teksPenutup',
+        'namaKetuaPondok',
+        'jabatanKetuaPondok',
+        'namaKetuaPerlengkapan',
+        'jabatanKetuaPerlengkapan',
+        'tampilkanTtdPeminjam',
+        'tampilkanTtdPerlengkapan',
+        'tampilkanTtdKetuaPondok',
+        'ukuranFont',
+        'tampilkanKopSurat',
+        'posisiQrCode',
+        'updatedAt'
+      ])
+      && data.judulSurat is string && data.judulSurat.size() <= 200
+      && data.teksPembuka is string && data.teksPembuka.size() <= 1500
+      && data.teksPenutup is string && data.teksPenutup.size() <= 2000
+      && data.namaKetuaPondok is string && data.namaKetuaPondok.size() <= 150
+      && data.jabatanKetuaPondok is string && data.jabatanKetuaPondok.size() <= 150
+      && data.namaKetuaPerlengkapan is string && data.namaKetuaPerlengkapan.size() <= 150
+      && data.jabatanKetuaPerlengkapan is string && data.jabatanKetuaPerlengkapan.size() <= 150
+      && data.tampilkanTtdPeminjam is bool
+      && data.tampilkanTtdPerlengkapan is bool
+      && data.tampilkanTtdKetuaPondok is bool
+      && data.ukuranFont in ['kecil', 'sedang', 'besar']
+      && data.tampilkanKopSurat is bool
+      && data.posisiQrCode in ['kiri_bawah', 'kanan_bawah']
+      && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 60));
+    }
+
+    // Sistem Peminjaman Barang Perlengkapan (Verifikasi Ketua Pondok & QR Pengembalian)
+    match /peminjaman_perlengkapan/{peminjamanId} {
+      allow read: if true;
+      allow create, update: if isValidPerlengkapanDocId(peminjamanId)
+        && isValidPeminjamanPerlengkapan(request.resource.data);
+      allow delete: if isValidPerlengkapanDocId(peminjamanId);
+    }
+
+    // Option Panel Format & Layout Surat Peminjaman Perlengkapan
+    match /pengaturan_surat_perlengkapan/{configId} {
+      allow read: if true;
+      allow create, update: if isValidPerlengkapanDocId(configId)
+        && isValidPengaturanSuratPerlengkapan(request.resource.data);
+      allow delete: if isValidPerlengkapanDocId(configId);
     }
 
     // Diagnostic & Connection Test

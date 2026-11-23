@@ -295,6 +295,87 @@
         "status": { "type": "string" }
       },
       "required": ["id", "kodePeminjaman", "barangId", "status"]
+    },
+    "PeminjamanPerlengkapan": {
+      "title": "PeminjamanPerlengkapan",
+      "description": "Multi-item equipment loan requests with Ketua Pondok approval and QR return tracking",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "nomorSurat": { "type": "string", "maxLength": 100 },
+        "namaPeminjam": { "type": "string", "maxLength": 150 },
+        "statusDivisiKamar": { "type": "string", "maxLength": 150 },
+        "nomorHp": { "type": "string", "maxLength": 40 },
+        "tanggalPinjam": { "type": "string", "maxLength": 30 },
+        "estimasiTanggalKembali": { "type": "string", "maxLength": 30 },
+        "daftarBarang": { "type": "array" },
+        "keperluan": { "type": "string", "maxLength": 500 },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Menunggu Verifikasi Ketua Pondok",
+            "Disetujui",
+            "Ditolak",
+            "Sudah Dikembalikan"
+          ]
+        },
+        "catatanVerifikasi": { "type": "string", "maxLength": 500 },
+        "diverifikasiOleh": { "type": "string", "maxLength": 150 },
+        "waktuVerifikasi": { "type": "string", "maxLength": 60 },
+        "waktuKembali": { "type": "string", "maxLength": 60 },
+        "petugasPengembalian": { "type": "string", "maxLength": 150 },
+        "dibuatOleh": { "type": "string", "maxLength": 150 },
+        "createdAt": { "type": "string", "maxLength": 60 },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": [
+        "id",
+        "nomorSurat",
+        "namaPeminjam",
+        "statusDivisiKamar",
+        "nomorHp",
+        "tanggalPinjam",
+        "estimasiTanggalKembali",
+        "daftarBarang",
+        "status",
+        "createdAt"
+      ]
+    },
+    "PengaturanSuratPerlengkapan": {
+      "title": "PengaturanSuratPerlengkapan",
+      "description": "Configurable print letter format and layout settings for equipment borrowing letters",
+      "type": "object",
+      "properties": {
+        "judulSurat": { "type": "string", "maxLength": 200 },
+        "teksPembuka": { "type": "string", "maxLength": 1500 },
+        "teksPenutup": { "type": "string", "maxLength": 2000 },
+        "namaKetuaPondok": { "type": "string", "maxLength": 150 },
+        "jabatanKetuaPondok": { "type": "string", "maxLength": 150 },
+        "namaKetuaPerlengkapan": { "type": "string", "maxLength": 150 },
+        "jabatanKetuaPerlengkapan": { "type": "string", "maxLength": 150 },
+        "tampilkanTtdPeminjam": { "type": "boolean" },
+        "tampilkanTtdPerlengkapan": { "type": "boolean" },
+        "tampilkanTtdKetuaPondok": { "type": "boolean" },
+        "ukuranFont": { "type": "string", "enum": ["kecil", "sedang", "besar"] },
+        "tampilkanKopSurat": { "type": "boolean" },
+        "posisiQrCode": { "type": "string", "enum": ["kiri_bawah", "kanan_bawah"] },
+        "updatedAt": { "type": "string", "maxLength": 60 }
+      },
+      "required": [
+        "judulSurat",
+        "teksPembuka",
+        "teksPenutup",
+        "namaKetuaPondok",
+        "jabatanKetuaPondok",
+        "namaKetuaPerlengkapan",
+        "jabatanKetuaPerlengkapan",
+        "tampilkanTtdPeminjam",
+        "tampilkanTtdPerlengkapan",
+        "tampilkanTtdKetuaPondok",
+        "ukuranFont",
+        "tampilkanKopSurat",
+        "posisiQrCode"
+      ]
     }
   },
   "firestore": {
@@ -373,6 +454,14 @@
     "/perlengkapan_peminjaman/{peminjamanId}": {
       "schema": { "$ref": "#/entities/PeminjamanBarang" },
       "description": "Equipment borrowing records"
+    },
+    "/peminjaman_perlengkapan/{peminjamanId}": {
+      "schema": { "$ref": "#/entities/PeminjamanPerlengkapan" },
+      "description": "Multi-item equipment loan requests requiring Ketua Pondok verification and QR code return"
+    },
+    "/pengaturan_surat_perlengkapan/{configId}": {
+      "schema": { "$ref": "#/entities/PengaturanSuratPerlengkapan" },
+      "description": "Persistent print format and layout settings for Perlengkapan loan letters"
     }
   }
 }

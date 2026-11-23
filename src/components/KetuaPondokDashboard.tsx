@@ -55,8 +55,14 @@ import {
   PesanKoordinasi,
   ProgramKerja,
   IzinPengurus,
+  PeminjamanPerlengkapan,
 } from '../types';
 import { storageService } from '../services/storageService';
+import {
+  formatWaktuIndonesiaNow,
+  subscribePeminjamanPerlengkapan,
+  updateStatusPeminjamanPerlengkapan,
+} from '../services/peminjamanPerlengkapanService';
 import { openPrintWindow } from '../utils/printDocument';
 import { downloadWordDocument } from '../utils/wordExport';
 import { PusatInformasiSection } from './PusatInformasiSection';
@@ -231,9 +237,19 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
     }
   }, [initialSubTab]);
 
-  // State Persetujuan Divisi
+  // State Persetujuan Divisi & Peminjaman Perlengkapan
   const [catatanMap, setCatatanMap] = useState<Record<string, string>>({});
   const [riwayatPengajuanFilter, setRiwayatPengajuanFilter] = useState<'Semua' | DivisiUtama>('Semua');
+  const [peminjamanPerlengkapanList, setPeminjamanPerlengkapanList] = useState<PeminjamanPerlengkapan[]>([]);
+  const [verifyingPinjamId, setVerifyingPinjamId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const unsub = subscribePeminjamanPerlengkapan(
+      (items) => setPeminjamanPerlengkapanList(items),
+      () => {}
+    );
+    return () => unsub();
+  }, []);
 
   // State Kotak Masuk & Tanggapan per Divisi
   const [replyingMsgId, setReplyingMsgId] = useState<string | null>(null);
@@ -1168,6 +1184,182 @@ export const KetuaPondokDashboard: React.FC<KetuaPondokDashboardProps> = ({
                     </table>
                   </div>
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* A2. Persetujuan Peminjaman Barang Perlengkapan (Real-Time Firebase + QR Surat) */}
+          {(() => {
+            const pendingPinjam = peminjamanPerlengkapanList.filter(
+              (p) => p.status === 'Menunggu Verifikasi Ketua Pondok'
+            );
+            const recentHandledPinjam = peminjamanPerlengkapanList
+              .filter((p) => p.status !== 'Menunggu Verifikasi Ketua Pondok')
+              .slice(0, 6);
+
+            const handleKeputusanPinjamPerlengkapan = async (
+              item: PeminjamanPerlengkapan,
+              keputusan: 'Disetujui' | 'Ditolak'
+            ) => {
+              setVerifyingPinjamId(item.id);
+              try {
+                await updateStatusPeminjamanPerlengkapan(item.id, {
+                  status: keputusan,
+                  diverifikasiOleh: currentUser.nama || 'Ketua Pondok',
+                  waktuVerifikasi: formatWaktuIndonesiaNow(),
+                  catatanVerifikasi:
+                    catatanMap[item.id]?.trim() ||
+                    (keputusan === 'Disetujui'
+                      ? 'Disetujui oleh Ketua Pondok.'
+                      : 'Ditolak oleh Ketua Pondok.'),
+                });
+                storageService.addLog(
+                  `${keputusan === 'Disetujui' ? 'ACC' : 'Tolak'} Peminjaman Perlengkapan`,
+                  `Ketua Pondok (${currentUser.nama}) ${keputusan.toLowerCase()} peminjaman ${item.nomorSurat} (${item.namaPeminjam}).`,
+                  'admin'
+                );
+                notifySaved(
+                  keputusan === 'Disetujui'
+                    ? `Peminjaman barang atas nama ${item.namaPeminjam} DISETUJUI. Tombol Cetak Surat kini aktif di tab Perlengkapan.`
+                    : `Pengajuan peminjaman barang ${item.namaPeminjam} ditolak.`
+                );
+              } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                notifySaved(`Gagal memproses keputusan peminjaman: ${msg}`);
+              } finally {
+                setVerifyingPinjamId(null);
+              }
+            };
+
+            return (
+              <div className="rounded-2xl bg-[#041d14]/95 border border-[#d4af37]/45 p-5 shadow-xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-800/70 pb-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                      <Package className="w-4 h-4 text-[#f3d266]" />
+                      <span>
+                        1B. Verifikasi Peminjaman Barang Perlengkapan ({pendingPinjam.length} Menunggu ACC)
+                      </span>
+                    </h2>
+                    <p className="text-xs text-emerald-200/75 mt-0.5">
+                      Tersinkronisasi 100% real-time dengan Tab Perlengkapan. Tombol cetak surat resmi ber-QR muncul setelah Anda menekan Verifikasi / ACC.
+                    </p>
+                  </div>
+                </div>
+
+                {pendingPinjam.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-[#03160f] border border-emerald-800/60 text-xs text-emerald-200/75">
+                    Tidak ada pengajuan peminjaman barang perlengkapan yang menunggu verifikasi saat ini.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingPinjam.map((item) => {
+                      const isBusy = verifyingPinjamId === item.id;
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/45 space-y-2.5"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <span className="px-2 py-0.5 rounded bg-[#02100a] text-[#f3d266] text-[10px] font-mono font-bold">
+                                {item.nomorSurat}
+                              </span>
+                              <h3 className="text-sm font-extrabold text-white mt-1">
+                                {item.namaPeminjam} ({item.statusDivisiKamar})
+                              </h3>
+                              <p className="text-[11px] font-mono text-emerald-200/80">
+                                HP: {item.nomorHp} · Pinjam: {item.tanggalPinjam} s/d{' '}
+                                {item.estimasiTanggalKembali}
+                              </p>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/50 text-[10px] font-mono font-bold">
+                              Menunggu Acc Ketua Pondok
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.daftarBarang.map((b, i) => (
+                              <span
+                                key={b.id || i}
+                                className="px-2.5 py-1 rounded-lg bg-[#03160f] border border-emerald-800 text-[11px] text-white"
+                              >
+                                {b.namaBarang} ({b.jumlah} {b.satuan} · {b.kondisiAwal})
+                              </span>
+                            ))}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <input
+                              type="text"
+                              placeholder="Catatan Ketua Pondok (opsional)..."
+                              value={catatanMap[item.id] ?? ''}
+                              onChange={(e) =>
+                                setCatatanMap({ ...catatanMap, [item.id]: e.target.value })
+                              }
+                              className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg bg-black/50 border border-emerald-800 text-xs text-white focus:outline-none focus:border-[#d4af37]"
+                            />
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleKeputusanPinjamPerlengkapan(item, 'Disetujui')}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Verifikasi / ACC Ketua Pondok</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => void handleKeputusanPinjamPerlengkapan(item, 'Ditolak')}
+                              className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Tolak</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {recentHandledPinjam.length > 0 && (
+                  <div className="pt-2 border-t border-emerald-800/60">
+                    <p className="text-[10px] font-mono uppercase text-emerald-300 mb-2">
+                      Riwayat Keputusan Peminjaman Terbaru:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {recentHandledPinjam.map((h) => (
+                        <div
+                          key={h.id}
+                          className="p-2.5 rounded-xl bg-[#03160f] border border-emerald-800/70 flex items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-bold text-white truncate">
+                              {h.namaPeminjam} ({h.daftarBarang.length} item)
+                            </p>
+                            <p className="text-[10px] font-mono text-emerald-300/75 truncate">
+                              {h.nomorSurat}
+                              {h.waktuKembali ? ` · Kembali: ${h.waktuKembali}` : ''}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                              h.status === 'Disetujui'
+                                ? 'bg-emerald-500/20 text-emerald-300'
+                                : h.status === 'Sudah Dikembalikan'
+                                  ? 'bg-sky-500/20 text-sky-300'
+                                  : 'bg-rose-500/20 text-rose-300'
+                            }`}
+                          >
+                            {h.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}

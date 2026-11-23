@@ -694,6 +694,58 @@ export interface PeminjamanBarang {
   keperluan: string;
 }
 
+export interface BarangPeminjamanItem {
+  id: string;
+  namaBarang: string;
+  jumlah: number;
+  satuan: string;
+  kondisiAwal: string;
+}
+
+export type StatusPeminjamanPerlengkapan =
+  | 'Menunggu Verifikasi Ketua Pondok'
+  | 'Disetujui'
+  | 'Ditolak'
+  | 'Sudah Dikembalikan';
+
+export interface PeminjamanPerlengkapan {
+  id: string;
+  nomorSurat: string;
+  namaPeminjam: string;
+  statusDivisiKamar: string;
+  nomorHp: string;
+  tanggalPinjam: string;
+  estimasiTanggalKembali: string;
+  daftarBarang: BarangPeminjamanItem[];
+  keperluan?: string;
+  status: StatusPeminjamanPerlengkapan;
+  catatanVerifikasi?: string;
+  diverifikasiOleh?: string;
+  waktuVerifikasi?: string;
+  waktuKembali?: string;
+  petugasPengembalian?: string;
+  dibuatOleh?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PengaturanSuratPerlengkapan {
+  judulSurat: string;
+  teksPembuka: string;
+  teksPenutup: string;
+  namaKetuaPondok: string;
+  jabatanKetuaPondok: string;
+  namaKetuaPerlengkapan: string;
+  jabatanKetuaPerlengkapan: string;
+  tampilkanTtdPeminjam: boolean;
+  tampilkanTtdPerlengkapan: boolean;
+  tampilkanTtdKetuaPondok: boolean;
+  ukuranFont: 'kecil' | 'sedang' | 'besar';
+  tampilkanKopSurat: boolean;
+  posisiQrCode: 'kiri_bawah' | 'kanan_bawah';
+  updatedAt?: string;
+}
+
 // -------------------------------------------------------------
 // 6. MODUL TERPADU DASHBOARD, KETUA, SEKRETARIS, BENDAHARA & PERLENGKAPAN
 // -------------------------------------------------------------
